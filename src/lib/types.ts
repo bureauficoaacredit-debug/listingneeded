@@ -1,0 +1,24 @@
+export type ListingType = 'rent' | 'sale'
+
+export type Listing = {
+  id: string
+  type: ListingType
+  address: string
+  city: string
+  state: string
+  zip: string
+  beds: number
+  baths: number
+  price: number
+  pets: 'no' | 'yes' | 'negotiable'
+  description: string
+  photoDataUrls: string[]
+  ownerName: string
+  ownerPhone: string
+  ownerEmail: string
+  createdAt: string
+  paid: boolean
+  live: boolean
+}
+
+export const LISTING_FEE_USD = 200
