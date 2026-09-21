@@ -1,5 +1,5 @@
 import { getConfig, supabaseFetch, throwIfNotOk } from './supabase'
-import type { Listing, ListingType } from './types'
+import type { Listing, ListingType, PartnerLink, PartnerCategory } from './types'
 
 /** DB row shape (snake_case) */
 type ListingRow = {
@@ -230,4 +230,127 @@ export async function deleteListing(id: string): Promise<'hard' | 'soft'> {
     )
   }
   return 'soft'
+}
+
+/** Partner / resource links (mortgage, screening, etc.) */
+type PartnerRow = {
+  id: string
+  title: string
+  url: string
+  category: PartnerLink['category']
+  blurb: string | null
+  sort_order: number
+  enabled: boolean
+  created_at: string
+}
+
+
+function rowToPartner(row: PartnerRow): PartnerLink {
+  return {
+    id: row.id,
+    title: row.title,
+    url: row.url,
+    category: row.category,
+    blurb: row.blurb ?? '',
+    sortOrder: Number(row.sort_order ?? 0),
+    enabled: row.enabled,
+    createdAt: row.created_at,
+  }
+}
+
+export async function enabledPartnerLinks(): Promise<PartnerLink[]> {
+  const res = await supabaseFetch(
+    '/rest/v1/partner_links?enabled=eq.true&order=sort_order.asc,created_at.asc',
+    { method: 'GET', headers: { Accept: 'application/json' } },
+  )
+  await throwIfNotOk(res)
+  const data = (await res.json()) as PartnerRow[]
+  return data.map(rowToPartner)
+}
+
+export async function allPartnerLinks(): Promise<PartnerLink[]> {
+  const res = await supabaseFetch(
+    '/rest/v1/partner_links?order=sort_order.asc,created_at.asc',
+    { method: 'GET', headers: { Accept: 'application/json' } },
+  )
+  await throwIfNotOk(res)
+  const data = (await res.json()) as PartnerRow[]
+  return data.map(rowToPartner)
+}
+
+export async function insertPartnerLink(input: {
+  title: string
+  url: string
+  category: PartnerCategory
+  blurb?: string
+  sortOrder?: number
+  enabled?: boolean
+}): Promise<PartnerLink> {
+  const id =
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `pl_${Date.now()}`
+  const body = {
+    id,
+    title: input.title.trim(),
+    url: input.url.trim(),
+    category: input.category,
+    blurb: (input.blurb ?? '').trim(),
+    sort_order: input.sortOrder ?? 0,
+    enabled: input.enabled ?? true,
+  }
+  const res = await supabaseFetch('/rest/v1/partner_links', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(body),
+  })
+  await throwIfNotOk(res)
+  const data = (await res.json()) as PartnerRow[]
+  return rowToPartner(data[0])
+}
+
+export async function updatePartnerLink(
+  id: string,
+  patch: Partial<{
+    title: string
+    url: string
+    category: PartnerCategory
+    blurb: string
+    sortOrder: number
+    enabled: boolean
+  }>,
+): Promise<PartnerLink> {
+  const body: Record<string, unknown> = {}
+  if (patch.title != null) body.title = patch.title.trim()
+  if (patch.url != null) body.url = patch.url.trim()
+  if (patch.category != null) body.category = patch.category
+  if (patch.blurb != null) body.blurb = patch.blurb.trim()
+  if (patch.sortOrder != null) body.sort_order = patch.sortOrder
+  if (patch.enabled != null) body.enabled = patch.enabled
+
+  const res = await supabaseFetch(`/rest/v1/partner_links?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(body),
+  })
+  await throwIfNotOk(res)
+  const data = (await res.json()) as PartnerRow[]
+  if (!data.length) throw new Error('Update failed — 0 rows (check RLS).')
+  return rowToPartner(data[0])
+}
+
+export async function deletePartnerLink(id: string): Promise<void> {
+  const res = await supabaseFetch(`/rest/v1/partner_links?id=eq.${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', Prefer: 'return=representation' },
+  })
+  await throwIfNotOk(res)
 }

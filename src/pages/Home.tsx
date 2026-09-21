@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import PartnerResources from '../components/PartnerResources'
 import { LISTING_FEE_RENT_USD, LISTING_FEE_SALE_USD } from '../lib/types'
 
 export default function Home() {
@@ -77,6 +78,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <PartnerResources />
 
       <section className="realtor-band realtor-centered">
         <p className="eyebrow light">Licensed Realtor®</p>

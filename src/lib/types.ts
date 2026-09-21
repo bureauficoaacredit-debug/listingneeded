@@ -27,3 +27,24 @@ export const LISTING_FEE_SALE_USD = 800
 export function listingFeeUsd(type: ListingType) {
   return type === 'sale' ? LISTING_FEE_SALE_USD : LISTING_FEE_RENT_USD
 }
+
+export type PartnerCategory = 'mortgage' | 'screening' | 'insurance' | 'moving' | 'other'
+
+export type PartnerLink = {
+  id: string
+  title: string
+  url: string
+  category: PartnerCategory
+  blurb: string
+  sortOrder: number
+  enabled: boolean
+  createdAt: string
+}
+
+export const PARTNER_CATEGORY_LABELS: Record<PartnerCategory, string> = {
+  mortgage: 'Mortgage',
+  screening: 'Tenant screening',
+  insurance: 'Insurance',
+  moving: 'Moving',
+  other: 'Other',
+}
