@@ -1,9 +1,38 @@
-import { useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import type { Listing } from '../lib/types'
 import { liveListings } from '../lib/store'
 
 export default function Browse() {
-  const listings = useMemo(() => liveListings(), [])
+  const [listings, setListings] = useState<Listing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const rows = await liveListings()
+        if (!cancelled) setListings(rows)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load listings')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (loading) {
+    return <div className="card"><div className="body">Loading listings…</div></div>
+  }
+
+  if (error) {
+    return <div className="card"><div className="body" style={{color:'#b91c1c'}}>{error}</div></div>
+  }
+
   return (
     <div style={{display:'grid', gap:'1rem'}}>
       <div>

@@ -2,25 +2,10 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { LISTING_FEE_USD, type Listing, type ListingType } from '../lib/types'
-import { upsertListing, markPaidAndLive } from '../lib/store'
+import { insertListing, markPaidAndLive, uploadListingPhotos } from '../lib/store'
 
 function uid() {
   return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-}
-
-async function filesToDataUrls(files: FileList | null, max = 6) {
-  if (!files) return [] as string[]
-  const selected = Array.from(files).slice(0, max)
-  const reads = selected.map(
-    (file) =>
-      new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result))
-        reader.onerror = () => reject(reader.error)
-        reader.readAsDataURL(file)
-      }),
-  )
-  return Promise.all(reads)
 }
 
 export default function List() {
@@ -34,9 +19,12 @@ export default function List() {
     setBusy(true)
     try {
       const fd = new FormData(e.currentTarget)
-      const photos = await filesToDataUrls(fd.get('photos') as FileList | null)
+      const photoInput = fd.get('photos') as FileList | null
+      const photoFiles = photoInput ? Array.from(photoInput).slice(0, 6).filter((f) => f.size > 0) : []
+
+      const id = uid()
       const draft: Listing = {
-        id: uid(),
+        id,
         type: fd.get('type') as ListingType,
         address: String(fd.get('address') || '').trim(),
         city: String(fd.get('city') || '').trim(),
@@ -47,7 +35,7 @@ export default function List() {
         price: Number(fd.get('price') || 0),
         pets: fd.get('pets') as Listing['pets'],
         description: String(fd.get('description') || '').trim(),
-        photoDataUrls: photos,
+        photoDataUrls: [],
         ownerName: String(fd.get('ownerName') || '').trim(),
         ownerPhone: String(fd.get('ownerPhone') || '').trim(),
         ownerEmail: String(fd.get('ownerEmail') || '').trim(),
@@ -58,7 +46,15 @@ export default function List() {
       if (!draft.address || !draft.ownerPhone || !draft.ownerEmail || !draft.price) {
         throw new Error('Address, price, phone, and email are required.')
       }
-      upsertListing(draft)
+
+      // Upload photos first when possible, then insert with public URLs.
+      let photoUrls: string[] = []
+      if (photoFiles.length) {
+        photoUrls = await uploadListingPhotos(id, photoFiles)
+        draft.photoDataUrls = photoUrls
+      }
+
+      await insertListing(draft)
 
       // Demo checkout: in production replace with Stripe Checkout Session for $200.
       // For now, confirm fee and activate immediately so the flow is fully self-serve.
@@ -69,7 +65,7 @@ export default function List() {
         setBusy(false)
         return
       }
-      markPaidAndLive(draft.id)
+      await markPaidAndLive(draft.id)
       navigate(`/listing/${draft.id}?listed=1`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create listing')
@@ -140,8 +136,8 @@ export default function List() {
         {busy ? 'Working…' : `Pay $${LISTING_FEE_USD} & publish`}
       </button>
       <p className="note">
-        Photos and contact info are stored with your listing (browser storage in this demo).
-        Production should use Stripe Checkout + cloud DB/photo storage.
+        Photos are uploaded to cloud storage when available. Payment is confirmed in-app for this demo;
+        production should use Stripe Checkout.
       </p>
     </form>
   )

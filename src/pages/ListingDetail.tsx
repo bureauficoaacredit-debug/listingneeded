@@ -1,12 +1,47 @@
+import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import type { Listing } from '../lib/types'
 import { getListing } from '../lib/store'
 
 export default function ListingDetail() {
   const { id } = useParams()
-  const listing = id ? getListing(id) : undefined
+  const [listing, setListing] = useState<Listing | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const row = await getListing(id)
+        if (!cancelled) setListing(row)
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load listing')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  if (loading) {
+    return <div className="card"><div className="body">Loading listing…</div></div>
+  }
+
+  if (error) {
+    return <div className="card"><div className="body" style={{color:'#b91c1c'}}>{error} <Link to="/browse">Back to browse</Link></div></div>
+  }
+
   if (!listing || !listing.live) {
     return <div className="card"><div className="body">Listing not found or not live. <Link to="/browse">Back to browse</Link></div></div>
   }
+
   return (
     <div className="detail">
       <div className="gallery">
