@@ -68,7 +68,16 @@ export default function List() {
       await markPaidAndLive(draft.id)
       navigate(`/listing/${draft.id}?listed=1`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create listing')
+      // Supabase may throw plain objects; prefer message/code over a generic fallback.
+      const message =
+        err instanceof Error
+          ? err.message
+          : err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
+            ? (err as { message: string }).message
+            : err && typeof err === 'object'
+              ? JSON.stringify(err)
+              : 'Could not create listing'
+      setError(message || 'Could not create listing')
     } finally {
       setBusy(false)
     }

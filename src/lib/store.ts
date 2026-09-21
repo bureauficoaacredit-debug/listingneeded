@@ -69,6 +69,16 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
   }
 }
 
+
+/** Turn a Supabase PostgrestError (plain object) into a real Error for UI catch blocks. */
+function throwSupabaseError(error: { message?: string; code?: string; details?: string; hint?: string } | unknown): never {
+  if (error && typeof error === 'object') {
+    const e = error as { message?: string; code?: string }
+    throw new Error(e.message || e.code || JSON.stringify(error))
+  }
+  throw new Error(String(error))
+}
+
 export async function liveListings(): Promise<Listing[]> {
   const { data, error } = await supabase
     .from('listings')
@@ -77,7 +87,7 @@ export async function liveListings(): Promise<Listing[]> {
     .eq('paid', true)
     .order('created_at', { ascending: false })
 
-  if (error) throw error
+  if (error) throwSupabaseError(error)
   return (data as ListingRow[] | null)?.map(rowToListing) ?? []
 }
 
@@ -88,7 +98,7 @@ export async function getListing(id: string): Promise<Listing | null> {
     .eq('id', id)
     .maybeSingle()
 
-  if (error) throw error
+  if (error) throwSupabaseError(error)
   if (!data) return null
   return rowToListing(data as ListingRow)
 }
@@ -118,7 +128,7 @@ export async function uploadListingPhotos(listingId: string, files: File[]): Pro
 export async function insertListing(listing: Listing): Promise<Listing> {
   const row = listingToRow(listing)
   const { data, error } = await supabase.from('listings').insert(row).select('*').single()
-  if (error) throw error
+  if (error) throwSupabaseError(error)
   return rowToListing(data as ListingRow)
 }
 
@@ -130,7 +140,7 @@ export async function markPaidAndLive(id: string): Promise<Listing | null> {
     .select('*')
     .maybeSingle()
 
-  if (error) throw error
+  if (error) throwSupabaseError(error)
   if (!data) return null
   return rowToListing(data as ListingRow)
 }
@@ -140,5 +150,5 @@ export async function updateListingPhotos(id: string, photoUrls: string[]): Prom
     .from('listings')
     .update({ photo_urls: photoUrls })
     .eq('id', id)
-  if (error) throw error
+  if (error) throwSupabaseError(error)
 }
