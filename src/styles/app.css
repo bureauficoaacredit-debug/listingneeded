@@ -86,7 +86,7 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0
   padding: 2.4rem 2rem 2rem;
   border-radius: 28px;
   background:
-    linear-gradient(145deg, #1c0a0c 0%, #7f1d1d 36%, #9a3412 68%, #d97706 115%);
+    linear-gradient(135deg, #1a0508 0%, #7f1d1d 30%, #b45309 62%, #f59e0b 100%);
   color: #fff;
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -241,7 +241,7 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0
 .realtor-band {
   border-radius: 24px;
   padding: 2rem 1.6rem;
-  background: linear-gradient(120deg, #1c0a0c 0%, #7f1d1d 48%, #92400e 100%);
+  background: linear-gradient(120deg, #1a0508 0%, #7f1d1d 45%, #b45309 100%);
   color: #fafaf9;
   box-shadow: var(--shadow);
 }
