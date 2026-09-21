@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getConfig, supabaseFetch, throwIfNotOk } from './supabase'
 import type { Listing, ListingType } from './types'
 
 /** DB row shape (snake_case) */
@@ -69,86 +69,106 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
   }
 }
 
-
-/** Turn a Supabase PostgrestError (plain object) into a real Error for UI catch blocks. */
-function throwSupabaseError(error: { message?: string; code?: string; details?: string; hint?: string } | unknown): never {
-  if (error && typeof error === 'object') {
-    const e = error as { message?: string; code?: string }
-    throw new Error(e.message || e.code || JSON.stringify(error))
-  }
-  throw new Error(String(error))
-}
-
 export async function liveListings(): Promise<Listing[]> {
-  const { data, error } = await supabase
-    .from('listings')
-    .select('*')
-    .eq('live', true)
-    .eq('paid', true)
-    .order('created_at', { ascending: false })
-
-  if (error) throwSupabaseError(error)
-  return (data as ListingRow[] | null)?.map(rowToListing) ?? []
+  const res = await supabaseFetch(
+    '/rest/v1/listings?live=eq.true&paid=eq.true&order=created_at.desc',
+    {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    },
+  )
+  await throwIfNotOk(res)
+  const data = (await res.json()) as ListingRow[]
+  return data.map(rowToListing)
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
-  const { data, error } = await supabase
-    .from('listings')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle()
-
-  if (error) throwSupabaseError(error)
-  if (!data) return null
-  return rowToListing(data as ListingRow)
+  const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}&select=*`, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  })
+  await throwIfNotOk(res)
+  const data = (await res.json()) as ListingRow[]
+  if (!data.length) return null
+  return rowToListing(data[0])
 }
 
 /** Upload image files to the public listing-photos bucket; returns public URLs. */
 export async function uploadListingPhotos(listingId: string, files: File[]): Promise<string[]> {
+  const { url } = getConfig()
   const urls: string[] = []
+
   for (let i = 0; i < files.length; i++) {
     const file = files[i]
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
     const path = `${listingId}/${i}-${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('listing-photos').upload(path, file, {
-      cacheControl: '3600',
-      upsert: false,
-      contentType: file.type || 'image/jpeg',
-    })
-    if (error) {
-      console.warn('Photo upload failed, skipping:', error.message)
-      continue
+    const contentType = file.type || 'image/jpeg'
+
+    try {
+      const res = await supabaseFetch(`/storage/v1/object/listing-photos/${path}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': contentType,
+          'x-upsert': 'false',
+          'cache-control': '3600',
+        },
+        body: file,
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        console.warn('Photo upload failed, skipping:', text || res.statusText)
+        continue
+      }
+      urls.push(`${url}/storage/v1/object/public/listing-photos/${path}`)
+    } catch (err) {
+      console.warn('Photo upload failed, skipping:', err)
     }
-    const { data } = supabase.storage.from('listing-photos').getPublicUrl(path)
-    if (data?.publicUrl) urls.push(data.publicUrl)
   }
+
   return urls
 }
 
 export async function insertListing(listing: Listing): Promise<Listing> {
   const row = listingToRow(listing)
-  const { data, error } = await supabase.from('listings').insert(row).select('*').single()
-  if (error) throwSupabaseError(error)
-  return rowToListing(data as ListingRow)
+  const res = await supabaseFetch('/rest/v1/listings', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(row),
+  })
+  await throwIfNotOk(res)
+  const data = (await res.json()) as ListingRow[]
+  if (!data.length) throw new Error('Insert returned no row')
+  return rowToListing(data[0])
 }
 
 export async function markPaidAndLive(id: string): Promise<Listing | null> {
-  const { data, error } = await supabase
-    .from('listings')
-    .update({ paid: true, live: true })
-    .eq('id', id)
-    .select('*')
-    .maybeSingle()
-
-  if (error) throwSupabaseError(error)
-  if (!data) return null
-  return rowToListing(data as ListingRow)
+  const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify({ paid: true, live: true }),
+  })
+  await throwIfNotOk(res)
+  const data = (await res.json()) as ListingRow[]
+  if (!data.length) return null
+  return rowToListing(data[0])
 }
 
 export async function updateListingPhotos(id: string, photoUrls: string[]): Promise<void> {
-  const { error } = await supabase
-    .from('listings')
-    .update({ photo_urls: photoUrls })
-    .eq('id', id)
-  if (error) throwSupabaseError(error)
+  const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal',
+    },
+    body: JSON.stringify({ photo_urls: photoUrls }),
+  })
+  await throwIfNotOk(res)
 }
