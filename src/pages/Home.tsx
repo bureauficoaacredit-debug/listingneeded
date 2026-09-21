@@ -16,18 +16,18 @@ export default function Home() {
           <Link className="btn secondary" to="/list">List my home</Link>
         </div>
         <div className="hero-stats">
-          <div className="hero-stat">
-            <strong>Seekers</strong>
-            <span>Buy or rent · contact owners directly</span>
-          </div>
-          <div className="hero-stat">
+          <Link className="hero-stat" to="/browse?type=rent">
+            <strong>Renters</strong>
+            <span>Homes for rent · contact owners directly</span>
+          </Link>
+          <Link className="hero-stat" to="/browse?type=sale">
+            <strong>Buyers</strong>
+            <span>Homes for sale · contact owners directly</span>
+          </Link>
+          <Link className="hero-stat accent" to="/list">
             <strong>Owners</strong>
             <span>Automated list · ${LISTING_FEE_RENT_USD} rent / ${LISTING_FEE_SALE_USD} sale</span>
-          </div>
-          <div className="hero-stat accent">
-            <strong>Realtor®</strong>
-            <span>Marcel Najar · 203-818-3242</span>
-          </div>
+          </Link>
         </div>
       </section>
 
@@ -36,9 +36,12 @@ export default function Home() {
           <p className="path-kicker">Looking for a home</p>
           <h2>Buy or rent</h2>
           <p>
-            Open the board, find what fits, and message the owner by phone or email — no gatekeeping.
+            Open the board, pick For rent or For sale, and message the owner by phone or email.
           </p>
-          <Link className="btn" to="/browse">Find a home</Link>
+          <div className="path-actions">
+            <Link className="btn" to="/browse?type=rent">For rent</Link>
+            <Link className="btn secondary" to="/browse?type=sale">For sale</Link>
+          </div>
         </article>
         <article className="path-card path-own">
           <p className="path-kicker">Listing a home</p>

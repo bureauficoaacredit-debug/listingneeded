@@ -312,3 +312,39 @@ input, select, textarea {
 .admin-table th, .admin-table td { text-align: left; padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
 .admin-table th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
 .admin-table tr:last-child td { border-bottom: none; }
+
+
+.filter-tabs {
+  display: flex; gap: 0; flex-wrap: wrap;
+  border: 1px solid var(--line);
+  background: #fff;
+  width: fit-content;
+  max-width: 100%;
+}
+.filter-tab {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.15rem;
+  cursor: pointer;
+  border-right: 1px solid var(--line);
+}
+.filter-tab:last-child { border-right: none; }
+.filter-tab:hover { background: var(--brand-soft); }
+.filter-tab.active {
+  background: var(--brand);
+  color: #fff;
+}
+.path-actions {
+  display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center;
+}
+.path-actions .btn { min-width: 8.5rem; }
+a.hero-stat { color: inherit; text-decoration: none; transition: background 0.15s ease; }
+a.hero-stat:hover { background: rgba(255,255,255,0.22); text-decoration: none; }
