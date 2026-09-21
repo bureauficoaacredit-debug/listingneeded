@@ -95,8 +95,8 @@ After payment your listing goes live and people contact you directly.`,
     <form className="form" onSubmit={onSubmit}>
       <h2>List your home</h2>
       <p className="note">
-        Sell it, rent it, or call us for a consultation. Self-serve listings go live after payment,
-        and interested people contact you directly.
+        Fully automated self-serve listing: pay online, go live, and get contacted directly.
+        Want a Realtor® instead? Call 203-818-3242 for a consultation.
       </p>
       <div className="fee-box">
         <strong>One-time fee: ${listingFeeUsd(listingType)}</strong>
