@@ -17,7 +17,7 @@ export default function Layout() {
         <div className="footer-inner">
           <div className="contact">
             <strong>Listing Needed · Marcel Najar</strong>
-            <div className="meta">Fairfield County, CT · Buy · Sell · Rent</div>
+            <div className="meta">Licensed Realtor® · Fairfield County, CT · Buy · Sell · Rent</div>
             <div><a href="https://www.listingneeded.com">www.listingneeded.com</a> · <a href="tel:2038183242">203-818-3242</a></div>
             <div className="meta" style={{marginTop:'.5rem'}}>
               <Link to="/admin" style={{color:'var(--muted)', fontSize:'0.8rem', fontWeight:500}}>Admin</Link>
