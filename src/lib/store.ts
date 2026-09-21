@@ -178,3 +178,56 @@ export async function updateListingPhotos(id: string, photoUrls: string[]): Prom
   })
   await throwIfNotOk(res)
 }
+
+/** Admin: load every listing (including unpaid / not live). */
+export async function allListings(): Promise<Listing[]> {
+  const res = await supabaseFetch('/rest/v1/listings?select=*&order=created_at.desc', {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  })
+  await throwIfNotOk(res)
+  const data = (await res.json()) as ListingRow[]
+  return data.map(rowToListing)
+}
+
+/**
+ * Admin delete: try hard DELETE first. If RLS blocks (0 rows / error), soft-delete
+ * via PATCH { live: false, paid: false } so the listing drops off Browse.
+ * Returns which path succeeded.
+ */
+export async function deleteListing(id: string): Promise<'hard' | 'soft'> {
+  const path = `/rest/v1/listings?id=eq.${encodeURIComponent(id)}`
+
+  const delRes = await supabaseFetch(path, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+  })
+
+  if (delRes.ok) {
+    const deleted = (await delRes.json()) as unknown[]
+    if (Array.isArray(deleted) && deleted.length > 0) {
+      return 'hard'
+    }
+  }
+
+  const patchRes = await supabaseFetch(path, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify({ live: false, paid: false }),
+  })
+  await throwIfNotOk(patchRes)
+  const patched = (await patchRes.json()) as unknown[]
+  if (!Array.isArray(patched) || patched.length === 0) {
+    throw new Error(
+      'Delete failed: hard delete returned 0 rows (check RLS delete policy) and soft-delete also updated 0 rows.',
+    )
+  }
+  return 'soft'
+}

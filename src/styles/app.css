@@ -102,3 +102,11 @@ input, select, textarea {
 .gallery img { border-radius: 16px; max-height: 360px; object-fit: cover; width: 100%; background: #e2e8f0; }
 .contact-card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 1.1rem; box-shadow: var(--shadow); }
 .success { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 1rem; border-radius: 12px; }
+
+.btn.danger { background: #b91c1c; color: #fff; padding: 0.45rem 0.85rem; font-size: 0.85rem; }
+.btn.danger:hover { background: #991b1b; }
+.btn.danger:disabled { opacity: 0.6; cursor: not-allowed; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.admin-table th, .admin-table td { text-align: left; padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.admin-table th { color: var(--muted); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.admin-table tr:last-child td { border-bottom: none; }
