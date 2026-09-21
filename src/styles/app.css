@@ -1,22 +1,22 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
 
 :root {
-  --ink: #1a1025;
-  --muted: #6b5b76;
-  --line: #eddfe8;
-  --bg: #faf5f8;
-  --bg-deep: #f3e8ef;
-  --card: #fffbfd;
-  --brand: #5b21b6;
-  --brand-dark: #4c1d95;
-  --brand-soft: #ede9fe;
-  --accent: #e11d48;
-  --accent-soft: #ffe4e6;
-  --gold: #d97706;
-  --warn: #c2410c;
+  --ink: #1c0f12;
+  --muted: #7a5c55;
+  --line: #ead9cf;
+  --bg: #f7f0e8;
+  --bg-deep: #efe3d6;
+  --card: #fffaf5;
+  --brand: #7f1d1d;
+  --brand-dark: #641616;
+  --brand-soft: #fce7e7;
+  --accent: #d97706;
+  --accent-soft: #fef3c7;
+  --gold: #f59e0b;
+  --warn: #b45309;
   --radius: 18px;
-  --shadow: 0 18px 40px rgba(76, 29, 149, 0.12);
-  --shadow-soft: 0 8px 24px rgba(26, 16, 37, 0.06);
+  --shadow: 0 18px 42px rgba(127, 29, 29, 0.14);
+  --shadow-soft: 0 8px 24px rgba(28, 15, 18, 0.06);
   font-family: "DM Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--ink);
   background: var(--bg);
@@ -27,9 +27,9 @@
 body {
   margin: 0;
   background:
-    radial-gradient(1100px 520px at 8% -12%, rgba(91, 33, 182, 0.16), transparent 55%),
-    radial-gradient(900px 440px at 100% 0%, rgba(225, 29, 72, 0.12), transparent 52%),
-    radial-gradient(700px 360px at 50% 100%, rgba(217, 119, 6, 0.08), transparent 55%),
+    radial-gradient(1100px 520px at 8% -12%, rgba(127, 29, 29, 0.14), transparent 55%),
+    radial-gradient(900px 440px at 100% 0%, rgba(217, 119, 6, 0.14), transparent 52%),
+    radial-gradient(700px 360px at 50% 100%, rgba(146, 64, 14, 0.08), transparent 55%),
     var(--bg);
   min-height: 100vh;
 }
@@ -65,7 +65,7 @@ h1, h2, h3 {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
   border: none; border-radius: 999px; padding: 0.75rem 1.2rem; font-weight: 700;
   cursor: pointer; background: var(--brand); color: #fff;
-  box-shadow: 0 8px 22px rgba(91, 33, 182, 0.28);
+  box-shadow: 0 8px 22px rgba(127, 29, 29, 0.28);
   transition: transform 0.15s ease, background 0.15s ease;
 }
 .btn:hover { background: var(--brand-dark); text-decoration: none; transform: translateY(-1px); }
@@ -73,7 +73,7 @@ h1, h2, h3 {
   background: transparent; color: var(--ink); border: 1px solid rgba(28, 25, 23, 0.18);
   box-shadow: none;
 }
-.btn.ghost { background: transparent; color: var(--brand); border: 1px solid #c4b5fd; box-shadow: none; }
+.btn.ghost { background: transparent; color: var(--brand); border: 1px solid #f5c2c2; box-shadow: none; }
 .btn.big { padding: 0.95rem 1.45rem; font-size: 1.02rem; }
 
 main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0 3.5rem; flex: 1; }
@@ -86,7 +86,7 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0
   padding: 2.4rem 2rem 2rem;
   border-radius: 28px;
   background:
-    linear-gradient(145deg, #1e1b4b 0%, #5b21b6 38%, #9d174d 72%, #e11d48 100%);
+    linear-gradient(145deg, #1c0a0c 0%, #7f1d1d 36%, #9a3412 68%, #d97706 115%);
   color: #fff;
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -241,7 +241,7 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0
 .realtor-band {
   border-radius: 24px;
   padding: 2rem 1.6rem;
-  background: linear-gradient(120deg, #1e1b4b 0%, #4c1d95 55%, #831843 100%);
+  background: linear-gradient(120deg, #1c0a0c 0%, #7f1d1d 48%, #92400e 100%);
   color: #fafaf9;
   box-shadow: var(--shadow);
 }
@@ -275,9 +275,9 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0
   background: var(--brand-soft); color: var(--brand); font-size: 0.75rem; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.04em;
 }
-.badge.sale { background: #fce7f3; color: #9d174d; }
+.badge.sale { background: #fef3c7; color: #92400e; }
 .price { font-size: 1.25rem; font-weight: 800; margin: 0.4rem 0; }
-.thumb { height: 160px; background: #ede9fe; object-fit: cover; width: 100%; }
+.thumb { height: 160px; background: #f5e0d4; object-fit: cover; width: 100%; }
 .thumb.empty { display: grid; place-items: center; color: var(--muted); font-weight: 600; }
 
 .form {
