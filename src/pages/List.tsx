@@ -19,8 +19,8 @@ export default function List() {
     setBusy(true)
     try {
       const fd = new FormData(e.currentTarget)
-      const photoInput = fd.get('photos') as FileList | null
-      const photoFiles = photoInput ? Array.from(photoInput).slice(0, 6).filter((f) => f.size > 0) : []
+      const photosEl = e.currentTarget.elements.namedItem('photos') as HTMLInputElement | null
+      const photoFiles = photosEl?.files ? Array.from(photosEl.files).slice(0, 6).filter((f) => f.size > 0) : []
 
       const id = uid()
       const draft: Listing = {
@@ -51,6 +51,9 @@ export default function List() {
       let photoUrls: string[] = []
       if (photoFiles.length) {
         photoUrls = await uploadListingPhotos(id, photoFiles)
+        if (!photoUrls.length) {
+          throw new Error('Could not upload photos. Try JPG or PNG.')
+        }
         draft.photoDataUrls = photoUrls
       }
 
@@ -130,7 +133,7 @@ export default function List() {
         <textarea name="description" rows={4} placeholder="What should renters or buyers know?" />
       </label>
       <label>Photos (up to 6)
-        <input name="photos" type="file" accept="image/*" multiple />
+        <input name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
       </label>
 
       <h3 style={{margin:'0.5rem 0 0'}}>Your contact (shown on your live listing)</h3>

@@ -102,6 +102,8 @@ export async function uploadListingPhotos(listingId: string, files: File[]): Pro
     const file = files[i]
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
     const path = `${listingId}/${i}-${Date.now()}.${ext}`
+    // JPEG, PNG, and WebP are the formats supported by the listing UI. Some
+    // browsers leave File.type empty, so use JPEG as a safe storage default.
     const contentType = file.type || 'image/jpeg'
 
     try {
@@ -123,6 +125,10 @@ export async function uploadListingPhotos(listingId: string, files: File[]): Pro
     } catch (err) {
       console.warn('Photo upload failed, skipping:', err)
     }
+  }
+
+  if (files.length > 0 && urls.length === 0) {
+    throw new Error('Could not upload photos. Try JPG or PNG.')
   }
 
   return urls
