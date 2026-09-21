@@ -21,7 +21,7 @@ export type Listing = {
   live: boolean
 }
 
-export const LISTING_FEE_RENT_USD = 200
+export const LISTING_FEE_RENT_USD = 99
 export const LISTING_FEE_SALE_USD = 800
 
 export function listingFeeUsd(type: ListingType) {

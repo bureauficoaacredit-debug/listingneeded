@@ -100,13 +100,13 @@ After payment your listing goes live and people contact you directly.`,
       </p>
       <div className="fee-box">
         <strong>One-time fee: ${listingFeeUsd(listingType)}</strong>
-        <div>Rent for $200 or sell for $800. Choose the listing type below; photos and your contact stay with your listing.</div>
+        <div>Rent for $99 or sell for $800. Choose the listing type below; photos and your contact stay with your listing.</div>
       </div>
 
       <div className="row">
         <label>Type
           <select name="type" value={listingType} onChange={(e) => setListingType(e.target.value as ListingType)} required>
-            <option value="rent">For rent — $200</option>
+            <option value="rent">For rent — $99</option>
             <option value="sale">For sale — $800</option>
           </select>
         </label>
