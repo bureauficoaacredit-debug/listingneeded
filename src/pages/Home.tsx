@@ -4,57 +4,47 @@ import { LISTING_FEE_RENT_USD, LISTING_FEE_SALE_USD } from '../lib/types'
 export default function Home() {
   return (
     <div className="home">
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">Fully automated listings · Licensed Realtor® when you want one</p>
-          <h1>Your next home move, without the runaround.</h1>
-          <p className="lead">
-            Buyers and renters browse live homes and reach owners directly. Owners list in minutes —
-            pay online, go live, and get contacted. No middleman unless you ask for one.
-          </p>
-          <div className="hero-actions">
-            <Link className="btn big" to="/browse">Browse homes</Link>
-            <Link className="btn secondary" to="/list">List my home</Link>
-          </div>
-          <p className="hero-note">
-            Rent listing ${LISTING_FEE_RENT_USD} · Sale listing ${LISTING_FEE_SALE_USD} · Fairfield County &amp; beyond
-          </p>
+      <section className="hero hero-centered">
+        <p className="eyebrow">Fully automated · Licensed Realtor® when you want one</p>
+        <h1>Buy. Sell. Rent.</h1>
+        <p className="lead">
+          Browse live homes and reach owners directly — or list yours in minutes. Pay online,
+          go live automatically, and stay in control. Prefer a licensed Realtor®? Call for a consult.
+        </p>
+        <div className="hero-actions hero-actions-center">
+          <Link className="btn big" to="/browse">Browse homes</Link>
+          <Link className="btn secondary" to="/list">List my home</Link>
         </div>
-        <div className="hero-panel" aria-hidden="true">
+        <div className="hero-stats">
           <div className="hero-stat">
-            <span className="hero-stat-label">For owners</span>
-            <strong>Go live the same day</strong>
-            <span>Automated publish after payment</span>
+            <strong>Seekers</strong>
+            <span>Buy or rent · contact owners directly</span>
           </div>
           <div className="hero-stat">
-            <span className="hero-stat-label">For seekers</span>
-            <strong>Talk to the owner</strong>
-            <span>No agent gatekeeping your inquiry</span>
+            <strong>Owners</strong>
+            <span>Automated list · ${LISTING_FEE_RENT_USD} rent / ${LISTING_FEE_SALE_USD} sale</span>
           </div>
           <div className="hero-stat accent">
-            <span className="hero-stat-label">Prefer a pro?</span>
-            <strong>Licensed Realtor®</strong>
-            <span>Marcel Najar · call for a consult</span>
+            <strong>Realtor®</strong>
+            <span>Marcel Najar · 203-818-3242</span>
           </div>
         </div>
       </section>
 
       <section className="split">
         <article className="path-card path-seek">
-          <p className="path-kicker">Looking?</p>
-          <h2>Buy or rent with a clear path.</h2>
+          <p className="path-kicker">Looking for a home</p>
+          <h2>Buy or rent</h2>
           <p>
-            Open the browse board, filter by what you need, and contact the owner by phone or email.
-            Simple, direct, and built for people who want answers today.
+            Open the board, find what fits, and message the owner by phone or email — no gatekeeping.
           </p>
           <Link className="btn" to="/browse">Find a home</Link>
         </article>
         <article className="path-card path-own">
-          <p className="path-kicker">Owning?</p>
-          <h2>List once. Stay in control.</h2>
+          <p className="path-kicker">Listing a home</p>
+          <h2>Sell or rent out</h2>
           <p>
-            Upload photos, set your price, pay the flat fee, and your listing goes live automatically.
-            Interested people reach you — you decide who to talk to.
+            Add photos and price, pay the flat fee, and your listing publishes automatically.
           </p>
           <ul className="fee-pills">
             <li><strong>${LISTING_FEE_RENT_USD}</strong> rent</li>
@@ -65,12 +55,12 @@ export default function Home() {
       </section>
 
       <section className="how">
-        <h2>How the automation works</h2>
-        <div className="grid how-grid">
+        <h2 className="section-title">How automation works</h2>
+        <div className="grid how-grid three">
           <div className="card step">
             <span className="step-num">01</span>
-            <h3>Tell us about the home</h3>
-            <p className="meta">Address, price, photos, and how you want to be reached.</p>
+            <h3>Enter the home</h3>
+            <p className="meta">Address, price, photos, and your contact info.</p>
           </div>
           <div className="card step">
             <span className="step-num">02</span>
@@ -79,24 +69,22 @@ export default function Home() {
           </div>
           <div className="card step">
             <span className="step-num">03</span>
-            <h3>Live &amp; get contacted</h3>
-            <p className="meta">Your listing publishes automatically. Buyers and renters message you directly.</p>
+            <h3>Go live</h3>
+            <p className="meta">Listing publishes automatically. Buyers and renters reach you directly.</p>
           </div>
         </div>
       </section>
 
-      <section className="realtor-band">
-        <div>
-          <p className="eyebrow light">Licensed Realtor® · Marcel Najar</p>
-          <h2>Want representation, not just a listing?</h2>
-          <p>
-            Self-serve is built for speed. When you want strategy, negotiation, and a licensed
-            professional beside you, call for a consultation — we’ll pick the path that fits your property.
-          </p>
-          <div className="hero-actions">
-            <a className="btn big" href="tel:2038183242">Call 203-818-3242</a>
-            <a className="btn secondary" href="https://www.listingneeded.com">www.listingneeded.com</a>
-          </div>
+      <section className="realtor-band realtor-centered">
+        <p className="eyebrow light">Licensed Realtor®</p>
+        <h2>Want representation, not just a listing?</h2>
+        <p>
+          Self-serve is built for speed. When you want strategy and a licensed professional beside you,
+          call Marcel Najar for a consultation.
+        </p>
+        <div className="hero-actions hero-actions-center">
+          <a className="btn big" href="tel:2038183242">Call 203-818-3242</a>
+          <a className="btn secondary" href="https://www.listingneeded.com">www.listingneeded.com</a>
         </div>
       </section>
     </div>
