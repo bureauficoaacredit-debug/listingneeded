@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LISTING_FEE_USD, type Listing, type ListingType } from '../lib/types'
+import { listingFeeUsd, type Listing, type ListingType } from '../lib/types'
 import { insertListing, markPaidAndLive, uploadListingPhotos } from '../lib/store'
 
 function uid() {
@@ -12,6 +12,7 @@ export default function List() {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [listingType, setListingType] = useState<ListingType>('rent')
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -19,13 +20,15 @@ export default function List() {
     setBusy(true)
     try {
       const fd = new FormData(e.currentTarget)
+      const selectedType = fd.get('type') as ListingType
+      const fee = listingFeeUsd(selectedType)
       const photosEl = e.currentTarget.elements.namedItem('photos') as HTMLInputElement | null
       const photoFiles = photosEl?.files ? Array.from(photosEl.files).slice(0, 6).filter((f) => f.size > 0) : []
 
       const id = uid()
       const draft: Listing = {
         id,
-        type: fd.get('type') as ListingType,
+        type: selectedType,
         address: String(fd.get('address') || '').trim(),
         city: String(fd.get('city') || '').trim(),
         state: String(fd.get('state') || 'CT').trim(),
@@ -59,10 +62,12 @@ export default function List() {
 
       await insertListing(draft)
 
-      // Demo checkout: in production replace with Stripe Checkout Session for $200.
+      // Demo checkout: in production replace with Stripe Checkout Session for the selected fee.
       // For now, confirm fee and activate immediately so the flow is fully self-serve.
       const ok = window.confirm(
-        `Pay $${LISTING_FEE_USD} listing fee now?\n\nAfter payment your listing goes live and people contact you directly.`,
+        `Pay $${fee} listing fee now?
+
+After payment your listing goes live and people contact you directly.`,
       )
       if (!ok) {
         setBusy(false)
@@ -88,21 +93,21 @@ export default function List() {
 
   return (
     <form className="form" onSubmit={onSubmit}>
-      <h2>List your home — ${LISTING_FEE_USD}</h2>
+      <h2>List your home</h2>
       <p className="note">
-        Fully automated. After you pay, your listing goes live and interested people contact you
-        directly. Listing Needed does not sit in the middle.
+        Sell it, rent it, or call us for a consultation. Self-serve listings go live after payment,
+        and interested people contact you directly.
       </p>
       <div className="fee-box">
-        <strong>${LISTING_FEE_USD} one-time listing fee</strong>
-        <div>Rent or sale. Photos + your contact stay with your listing.</div>
+        <strong>One-time fee: ${listingFeeUsd(listingType)}</strong>
+        <div>Rent for $200 or sell for $800. Choose the listing type below; photos and your contact stay with your listing.</div>
       </div>
 
       <div className="row">
         <label>Type
-          <select name="type" defaultValue="rent" required>
-            <option value="rent">For rent</option>
-            <option value="sale">For sale</option>
+          <select name="type" value={listingType} onChange={(e) => setListingType(e.target.value as ListingType)} required>
+            <option value="rent">For rent — $200</option>
+            <option value="sale">For sale — $800</option>
           </select>
         </label>
         <label>Ask / rent price ($)
@@ -145,7 +150,7 @@ export default function List() {
 
       {error ? <div style={{color:'#b91c1c'}}>{error}</div> : null}
       <button className="btn big" type="submit" disabled={busy}>
-        {busy ? 'Working…' : `Pay $${LISTING_FEE_USD} & publish`}
+        {busy ? 'Working…' : `Pay $${listingFeeUsd(listingType)} & publish`}
       </button>
       <p className="note">
         Photos are uploaded to cloud storage when available. Payment is confirmed in-app for this demo;

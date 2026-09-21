@@ -8,7 +8,7 @@ export default function Layout() {
         <Link to="/" className="brand">Listing <span>Needed</span></Link>
         <nav className="nav-links">
           <NavLink to="/browse" className={({isActive}) => isActive ? 'active' : ''}>Browse</NavLink>
-          <NavLink to="/list" className={({isActive}) => isActive ? 'active' : ''}>List for $200</NavLink>
+          <NavLink to="/list" className={({isActive}) => isActive ? 'active' : ''}>List your home</NavLink>
           <a href="tel:2038183242">203-818-3242</a>
         </nav>
       </header>
