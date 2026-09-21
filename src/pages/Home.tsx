@@ -8,13 +8,13 @@ export default function Home() {
         <div>
           <h1>Thinking about selling or renting your home?</h1>
           <p>
-            You can list your home for sale for only ${LISTING_FEE_SALE_USD}, or list it for rent starting
-            at just ${LISTING_FEE_RENT_USD}. Your listing goes live after payment and interested people
-            contact you directly.
+            Fully automated: list your home for sale for only ${LISTING_FEE_SALE_USD}, or list it for rent
+            for just ${LISTING_FEE_RENT_USD}. Pay online, your listing goes live, and interested people
+            contact you directly — no agent in the middle.
           </p>
           <p>
-            Want a Realtor® to represent you, handle the process, and guide you through your options?
-            We’re here to help. Call today for a consultation and let’s discuss the best option for your property.
+            Prefer a Realtor® to represent you and guide the process? Call for a consultation and we’ll
+            discuss the best option for your property.
           </p>
           <div className="hero-actions">
             <Link className="btn big" to="/list">List my home — from ${LISTING_FEE_RENT_USD}</Link>
