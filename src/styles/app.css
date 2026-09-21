@@ -1,22 +1,22 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&display=swap');
 
 :root {
-  --ink: #1c1917;
-  --muted: #57534e;
-  --line: #e7e0d5;
-  --bg: #f6f1e8;
-  --bg-deep: #ebe3d6;
-  --card: #fffcf7;
-  --brand: #0f766e;
-  --brand-dark: #0d5c56;
-  --brand-soft: #ccfbf1;
-  --accent: #c2410c;
-  --accent-soft: #ffedd5;
-  --gold: #b45309;
-  --warn: #b45309;
+  --ink: #1a1025;
+  --muted: #6b5b76;
+  --line: #eddfe8;
+  --bg: #faf5f8;
+  --bg-deep: #f3e8ef;
+  --card: #fffbfd;
+  --brand: #5b21b6;
+  --brand-dark: #4c1d95;
+  --brand-soft: #ede9fe;
+  --accent: #e11d48;
+  --accent-soft: #ffe4e6;
+  --gold: #d97706;
+  --warn: #c2410c;
   --radius: 18px;
-  --shadow: 0 18px 40px rgba(28, 25, 23, 0.08);
-  --shadow-soft: 0 8px 24px rgba(28, 25, 23, 0.05);
+  --shadow: 0 18px 40px rgba(76, 29, 149, 0.12);
+  --shadow-soft: 0 8px 24px rgba(26, 16, 37, 0.06);
   font-family: "DM Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--ink);
   background: var(--bg);
@@ -27,8 +27,9 @@
 body {
   margin: 0;
   background:
-    radial-gradient(1200px 500px at 10% -10%, rgba(15, 118, 110, 0.12), transparent 55%),
-    radial-gradient(900px 420px at 100% 0%, rgba(194, 65, 12, 0.08), transparent 50%),
+    radial-gradient(1100px 520px at 8% -12%, rgba(91, 33, 182, 0.16), transparent 55%),
+    radial-gradient(900px 440px at 100% 0%, rgba(225, 29, 72, 0.12), transparent 52%),
+    radial-gradient(700px 360px at 50% 100%, rgba(217, 119, 6, 0.08), transparent 55%),
     var(--bg);
   min-height: 100vh;
 }
@@ -64,7 +65,7 @@ h1, h2, h3 {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
   border: none; border-radius: 999px; padding: 0.75rem 1.2rem; font-weight: 700;
   cursor: pointer; background: var(--brand); color: #fff;
-  box-shadow: 0 8px 20px rgba(15, 118, 110, 0.25);
+  box-shadow: 0 8px 22px rgba(91, 33, 182, 0.28);
   transition: transform 0.15s ease, background 0.15s ease;
 }
 .btn:hover { background: var(--brand-dark); text-decoration: none; transform: translateY(-1px); }
@@ -72,7 +73,7 @@ h1, h2, h3 {
   background: transparent; color: var(--ink); border: 1px solid rgba(28, 25, 23, 0.18);
   box-shadow: none;
 }
-.btn.ghost { background: transparent; color: var(--brand); border: 1px solid #99f6e4; box-shadow: none; }
+.btn.ghost { background: transparent; color: var(--brand); border: 1px solid #c4b5fd; box-shadow: none; }
 .btn.big { padding: 0.95rem 1.45rem; font-size: 1.02rem; }
 
 main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0 3.5rem; flex: 1; }
@@ -85,7 +86,7 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0
   padding: 2.4rem 2rem 2rem;
   border-radius: 28px;
   background:
-    linear-gradient(145deg, #0f3f3c 0%, #0f766e 45%, #155e75 78%, #9a3412 160%);
+    linear-gradient(145deg, #1e1b4b 0%, #5b21b6 38%, #9d174d 72%, #e11d48 100%);
   color: #fff;
   box-shadow: var(--shadow);
   overflow: hidden;
@@ -240,7 +241,7 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0
 .realtor-band {
   border-radius: 24px;
   padding: 2rem 1.6rem;
-  background: linear-gradient(120deg, #1c1917 0%, #292524 55%, #44403c 100%);
+  background: linear-gradient(120deg, #1e1b4b 0%, #4c1d95 55%, #831843 100%);
   color: #fafaf9;
   box-shadow: var(--shadow);
 }
@@ -274,9 +275,9 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.75rem 0
   background: var(--brand-soft); color: var(--brand); font-size: 0.75rem; font-weight: 800;
   text-transform: uppercase; letter-spacing: 0.04em;
 }
-.badge.sale { background: #ecfdf5; color: #047857; }
+.badge.sale { background: #fce7f3; color: #9d174d; }
 .price { font-size: 1.25rem; font-weight: 800; margin: 0.4rem 0; }
-.thumb { height: 160px; background: #d6ebe7; object-fit: cover; width: 100%; }
+.thumb { height: 160px; background: #ede9fe; object-fit: cover; width: 100%; }
 .thumb.empty { display: grid; place-items: center; color: var(--muted); font-weight: 600; }
 
 .form {
