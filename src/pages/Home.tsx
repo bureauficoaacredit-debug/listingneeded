@@ -7,7 +7,11 @@ export default function Home() {
     <div className="home">
       <section className="hero hero-centered">
         <p className="eyebrow">Buy. Sell. Rent.</p>
-        <h1>Fully automated. DIY listing.</h1>
+        <h1 className="hero-title-pair">
+          <span>Fully automated</span>
+          <span className="hero-title-sep" aria-hidden="true" />
+          <span>DIY listing</span>
+        </h1>
         <p className="lead">
           Browse live homes and reach owners directly — or list yours in minutes. Pay a flat fee
           online, go live automatically, and stay in control. No agent in the middle.
