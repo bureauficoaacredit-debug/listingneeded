@@ -2,17 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import type { Listing } from '../lib/types'
 import { getListing } from '../lib/store'
-import { confirmCheckoutSession } from '../lib/checkout'
 
 export default function ListingDetail() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
-  const sessionId = searchParams.get('session_id')
+  const listed = searchParams.get('listed') === '1'
   const [listing, setListing] = useState<Listing | null>(null)
   const [loading, setLoading] = useState(true)
-  const [confirming, setConfirming] = useState(Boolean(sessionId))
   const [error, setError] = useState('')
-  const [confirmNote, setConfirmNote] = useState('')
 
   useEffect(() => {
     if (!id) {
@@ -22,38 +19,23 @@ export default function ListingDetail() {
     let cancelled = false
     ;(async () => {
       try {
-        if (sessionId) {
-          setConfirming(true)
-          try {
-            await confirmCheckoutSession(sessionId, id)
-            if (!cancelled) setConfirmNote('Payment confirmed — your listing is live.')
-          } catch (err) {
-            if (!cancelled) {
-              setError(err instanceof Error ? err.message : 'Payment confirmation failed')
-            }
-          }
-        }
-
         const row = await getListing(id)
         if (!cancelled) setListing(row)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load listing')
       } finally {
-        if (!cancelled) {
-          setLoading(false)
-          setConfirming(false)
-        }
+        if (!cancelled) setLoading(false)
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [id, sessionId])
+  }, [id])
 
-  if (loading || confirming) {
+  if (loading) {
     return (
       <div className="card">
-        <div className="body">{confirming ? 'Confirming Stripe payment…' : 'Loading listing…'}</div>
+        <div className="body">Loading listing…</div>
       </div>
     )
   }
@@ -72,9 +54,7 @@ export default function ListingDetail() {
     return (
       <div className="card">
         <div className="body">
-          Listing not found or not live yet.
-          {sessionId ? ' If you just paid, wait a moment and refresh.' : null}{' '}
-          <Link to="/browse">Back to browse</Link>
+          Listing not found or not live yet. <Link to="/browse">Back to browse</Link>
         </div>
       </div>
     )
@@ -82,7 +62,11 @@ export default function ListingDetail() {
 
   return (
     <div className="detail">
-      {confirmNote ? <div className="success" style={{ gridColumn: '1 / -1' }}>{confirmNote}</div> : null}
+      {listed ? (
+        <div className="success" style={{ gridColumn: '1 / -1' }}>
+          Payment received. Your listing is live — people will contact you directly.
+        </div>
+      ) : null}
       <div className="gallery">
         {(listing.photoDataUrls.length ? listing.photoDataUrls : ['']).map((src, i) =>
           src ? (
