@@ -14,8 +14,6 @@
   --flag-red-dark: #5c1014;
   --logo-listing: #800020;
   --logo-needed: #0056B3;
-  --header-gold: #C4A035;
-  --header-gold-deep: #A88428;
   --accent: #326fa5;
   --accent-soft: #e8eef5;
   --gold: #856404;
@@ -45,11 +43,9 @@ h1, h2, h3 {
 .shell { min-height: 100vh; display: flex; flex-direction: column; }
 .nav {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
-  padding: 1rem 1.5rem;
-  /* Full header bar — warm gold like the sign wall, so wine/blue logo stays sharp */
-  background: linear-gradient(180deg, #D4B24A 0%, var(--header-gold) 55%, var(--header-gold-deep) 100%);
-  border-bottom: none;
-  box-shadow: 0 2px 10px rgba(100, 70, 10, 0.22);
+  padding: 0.85rem 1.5rem;
+  background: #fff;
+  border-bottom: 3px solid var(--brand);
   position: sticky; top: 0; z-index: 10;
 }
 .brand {
@@ -69,14 +65,10 @@ h1, h2, h3 {
 .brand-needed { color: var(--logo-needed); } /* bold royal blue */
 .nav-links { display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: center; }
 .nav-links a {
-  color: #3a2a0a; font-weight: 700; font-size: 0.88rem;
+  color: var(--ink); font-weight: 600; font-size: 0.88rem;
   text-transform: uppercase; letter-spacing: 0.04em;
 }
-.nav-links a:hover { color: var(--logo-listing); text-decoration: none; }
-.nav-links a.active {
-  color: var(--logo-listing);
-  border-bottom: 2px solid var(--logo-listing);
-}
+.nav-links a.active { color: var(--brand-dark); border-bottom: 2px solid var(--brand); }
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
