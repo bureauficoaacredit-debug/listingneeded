@@ -12,7 +12,8 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v6 | `v6-red-wordmark` | Red Listing Needed wordmark (not live) |
 | v7 | `v7-red-footer-name` | Red footer name (not live) |
 | v8 | ~~removed~~ | Full red top bar — rejected |
-| v9 | `v9-bebas-logo` | Logo: Bebas Neue — LISTING #800020, NEEDED #0056B3 (**current**) |
+| v9 | `v9-bebas-logo` | Logo: Bebas Neue — LISTING #800020, NEEDED #0056B3 |
+| v10 | `v10-gold-header` | Full gold top header bar + wine/blue Bebas logo (**current**) |
 
 ## How to restore
 
