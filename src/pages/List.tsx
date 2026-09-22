@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { listingFeeUsd, type Listing, type ListingType } from '../lib/types'
 import { insertListing, uploadListingPhotos } from '../lib/store'
+import { createCheckoutSession } from '../lib/checkout'
 
 function uid() {
   return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
@@ -62,24 +63,12 @@ export default function List() {
 
       await insertListing(draft)
 
-      const checkoutRes = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          listingId: draft.id,
-          type: draft.type,
-          email: draft.ownerEmail,
-          address: draft.address,
-        }),
+      const checkout = await createCheckoutSession({
+        listingId: draft.id,
+        type: draft.type,
+        email: draft.ownerEmail,
+        address: draft.address,
       })
-      const checkout = await checkoutRes.json().catch(() => ({}))
-      if (!checkoutRes.ok || !checkout.url) {
-        throw new Error(
-          checkout.error ||
-            'Could not start Stripe Checkout. Add STRIPE_SECRET_KEY in Vercel, then redeploy.',
-        )
-      }
-
       window.location.href = checkout.url
     } catch (err) {
       const message =

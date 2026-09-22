@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import type { Listing } from '../lib/types'
 import { getListing } from '../lib/store'
+import { confirmCheckoutSession } from '../lib/checkout'
 
 export default function ListingDetail() {
   const { id } = useParams()
@@ -23,17 +24,12 @@ export default function ListingDetail() {
       try {
         if (sessionId) {
           setConfirming(true)
-          const conf = await fetch('/api/confirm-checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sessionId, listingId: id }),
-          })
-          const confBody = await conf.json().catch(() => ({}))
-          if (!cancelled) {
-            if (!conf.ok) {
-              setError(confBody.error || 'Payment confirmation failed')
-            } else {
-              setConfirmNote('Payment confirmed — your listing is live.')
+          try {
+            await confirmCheckoutSession(sessionId, id)
+            if (!cancelled) setConfirmNote('Payment confirmed — your listing is live.')
+          } catch (err) {
+            if (!cancelled) {
+              setError(err instanceof Error ? err.message : 'Payment confirmation failed')
             }
           }
         }
