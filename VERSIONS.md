@@ -9,12 +9,12 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v3 | `v3-diy-symmetric` | Hero: Fully automated \| DIY listing (two columns) |
 | v4 | `v4-list-home-search` | List · Home · Search pivot; softer Buy. Sell. Rent. |
 | v5 | `v5-red-fee-box` | One-time fee box in deep red (Realtor band color) |
-| v6 | `v6-red-wordmark` | Listing Needed wordmark in deep red; blue hero kept |
+| v6 | `v6-red-wordmark` | Listing Needed wordmark in deep red; blue hero kept (**current**) |
 | v7 | `v7-red-footer-name` | Footer “Listing Needed” title same deep red as top logo |
-| v8 | `v8-red-top-bar` | Whole top header bar deep red (for-rent sign); white logo + links |
+| v8 | ~~`v8-red-top-bar`~~ | Removed — full red top bar rejected |
 
 ## How to restore
 
 Say: “go back to v3” (or any number). I’ll check out that tag and push it to live.
 
-Do not delete these tags — they are the save points.
+Do not delete these tags — they are the save points (except removed versions).
