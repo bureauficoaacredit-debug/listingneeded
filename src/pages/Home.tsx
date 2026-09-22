@@ -7,10 +7,10 @@ export default function Home() {
     <div className="home">
       <section className="hero hero-centered">
         <p className="eyebrow">Buy. Sell. Rent.</p>
-        <h1>Fully automated. Licensed Realtor® when you want one.</h1>
+        <h1>Fully automated. List it yourself.</h1>
         <p className="lead">
-          Browse live homes and reach owners directly — or list yours in minutes. Pay online,
-          go live automatically, and stay in control. Prefer a licensed Realtor®? Call for a consult.
+          Browse live homes and reach owners directly — or list yours in minutes. Pay a flat fee
+          online, go live automatically, and stay in control. No agent in the middle.
         </p>
         <div className="hero-actions hero-actions-center">
           <Link className="btn big" to="/browse">Browse homes</Link>
