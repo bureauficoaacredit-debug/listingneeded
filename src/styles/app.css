@@ -223,8 +223,9 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.5rem 0 
 .realtor-band {
   border-radius: 0;
   padding: 2.25rem 1.6rem;
-  background: #2c3136;
-  color: #f5f7f9;
+  /* Deep flag-red from Marcel's swatch (~#7f171c) */
+  background: linear-gradient(120deg, #390a0c 0%, #7f171c 48%, #89181e 100%);
+  color: #fff7f7;
   box-shadow: var(--shadow);
 }
 .realtor-centered {
@@ -240,10 +241,15 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.5rem 0 
   color: #fff;
   text-transform: uppercase;
 }
-.realtor-band p { margin: 0; max-width: 40rem; color: #c5cbd1; }
-.realtor-band .btn { background: var(--brand); color: #fff; min-width: 11rem; }
+.realtor-band p { margin: 0; max-width: 40rem; color: rgba(255, 245, 245, 0.88); }
+.realtor-band .eyebrow.light {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.35);
+}
+.realtor-band .btn { background: #fff; color: #7f171c; min-width: 11rem; }
+.realtor-band .btn:hover { background: #fff5f5; color: #4e0e11; }
 .realtor-band .btn.secondary {
-  background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.5);
+  background: transparent; color: #fff; border: 2px solid rgba(255,255,255,0.55);
 }
 
 .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
