@@ -10,6 +10,7 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v4 | `v4-list-home-search` | List · Home · Search pivot; softer Buy. Sell. Rent. |
 | v5 | `v5-red-fee-box` | One-time fee box in deep red (Realtor band color) |
 | v6 | `v6-red-wordmark` | Listing Needed wordmark in deep red; blue hero kept |
+| v7 | `v7-red-footer-name` | Footer “Listing Needed” title same deep red as top logo |
 
 ## How to restore
 

@@ -413,7 +413,7 @@ input, select, textarea {
 }
 .contact strong {
   display: block; font-family: "Montserrat", sans-serif; text-transform: uppercase;
-  letter-spacing: 0.03em; color: var(--brand-dark);
+  letter-spacing: 0.03em; color: var(--flag-red);
 }
 .qr { width: 96px; height: 96px; border-radius: 0; border: 1px solid var(--line); }
 .detail { display: grid; gap: 1rem; grid-template-columns: 1.4fr 1fr; }
