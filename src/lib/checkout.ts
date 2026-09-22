@@ -1,71 +1,30 @@
-import { getConfig } from './supabase'
+import { listingFeeUsd, type ListingType } from './types'
 
-/** Prefer Supabase Edge Functions; fall back to same-origin /api if present. */
-export function checkoutEndpoints() {
-  try {
-    const { url } = getConfig()
-    const base = `${url}/functions/v1`
-    return {
-      create: `${base}/create-checkout`,
-      confirm: `${base}/confirm-checkout`,
-      useAnonKey: true,
-    }
-  } catch {
-    return {
-      create: '/api/create-checkout',
-      confirm: '/api/confirm-checkout',
-      useAnonKey: false,
-    }
-  }
-}
-
-export async function createCheckoutSession(payload: {
-  listingId: string
-  type: 'rent' | 'sale'
-  email?: string
-  address?: string
-}) {
-  const ep = checkoutEndpoints()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (ep.useAnonKey) {
-    const { anonKey } = getConfig()
-    headers.apikey = anonKey
-    headers.Authorization = `Bearer ${anonKey}`
-  }
-  const res = await fetch(ep.create, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      ...payload,
-      siteOrigin: window.location.origin,
-    }),
-  })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok || !body.url) {
+function linkForType(type: ListingType): string {
+  const rent = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_RENT as string | undefined)?.trim()
+  const sale = (import.meta.env.VITE_STRIPE_PAYMENT_LINK_SALE as string | undefined)?.trim()
+  const url = type === 'sale' ? sale : rent
+  if (!url) {
     throw new Error(
-      body.error ||
-        'Could not start Stripe Checkout. Deploy Supabase functions and set STRIPE_SECRET_KEY secret.',
+      `Missing VITE_STRIPE_PAYMENT_LINK_${type === 'sale' ? 'SALE' : 'RENT'} in Vercel. Add the Stripe Payment Link URL, then redeploy.`,
     )
   }
-  return body as { url: string; id: string }
+  return url
 }
 
-export async function confirmCheckoutSession(sessionId: string, listingId: string) {
-  const ep = checkoutEndpoints()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (ep.useAnonKey) {
-    const { anonKey } = getConfig()
-    headers.apikey = anonKey
-    headers.Authorization = `Bearer ${anonKey}`
-  }
-  const res = await fetch(ep.confirm, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ sessionId, listingId }),
-  })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    throw new Error(body.error || 'Payment confirmation failed')
-  }
-  return body
+/** Build Stripe Payment Link URL with listing id for reference. */
+export function paymentLinkForListing(opts: {
+  listingId: string
+  type: ListingType
+  email?: string
+}): string {
+  const base = linkForType(opts.type)
+  const u = new URL(base)
+  u.searchParams.set('client_reference_id', opts.listingId)
+  if (opts.email) u.searchParams.set('prefilled_email', opts.email)
+  return u.toString()
+}
+
+export function feeLabel(type: ListingType): string {
+  return `$${listingFeeUsd(type)}`
 }

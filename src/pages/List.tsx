@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { listingFeeUsd, type Listing, type ListingType } from '../lib/types'
-import { insertListing, uploadListingPhotos } from '../lib/store'
-import { createCheckoutSession } from '../lib/checkout'
+import { insertListing, markPaidAndLive, uploadListingPhotos } from '../lib/store'
+import { paymentLinkForListing } from '../lib/checkout'
+
+const PENDING_KEY = 'listingneeded_pending_listing_id'
 
 function uid() {
   return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
@@ -13,13 +15,44 @@ export default function List() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const canceled = searchParams.get('canceled') === '1'
+  const paidReturn = searchParams.get('paid') === '1'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [status, setStatus] = useState('')
   const [listingType, setListingType] = useState<ListingType>('rent')
+
+  // After Stripe Payment Link redirect (?paid=1), activate the listing we saved before leaving.
+  useEffect(() => {
+    if (!paidReturn) return
+    let cancelled = false
+    ;(async () => {
+      const id = localStorage.getItem(PENDING_KEY)
+      if (!id) {
+        setStatus('Payment received, but no pending listing was found on this device. Check Admin or try listing again.')
+        return
+      }
+      setBusy(true)
+      try {
+        await markPaidAndLive(id)
+        localStorage.removeItem(PENDING_KEY)
+        if (!cancelled) navigate(`/listing/${id}?listed=1`, { replace: true })
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Could not activate listing after payment')
+        }
+      } finally {
+        if (!cancelled) setBusy(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [paidReturn, navigate])
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
+    setStatus('')
     setBusy(true)
     try {
       const fd = new FormData(e.currentTarget)
@@ -52,51 +85,51 @@ export default function List() {
         throw new Error('Address, price, phone, and email are required.')
       }
 
-      let photoUrls: string[] = []
       if (photoFiles.length) {
-        photoUrls = await uploadListingPhotos(id, photoFiles)
-        if (!photoUrls.length) {
-          throw new Error('Could not upload photos. Try JPG or PNG.')
-        }
+        const photoUrls = await uploadListingPhotos(id, photoFiles)
+        if (!photoUrls.length) throw new Error('Could not upload photos. Try JPG or PNG.')
         draft.photoDataUrls = photoUrls
       }
 
       await insertListing(draft)
+      localStorage.setItem(PENDING_KEY, draft.id)
 
-      const checkout = await createCheckoutSession({
+      const url = paymentLinkForListing({
         listingId: draft.id,
         type: draft.type,
         email: draft.ownerEmail,
-        address: draft.address,
       })
-      window.location.href = checkout.url
+      window.location.href = url
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
           : err && typeof err === 'object' && 'message' in err && typeof (err as { message: unknown }).message === 'string'
             ? (err as { message: string }).message
-            : err && typeof err === 'object'
-              ? JSON.stringify(err)
-              : 'Could not create listing'
+            : 'Could not create listing'
       setError(message || 'Could not create listing')
       setBusy(false)
     }
+  }
+
+  if (paidReturn && busy) {
+    return <div className="card"><div className="body">Payment received — publishing your listing…</div></div>
   }
 
   return (
     <form className="form" onSubmit={onSubmit}>
       <h2>List your home</h2>
       <p className="note">
-        Fully automated self-serve listing: pay online with Stripe, go live, and get contacted directly.
+        Fully automated self-serve listing: pay on Stripe, return here, and your listing goes live.
         Want a Realtor® instead? Call 203-818-3242 for a consultation.
       </p>
       {canceled ? (
-        <div className="fee-box">Payment canceled — your draft was saved unpaid. Submit again when you’re ready to pay.</div>
+        <div className="fee-box">Payment canceled — submit again when you’re ready to pay.</div>
       ) : null}
+      {status ? <div className="success">{status}</div> : null}
       <div className="fee-box">
         <strong>One-time fee: ${listingFeeUsd(listingType)}</strong>
-        <div>Rent for $99 or sell for $800. You’ll pay securely on Stripe; the listing goes live after payment.</div>
+        <div>Rent $99 or sale $800. You’ll pay on Stripe’s secure page.</div>
       </div>
 
       <div className="row">
@@ -137,20 +170,18 @@ export default function List() {
         <input name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
       </label>
 
-      <h3 style={{margin:'0.5rem 0 0'}}>Your contact (shown on your live listing)</h3>
+      <h3 style={{ margin: '0.5rem 0 0' }}>Your contact (shown on your live listing)</h3>
       <div className="row">
         <label>Name<input name="ownerName" required placeholder="Your name" /></label>
         <label>Phone<input name="ownerPhone" required placeholder="203-555-0100" /></label>
         <label>Email<input name="ownerEmail" type="email" required placeholder="you@email.com" /></label>
       </div>
 
-      {error ? <div style={{color:'#b91c1c'}}>{error}</div> : null}
+      {error ? <div style={{ color: '#b91c1c' }}>{error}</div> : null}
       <button className="btn big" type="submit" disabled={busy}>
         {busy ? 'Starting Stripe…' : `Pay $${listingFeeUsd(listingType)} with Stripe`}
       </button>
-      <p className="note">
-        You’ll leave this page for Stripe Checkout. After a successful payment you’ll return here and the listing goes live.
-      </p>
+      <p className="note">After payment, Stripe sends you back here and the listing publishes automatically.</p>
     </form>
   )
 }
