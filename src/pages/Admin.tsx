@@ -74,6 +74,7 @@ export default function Admin() {
   const [links, setLinks] = useState<PartnerLink[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [partnerSetupError, setPartnerSetupError] = useState('')
   const [status, setStatus] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [form, setForm] = useState<LinkForm>(emptyForm())
@@ -89,16 +90,30 @@ export default function Admin() {
     ;(async () => {
       setLoading(true)
       setError('')
+      setPartnerSetupError('')
       try {
-        const [rows, partnerRows] = await Promise.all([allListings(), allPartnerLinks()])
-        if (!cancelled) {
-          setListings(rows)
-          setLinks(partnerRows)
-        }
+        const rows = await allListings()
+        if (!cancelled) setListings(rows)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load admin data')
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load listings')
       } finally {
         if (!cancelled) setLoading(false)
+      }
+      try {
+        const partnerRows = await allPartnerLinks()
+        if (!cancelled) setLinks(partnerRows)
+      } catch (err) {
+        if (!cancelled) {
+          const msg = err instanceof Error ? err.message : 'Failed to load partner links'
+          if (msg.includes('partner_links') || msg.includes('PGRST205')) {
+            setPartnerSetupError(
+              'Partner links table is missing. Run the partner_links SQL in Supabase (listingneeded project), then refresh.',
+            )
+          } else {
+            setPartnerSetupError(msg)
+          }
+          setLinks([])
+        }
       }
     })()
     return () => {
@@ -168,6 +183,7 @@ export default function Admin() {
       })
       setLinks((prev) => [...prev, created].sort((a, b) => a.sortOrder - b.sortOrder))
       setForm(emptyForm())
+      setPartnerSetupError('')
       setStatus(`Added partner link: ${created.title}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not add link')
@@ -272,12 +288,21 @@ export default function Admin() {
           <div>
             <h2 style={{ margin: '0 0 .35rem' }}>Partner links</h2>
             <p className="meta" style={{ margin: 0 }}>
-              These show in “Helpful connections” on the homepage when enabled. Run the partner_links SQL in
-              Supabase once if this section errors.
+              Same login as listings. Enabled links show under “Helpful connections” on the homepage.
             </p>
           </div>
 
-          <form className="form" style={{ boxShadow: 'none', border: '1px solid var(--line)' }} onSubmit={handleAddLink}>
+          {partnerSetupError ? (
+            <div style={{ background: '#fff8e8', border: '1px solid #ffeeba', padding: '0.9rem 1rem', color: '#856404' }}>
+              <strong>Setup needed:</strong> {partnerSetupError}
+              <div className="meta" style={{ marginTop: '0.5rem' }}>
+                Supabase → listingneeded project → SQL Editor → run the create table script, then refresh this page.
+                Listings below still work with this same admin unlock.
+              </div>
+            </div>
+          ) : null}
+
+          <form className="form" style={{ boxShadow: 'none', border: '1px solid var(--line)', opacity: partnerSetupError ? 0.55 : 1 }} onSubmit={handleAddLink}>
             <div className="row">
               <label>
                 Title
@@ -340,7 +365,7 @@ export default function Admin() {
                 </span>
               </label>
             </div>
-            <button type="submit" className="btn" disabled={savingLink}>
+            <button type="submit" className="btn" disabled={savingLink || !!partnerSetupError}>
               {savingLink ? 'Saving…' : 'Add partner link'}
             </button>
           </form>
