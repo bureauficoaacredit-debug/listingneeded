@@ -1,6 +1,6 @@
 # Listing Needed — design versions
 
-Each tag is a full snapshot of the site. To go back later, tell me the version number (or we can restore it from git).
+Each tag is a full snapshot of the site. To go back later, tell me the version number.
 
 | Version | Tag | What it looks like |
 |--------|-----|--------------------|
@@ -8,13 +8,13 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v2 | `v2-diy-line` | Hero: Fully automated. DIY listing. (one line) |
 | v3 | `v3-diy-symmetric` | Hero: Fully automated \| DIY listing (two columns) |
 | v4 | `v4-list-home-search` | List · Home · Search pivot; softer Buy. Sell. Rent. |
-| v5 | `v5-red-fee-box` | One-time fee box in deep red (Realtor band color) |
-| v6 | `v6-red-wordmark` | Listing Needed wordmark in deep red; blue hero kept (**current**) |
-| v7 | `v7-red-footer-name` | Footer “Listing Needed” title same deep red as top logo |
-| v8 | ~~`v8-red-top-bar`~~ | Removed — full red top bar rejected |
+| v5 | `v5-red-fee-box` | Red fee box; **blue** Listing Needed logo (**current**) |
+| v6 | `v6-red-wordmark` | Red Listing Needed wordmark (not live) |
+| v7 | `v7-red-footer-name` | Red footer name (not live) |
+| v8 | ~~removed~~ | Full red top bar — rejected |
 
 ## How to restore
 
-Say: “go back to v3” (or any number). I’ll check out that tag and push it to live.
+Say: “move to v3” (or any number).
 
-Do not delete these tags — they are the save points (except removed versions).
+Note: “no red logo” = **v5**. Red logo alone was **v6**.

@@ -48,10 +48,10 @@ h1, h2, h3 {
 }
 .brand {
   font-family: "Montserrat", sans-serif; text-transform: uppercase;
-  font-weight: 700; letter-spacing: 0.02em; color: var(--flag-red); font-size: 1.15rem;
+  font-weight: 700; letter-spacing: 0.02em; color: var(--brand-dark); font-size: 1.15rem;
   text-decoration: none;
 }
-.brand span { color: var(--flag-red-dark); }
+.brand span { color: var(--brand); }
 .nav-links { display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: center; }
 .nav-links a {
   color: var(--ink); font-weight: 600; font-size: 0.88rem;
