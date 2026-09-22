@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { listingFeeUsd, type Listing, type ListingType } from '../lib/types'
-import { insertListing, markPaidAndLive, uploadListingPhotos } from '../lib/store'
+import { insertListing, uploadListingPhotos } from '../lib/store'
 
 function uid() {
   return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
@@ -10,6 +10,8 @@ function uid() {
 
 export default function List() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const canceled = searchParams.get('canceled') === '1'
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [listingType, setListingType] = useState<ListingType>('rent')
@@ -21,7 +23,6 @@ export default function List() {
     try {
       const fd = new FormData(e.currentTarget)
       const selectedType = fd.get('type') as ListingType
-      const fee = listingFeeUsd(selectedType)
       const photosEl = e.currentTarget.elements.namedItem('photos') as HTMLInputElement | null
       const photoFiles = photosEl?.files ? Array.from(photosEl.files).slice(0, 6).filter((f) => f.size > 0) : []
 
@@ -50,7 +51,6 @@ export default function List() {
         throw new Error('Address, price, phone, and email are required.')
       }
 
-      // Upload photos first when possible, then insert with public URLs.
       let photoUrls: string[] = []
       if (photoFiles.length) {
         photoUrls = await uploadListingPhotos(id, photoFiles)
@@ -62,21 +62,26 @@ export default function List() {
 
       await insertListing(draft)
 
-      // Demo checkout: in production replace with Stripe Checkout Session for the selected fee.
-      // For now, confirm fee and activate immediately so the flow is fully self-serve.
-      const ok = window.confirm(
-        `Pay $${fee} listing fee now?
-
-After payment your listing goes live and people contact you directly.`,
-      )
-      if (!ok) {
-        setBusy(false)
-        return
+      const checkoutRes = await fetch('/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          listingId: draft.id,
+          type: draft.type,
+          email: draft.ownerEmail,
+          address: draft.address,
+        }),
+      })
+      const checkout = await checkoutRes.json().catch(() => ({}))
+      if (!checkoutRes.ok || !checkout.url) {
+        throw new Error(
+          checkout.error ||
+            'Could not start Stripe Checkout. Add STRIPE_SECRET_KEY in Vercel, then redeploy.',
+        )
       }
-      await markPaidAndLive(draft.id)
-      navigate(`/listing/${draft.id}?listed=1`)
+
+      window.location.href = checkout.url
     } catch (err) {
-      // Supabase may throw plain objects; prefer message/code over a generic fallback.
       const message =
         err instanceof Error
           ? err.message
@@ -86,7 +91,6 @@ After payment your listing goes live and people contact you directly.`,
               ? JSON.stringify(err)
               : 'Could not create listing'
       setError(message || 'Could not create listing')
-    } finally {
       setBusy(false)
     }
   }
@@ -95,12 +99,15 @@ After payment your listing goes live and people contact you directly.`,
     <form className="form" onSubmit={onSubmit}>
       <h2>List your home</h2>
       <p className="note">
-        Fully automated self-serve listing: pay online, go live, and get contacted directly.
+        Fully automated self-serve listing: pay online with Stripe, go live, and get contacted directly.
         Want a Realtor® instead? Call 203-818-3242 for a consultation.
       </p>
+      {canceled ? (
+        <div className="fee-box">Payment canceled — your draft was saved unpaid. Submit again when you’re ready to pay.</div>
+      ) : null}
       <div className="fee-box">
         <strong>One-time fee: ${listingFeeUsd(listingType)}</strong>
-        <div>Rent for $99 or sell for $800. Choose the listing type below; photos and your contact stay with your listing.</div>
+        <div>Rent for $99 or sell for $800. You’ll pay securely on Stripe; the listing goes live after payment.</div>
       </div>
 
       <div className="row">
@@ -150,11 +157,10 @@ After payment your listing goes live and people contact you directly.`,
 
       {error ? <div style={{color:'#b91c1c'}}>{error}</div> : null}
       <button className="btn big" type="submit" disabled={busy}>
-        {busy ? 'Working…' : `Pay $${listingFeeUsd(listingType)} & publish`}
+        {busy ? 'Starting Stripe…' : `Pay $${listingFeeUsd(listingType)} with Stripe`}
       </button>
       <p className="note">
-        Photos are uploaded to cloud storage when available. Payment is confirmed in-app for this demo;
-        production should use Stripe Checkout.
+        You’ll leave this page for Stripe Checkout. After a successful payment you’ll return here and the listing goes live.
       </p>
     </form>
   )
