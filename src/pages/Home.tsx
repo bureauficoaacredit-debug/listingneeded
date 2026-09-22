@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <div className="home">
       <section className="hero hero-centered">
-        <p className="eyebrow">Buy. Sell. Rent.</p>
+        <p className="eyebrow eyebrow-soft">Buy. Sell. Rent.</p>
         <h1 className="hero-title-pair">
           <span>Fully automated</span>
           <span className="hero-title-sep" aria-hidden="true" />
@@ -16,24 +16,11 @@ export default function Home() {
           Browse live homes and reach owners directly — or list yours in minutes. Pay a flat fee
           online, go live automatically, and stay in control. No agent in the middle.
         </p>
-        <div className="hero-actions hero-actions-center">
-          <Link className="btn big" to="/browse">Browse homes</Link>
-          <Link className="btn secondary" to="/list">List my home</Link>
-        </div>
-        <div className="hero-stats">
-          <Link className="hero-stat" to="/browse?type=rent">
-            <strong>Renters</strong>
-            <span>Homes for rent · contact owners directly</span>
-          </Link>
-          <Link className="hero-stat" to="/browse?type=sale">
-            <strong>Buyers</strong>
-            <span>Homes for sale · contact owners directly</span>
-          </Link>
-          <Link className="hero-stat accent" to="/list">
-            <strong>Owners</strong>
-            <span>Automated list · ${LISTING_FEE_RENT_USD} rent / ${LISTING_FEE_SALE_USD} sale</span>
-          </Link>
-        </div>
+        <nav className="hero-pivot" aria-label="List or search">
+          <Link className="hero-pivot-btn" to="/list">List</Link>
+          <span className="hero-pivot-home">Home</span>
+          <Link className="hero-pivot-btn" to="/browse">Search</Link>
+        </nav>
       </section>
 
       <section className="split">
