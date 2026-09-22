@@ -10,6 +10,8 @@
   --brand: #5889b5;
   --brand-dark: #326fa5;
   --brand-soft: #dee7f0;
+  --flag-red: #7f171c;
+  --flag-red-dark: #5c1014;
   --accent: #326fa5;
   --accent-soft: #e8eef5;
   --gold: #856404;
@@ -45,11 +47,11 @@ h1, h2, h3 {
   position: sticky; top: 0; z-index: 10;
 }
 .brand {
-  font-family: "Montserrat", sans-serif;
-  font-weight: 700; letter-spacing: 0.02em; color: var(--brand-dark); font-size: 1.15rem;
-  text-transform: uppercase;
+  font-family: "Montserrat", sans-serif; text-transform: uppercase;
+  font-weight: 700; letter-spacing: 0.02em; color: var(--flag-red); font-size: 1.15rem;
+  text-decoration: none;
 }
-.brand span { color: var(--brand); }
+.brand span { color: var(--flag-red-dark); }
 .nav-links { display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: center; }
 .nav-links a {
   color: var(--ink); font-weight: 600; font-size: 0.88rem;
