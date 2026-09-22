@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Montserrat:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap');
 
 :root {
   --ink: #41464b;
@@ -12,6 +12,8 @@
   --brand-soft: #dee7f0;
   --flag-red: #7f171c;
   --flag-red-dark: #5c1014;
+  --logo-listing: #800020;
+  --logo-needed: #0056B3;
   --accent: #326fa5;
   --accent-soft: #e8eef5;
   --gold: #856404;
@@ -47,11 +49,20 @@ h1, h2, h3 {
   position: sticky; top: 0; z-index: 10;
 }
 .brand {
-  font-family: "Montserrat", sans-serif; text-transform: uppercase;
-  font-weight: 700; letter-spacing: 0.02em; color: var(--brand-dark); font-size: 1.15rem;
+  font-family: "Bebas Neue", "Montserrat", sans-serif;
+  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  font-size: 1.65rem;
+  line-height: 1;
   text-decoration: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
 }
-.brand span { color: var(--brand); }
+.brand:hover { text-decoration: none; opacity: 0.92; }
+.brand-listing { color: var(--logo-listing); } /* deep wine-red */
+.brand-needed { color: var(--logo-needed); } /* bold royal blue */
 .nav-links { display: flex; gap: 1.1rem; flex-wrap: wrap; align-items: center; }
 .nav-links a {
   color: var(--ink); font-weight: 600; font-size: 0.88rem;

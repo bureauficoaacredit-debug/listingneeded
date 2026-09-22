@@ -5,7 +5,7 @@ export default function Layout() {
   return (
     <div className="shell">
       <header className="nav">
-        <Link to="/" className="brand">Listing <span>Needed</span></Link>
+        <Link to="/" className="brand"><span className="brand-listing">Listing</span> <span className="brand-needed">Needed</span></Link>
         <nav className="nav-links">
           <NavLink to="/browse" className={({isActive}) => isActive ? 'active' : ''}>Browse</NavLink>
           <NavLink to="/list" className={({isActive}) => isActive ? 'active' : ''}>List your home</NavLink>
