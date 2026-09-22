@@ -384,8 +384,22 @@ input, select, textarea {
 }
 .row { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .fee-box {
-  background: #fff8e8; border: 1px solid #ffeeba; border-radius: 2px; padding: 0.9rem 1rem;
-  color: var(--warn);
+  /* Same deep flag-red as the home Realtor band */
+  background: linear-gradient(120deg, #390a0c 0%, #7f171c 48%, #89181e 100%);
+  border: 1px solid #5c1014;
+  border-radius: 0;
+  padding: 0.95rem 1.1rem;
+  color: #fff7f7;
+  box-shadow: var(--shadow);
+}
+.fee-box strong {
+  display: block;
+  color: #fff;
+  font-size: 1.05rem;
+  margin-bottom: 0.25rem;
+}
+.fee-box div {
+  color: rgba(255, 245, 245, 0.88);
 }
 .note { color: var(--muted); font-size: 0.9rem; }
 .footer {
