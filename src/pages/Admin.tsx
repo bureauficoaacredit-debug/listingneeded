@@ -58,7 +58,7 @@ type LinkForm = {
 
 const emptyForm = (): LinkForm => ({
   title: '',
-  url: 'https://',
+  url: '',
   category: 'mortgage',
   blurb: '',
   sortOrder: '0',
@@ -334,7 +334,7 @@ export default function Admin() {
                 type="url"
                 value={form.url}
                 onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
-                placeholder="https://"
+                placeholder="www.rocketmortgage.com or https://..."
               />
             </label>
             <label>

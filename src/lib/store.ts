@@ -278,6 +278,14 @@ export async function allPartnerLinks(): Promise<PartnerLink[]> {
   return data.map(rowToPartner)
 }
 
+
+/** Ensure a single http(s) scheme — fixes pasted urls after a https:// placeholder. */
+function normalizePartnerUrl(raw: string): string {
+  let u = raw.trim()
+  u = u.replace(/^(https?:\/\/)+/gi, '')
+  return `https://${u}`
+}
+
 export async function insertPartnerLink(input: {
   title: string
   url: string
@@ -293,7 +301,7 @@ export async function insertPartnerLink(input: {
   const body = {
     id,
     title: input.title.trim(),
-    url: input.url.trim(),
+    url: normalizePartnerUrl(input.url),
     category: input.category,
     blurb: (input.blurb ?? '').trim(),
     sort_order: input.sortOrder ?? 0,
@@ -326,7 +334,7 @@ export async function updatePartnerLink(
 ): Promise<PartnerLink> {
   const body: Record<string, unknown> = {}
   if (patch.title != null) body.title = patch.title.trim()
-  if (patch.url != null) body.url = patch.url.trim()
+  if (patch.url != null) body.url = normalizePartnerUrl(patch.url)
   if (patch.category != null) body.category = patch.category
   if (patch.blurb != null) body.blurb = patch.blurb.trim()
   if (patch.sortOrder != null) body.sort_order = patch.sortOrder
