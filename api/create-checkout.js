@@ -1,8 +1,3 @@
-/**
- * POST /api/create-checkout
- * Body: { listingId, type: 'rent'|'sale', email?, address? }
- * Returns: { url } Stripe Checkout URL
- */
 const FEE_CENTS = { rent: 9900, sale: 80000 }
 
 function siteOrigin(req) {
@@ -11,7 +6,7 @@ function siteOrigin(req) {
   return `${proto}://${host}`
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST')
     return res.status(405).json({ error: 'Method not allowed' })
@@ -42,7 +37,10 @@ export default async function handler(req, res) {
 
     const params = new URLSearchParams()
     params.set('mode', 'payment')
-    params.set('success_url', `${origin}/#/listing/${encodeURIComponent(listingId)}?session_id={CHECKOUT_SESSION_ID}&listed=1`)
+    params.set(
+      'success_url',
+      `${origin}/#/listing/${encodeURIComponent(listingId)}?session_id={CHECKOUT_SESSION_ID}&listed=1`,
+    )
     params.set('cancel_url', `${origin}/#/list?canceled=1`)
     params.set('client_reference_id', listingId)
     params.set('metadata[listingId]', listingId)
@@ -51,7 +49,10 @@ export default async function handler(req, res) {
     params.set('line_items[0][price_data][currency]', 'usd')
     params.set('line_items[0][price_data][unit_amount]', String(amount))
     params.set('line_items[0][price_data][product_data][name]', productName)
-    params.set('line_items[0][price_data][product_data][description]', `One-time ${type} listing fee for Listing Needed`)
+    params.set(
+      'line_items[0][price_data][product_data][description]',
+      `One-time ${type} listing fee for Listing Needed`,
+    )
     if (email) params.set('customer_email', email)
 
     const stripeRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
