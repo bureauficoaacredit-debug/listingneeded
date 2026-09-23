@@ -206,6 +206,7 @@ export default function Browse() {
               )}
               <div className="body">
                 <span className={`badge ${l.type}`}>{l.type === 'rent' ? 'For rent' : 'For sale'}</span>
+                {l.is_mls ? <span className="badge mls">MLS listing</span> : null}
                 <div className="price">{l.type === 'rent' ? `$${l.price.toLocaleString()}/mo` : `$${l.price.toLocaleString()}`}</div>
                 <h3>{l.address}</h3>
                 <div className="meta">{l.city}, {l.state} {l.zip} · {l.beds} bd · {l.baths} ba</div>

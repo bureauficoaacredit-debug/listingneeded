@@ -21,6 +21,7 @@ type ListingRow = {
   created_at: string
   paid: boolean
   live: boolean
+  is_mls?: boolean | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -43,6 +44,7 @@ function rowToListing(row: ListingRow): Listing {
     createdAt: row.created_at,
     paid: row.paid,
     live: row.live,
+    is_mls: row.is_mls ?? false,
   }
 }
 
@@ -66,6 +68,7 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     created_at: listing.createdAt,
     paid: listing.paid,
     live: listing.live,
+    is_mls: listing.is_mls ?? false,
   }
 }
 

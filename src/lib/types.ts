@@ -19,6 +19,8 @@ export type Listing = {
   createdAt: string
   paid: boolean
   live: boolean
+  /** True when this is a Realtor/MLS-sourced listing. */
+  is_mls?: boolean
 }
 
 export const LISTING_FEE_RENT_USD = 99

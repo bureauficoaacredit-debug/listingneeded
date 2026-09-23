@@ -381,6 +381,8 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.5rem 0 
   text-transform: uppercase; letter-spacing: 0.05em;
 }
 .badge.sale { background: #e8eef5; color: #326fa5; }
+.badge + .badge { margin-left: 0.35rem; }
+.badge.mls { background: #f5e8c8; color: var(--gold); }
 .price { font-size: 1.25rem; font-weight: 800; margin: 0.4rem 0; color: var(--brand-dark); }
 .thumb { height: 160px; background: var(--brand-soft); object-fit: cover; width: 100%; }
 .thumb.empty { display: grid; place-items: center; color: var(--muted); font-weight: 600; }

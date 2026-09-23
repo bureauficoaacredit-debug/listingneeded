@@ -80,6 +80,7 @@ export default function ListingDetail() {
       </div>
       <div>
         <span className={`badge ${listing.type}`}>{listing.type === 'rent' ? 'For rent' : 'For sale'}</span>
+        {listing.is_mls ? <span className="badge mls">MLS listing</span> : null}
         <h1 style={{ margin: '0.4rem 0' }}>{listing.address}</h1>
         <div className="meta">
           {listing.city}, {listing.state} {listing.zip}
