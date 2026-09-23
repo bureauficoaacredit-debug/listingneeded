@@ -12,7 +12,7 @@ import {
   updateListing,
   updatePartnerLink,
 } from '../lib/store'
-import { parseMlsPdf, type MlsDraft } from '../lib/pdfMls'
+import { parseMlsPasteText, uploadMlsPdf, type MlsDraft } from '../lib/pdfMls'
 
 const SESSION_KEY = 'listingneeded_admin_ok'
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
@@ -130,6 +130,7 @@ export default function Admin() {
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pdfDrafts, setPdfDrafts] = useState<MlsDraft[]>([])
   const [pdfName, setPdfName] = useState('')
+  const [pasteText, setPasteText] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
 
@@ -205,6 +206,7 @@ export default function Admin() {
     setStatus('')
     setPdfDrafts([])
     setPdfName('')
+    setPasteText('')
   }
 
   async function handleDelete(id: string) {
@@ -325,17 +327,38 @@ export default function Admin() {
     setPdfDrafts([])
     setPdfName(file.name)
     try {
-      const { drafts } = await parseMlsPdf(file)
+      const { drafts } = await uploadMlsPdf(file)
       setPdfDrafts(drafts)
-      setStatus(`Parsed ${drafts.length} candidate(s) from ${file.name}. Edit, then Publish all.`)
+      setStatus(
+        `Parsed ${drafts.length} candidate(s) from ${file.name} (server). Edit, then Publish all.`,
+      )
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('MLS PDF parse failed:', err)
       setError(
-        `PDF upload failed: ${msg}. Hard-refresh this page (Cmd+Shift+R), then try again. Image-only scans will not parse.`,
+        `PDF upload failed: ${msg}. Prefer Paste MLS text below if the PDF is a scan / image-only.`,
       )
       setPdfName('')
       setPdfDrafts([])
+    } finally {
+      setPdfBusy(false)
+    }
+  }
+
+  function handlePasteParse() {
+    setError('')
+    setStatus('')
+    setPdfBusy(true)
+    try {
+      const { drafts } = parseMlsPasteText(pasteText)
+      setPdfDrafts(drafts)
+      setPdfName('pasted text')
+      setStatus(`Parsed ${drafts.length} candidate(s) from pasted text. Edit, then Publish all.`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setError(`Paste parse failed: ${msg}`)
+      setPdfDrafts([])
+      setPdfName('')
     } finally {
       setPdfBusy(false)
     }
@@ -406,6 +429,7 @@ export default function Admin() {
       if (!failed.length) {
         setPdfDrafts([])
         setPdfName('')
+        setPasteText('')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bulk publish failed')
@@ -531,18 +555,19 @@ export default function Admin() {
         </div>
       ) : null}
 
-      {/* PDF upload → preview → publish */}
+      {/* PDF upload / paste → preview → publish */}
       <section className="card">
         <div className="body" style={{ display: 'grid', gap: '1rem' }}>
           <div>
-            <h2 style={{ margin: '0 0 .35rem' }}>MLS PDF scan</h2>
+            <h2 style={{ margin: '0 0 .35rem' }}>MLS → Search (uploadable)</h2>
             <p className="meta" style={{ margin: 0 }}>
-              Upload a sheet / MLS PDF. Text is extracted in-browser, candidates appear in an editable
-              table, then one-click publish as is_mls + paid + live for {MLS_OWNER.name}.
+              Upload a sheet / MLS PDF — parsed on the server (not Safari pdf.js). Or paste MLS text
+              from Print / select-all. Candidates appear in an editable table, then publish as is_mls +
+              paid + live for {MLS_OWNER.name}.
             </p>
           </div>
           <label>
-            PDF file
+            PDF file (server extract)
             <input
               type="file"
               accept="application/pdf,.pdf"
@@ -554,8 +579,28 @@ export default function Admin() {
               }}
             />
           </label>
-          {pdfBusy ? <p className="meta">Reading PDF…</p> : null}
-          {pdfName && !pdfBusy ? <p className="meta">File: {pdfName}</p> : null}
+          <label>
+            Paste MLS text (fallback)
+            <textarea
+              rows={6}
+              placeholder="Paste addresses / prices / beds from the MLS PDF or print dialog…"
+              value={pasteText}
+              disabled={pdfBusy || publishing}
+              onChange={(e) => setPasteText(e.target.value)}
+            />
+          </label>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn secondary"
+              disabled={pdfBusy || publishing || !pasteText.trim()}
+              onClick={() => handlePasteParse()}
+            >
+              Parse pasted text
+            </button>
+          </div>
+          {pdfBusy ? <p className="meta">Reading / parsing…</p> : null}
+          {pdfName && !pdfBusy ? <p className="meta">Source: {pdfName}</p> : null}
 
           {pdfDrafts.length > 0 ? (
             <>
@@ -684,6 +729,7 @@ export default function Admin() {
                   onClick={() => {
                     setPdfDrafts([])
                     setPdfName('')
+                    setPasteText('')
                   }}
                 >
                   Clear preview

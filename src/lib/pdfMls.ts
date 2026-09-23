@@ -1,37 +1,10 @@
 /**
- * Client-side MLS PDF text extract + heuristic property parsing.
- * Uses pdf.js legacy build for Safari / older browsers (Promise.withResolvers polyfill).
- * Worker loaded from jsDelivr CDN matching the installed package version (Vite/Vercel-safe).
+ * MLS candidate parsing (client) + server PDF upload helper.
+ * PDF bytes are parsed on the server (/api/parse-mls-pdf) — not Safari pdf.js.
+ * Paste-text path uses parseMlsCandidates locally (same heuristics as the API).
  */
-import { getDocument, GlobalWorkerOptions, version } from 'pdfjs-dist/legacy/build/pdf.mjs'
+
 import type { ListingType } from './types'
-
-/** Safari < 17.4 and some WebViews lack Promise.withResolvers — belt-and-suspenders. */
-function ensurePromiseWithResolvers() {
-  const P = Promise as typeof Promise & {
-    withResolvers?: <T>() => {
-      promise: Promise<T>
-      resolve: (value: T | PromiseLike<T>) => void
-      reject: (reason?: unknown) => void
-    }
-  }
-  if (typeof P.withResolvers === 'function') return
-  P.withResolvers = function withResolvers<T>() {
-    let resolve!: (value: T | PromiseLike<T>) => void
-    let reject!: (reason?: unknown) => void
-    const promise = new Promise<T>((res, rej) => {
-      resolve = res
-      reject = rej
-    })
-    return { promise, resolve, reject }
-  }
-}
-
-ensurePromiseWithResolvers()
-
-// Exact version CDN worker — avoids Vite hashed ?url module-worker breakage on Safari.
-const PDFJS_VERSION = typeof version === 'string' && version ? version : '5.6.205'
-GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/legacy/build/pdf.worker.min.mjs`
 
 export type MlsDraft = {
   key: string
@@ -59,61 +32,6 @@ const BEDS_RE = /\b(\d{1,2})\s*(?:beds?|bedrooms?|bd|br|bds)\b/i
 const BATHS_RE = /\b(\d{1,2}(?:\.\d)?)\s*(?:baths?|bathrooms?|ba|bas)\b/i
 const RENT_HINT = /\b(for\s+rent|rental|lease|\/\s*mo|per\s+month|monthly)\b/i
 const SALE_HINT = /\b(for\s+sale|list\s*price|asking|mls\s*#|sold)\b/i
-
-function itemText(it: unknown): string {
-  if (!it || typeof it !== 'object') return ''
-  if ('str' in it && typeof (it as { str: unknown }).str === 'string') {
-    return (it as { str: string }).str
-  }
-  return ''
-}
-
-export async function extractPdfText(file: File): Promise<string> {
-  ensurePromiseWithResolvers()
-  let buf: ArrayBuffer
-  try {
-    buf = await file.arrayBuffer()
-  } catch (err) {
-    throw new Error(
-      `Could not read PDF file bytes: ${err instanceof Error ? err.message : String(err)}`,
-    )
-  }
-
-  let pdf
-  try {
-    const task = getDocument({
-      data: new Uint8Array(buf),
-      useSystemFonts: true,
-      isEvalSupported: false,
-      useWorkerFetch: false,
-    })
-    pdf = await task.promise
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    throw new Error(
-      `PDF.js failed to open the file (${msg}). Try another PDF, or export as text-based PDF (not a scan).`,
-    )
-  }
-
-  const pageCount = Number(pdf?.numPages) || 0
-  if (pageCount < 1) {
-    throw new Error('PDF reported zero pages.')
-  }
-
-  const parts: string[] = []
-  for (let p = 1; p <= pageCount; p++) {
-    try {
-      const page = await pdf.getPage(p)
-      const content = await page.getTextContent()
-      const items = Array.isArray(content?.items) ? content.items : []
-      const line = items.map(itemText).filter(Boolean).join(' ')
-      if (line.trim()) parts.push(line)
-    } catch (err) {
-      console.warn(`PDF page ${p} text extract failed:`, err)
-    }
-  }
-  return parts.join('\n\n')
-}
 
 function parsePriceNear(chunk: string): number {
   let best = 0
@@ -150,7 +68,7 @@ function parseCityStateZip(chunk: string): { city: string; state: string; zip: s
 }
 
 /**
- * Split PDF text into candidate property drafts using street-address anchors.
+ * Split MLS / sheet text into candidate property drafts using street-address anchors.
  * Always returns at least one editable row when any text exists (even if empty fields).
  */
 export function parseMlsCandidates(text: string): MlsDraft[] {
@@ -220,14 +138,75 @@ export function parseMlsCandidates(text: string): MlsDraft[] {
   return drafts
 }
 
-export async function parseMlsPdf(file: File): Promise<{ text: string; drafts: MlsDraft[] }> {
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  const chunk = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
+}
+
+type ParseApiResponse = {
+  text?: string
+  drafts?: MlsDraft[]
+  error?: string
+  source?: string
+}
+
+/** Upload PDF to server API; returns drafts for editable preview. No client pdf.js. */
+export async function uploadMlsPdf(file: File): Promise<{ text: string; drafts: MlsDraft[] }> {
   if (!file) throw new Error('No PDF file selected.')
   if (file.size === 0) throw new Error('PDF file is empty.')
-  const text = await extractPdfText(file)
-  if (!text.trim()) {
+  if (file.size > 10 * 1024 * 1024) {
+    throw new Error('PDF is larger than 10 MB. Split it or use Paste MLS text.')
+  }
+
+  let pdfBase64: string
+  try {
+    const buf = await file.arrayBuffer()
+    pdfBase64 = arrayBufferToBase64(buf)
+  } catch (err) {
     throw new Error(
-      'PDF had no extractable text (image-only / scanned PDFs need OCR). Try a text-based MLS export.',
+      `Could not read PDF file bytes: ${err instanceof Error ? err.message : String(err)}`,
     )
   }
-  return { text, drafts: parseMlsCandidates(text) }
+
+  let res: Response
+  try {
+    res = await fetch('/api/parse-mls-pdf', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pdfBase64, filename: file.name }),
+    })
+  } catch (err) {
+    throw new Error(
+      `Could not reach parse API (${err instanceof Error ? err.message : String(err)}). If you are on localhost, run the Vite app so /api/parse-mls-pdf is available, or use Paste MLS text.`,
+    )
+  }
+
+  let data: ParseApiResponse = {}
+  try {
+    data = (await res.json()) as ParseApiResponse
+  } catch {
+    throw new Error(`Parse API returned non-JSON (HTTP ${res.status}).`)
+  }
+
+  if (!res.ok) {
+    throw new Error(data.error || `Parse API failed (HTTP ${res.status}).`)
+  }
+
+  const drafts = Array.isArray(data.drafts) ? data.drafts : []
+  if (!drafts.length) {
+    throw new Error(data.error || 'Parse API returned no candidates.')
+  }
+  return { text: data.text || '', drafts }
+}
+
+/** Parse pasted MLS / sheet text into editable drafts (no network). */
+export function parseMlsPasteText(text: string): { text: string; drafts: MlsDraft[] } {
+  const trimmed = text.replace(/\u00a0/g, ' ').trim()
+  if (!trimmed) throw new Error('Paste some MLS text first.')
+  return { text: trimmed, drafts: parseMlsCandidates(trimmed) }
 }
