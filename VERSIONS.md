@@ -15,7 +15,8 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v9 | `v9-bebas-logo` | Bebas Neue — LISTING #800020, NEEDED #0056B3 (**current base look**) |
 | v10 | `v10-gold-header` | Full gold top header — not live |
 | v11 | `v11-search-filters` | Search: ZIP, City, Street, State filters + List all |
-| v12 | `v12-mls-badge` | MLS-sourced listings show an “MLS listing” badge on Search cards and details (**current**) |
+| v12 | `v12-mls-badge` | MLS-sourced listings show an “MLS listing” badge on Search cards and details |
+| v13 | `v13-admin-mls` | Admin MLS backdoor: add/remove, active (live) toggle, optional end date (`active_until`), PDF scan → preview → bulk publish as Marcel Najar MLS live (**current**) |
 
 ## How to restore
 

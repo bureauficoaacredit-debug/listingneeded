@@ -1,5 +1,5 @@
 import { getConfig, supabaseFetch, throwIfNotOk } from './supabase'
-import type { Listing, ListingType, PartnerLink, PartnerCategory } from './types'
+import { isActiveUntilOk, type Listing, type ListingType, type PartnerLink, type PartnerCategory } from './types'
 
 /** DB row shape (snake_case) */
 type ListingRow = {
@@ -22,6 +22,7 @@ type ListingRow = {
   paid: boolean
   live: boolean
   is_mls?: boolean | null
+  active_until?: string | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -45,6 +46,7 @@ function rowToListing(row: ListingRow): Listing {
     paid: row.paid,
     live: row.live,
     is_mls: row.is_mls ?? false,
+    activeUntil: row.active_until ?? null,
   }
 }
 
@@ -69,9 +71,11 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     paid: listing.paid,
     live: listing.live,
     is_mls: listing.is_mls ?? false,
+    active_until: listing.activeUntil ?? null,
   }
 }
 
+/** Public Search feed: paid + live, and active_until not past. */
 export async function liveListings(): Promise<Listing[]> {
   const res = await supabaseFetch(
     '/rest/v1/listings?live=eq.true&paid=eq.true&order=created_at.desc',
@@ -82,7 +86,7 @@ export async function liveListings(): Promise<Listing[]> {
   )
   await throwIfNotOk(res)
   const data = (await res.json()) as ListingRow[]
-  return data.map(rowToListing)
+  return data.map(rowToListing).filter((l) => isActiveUntilOk(l.activeUntil))
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
@@ -154,6 +158,23 @@ export async function insertListing(listing: Listing): Promise<Listing> {
   return rowToListing(data[0])
 }
 
+/** Bulk insert (admin PDF publish). Inserts one-by-one so a single failure does not drop the batch. */
+export async function insertListings(listings: Listing[]): Promise<{ ok: Listing[]; failed: { listing: Listing; error: string }[] }> {
+  const ok: Listing[] = []
+  const failed: { listing: Listing; error: string }[] = []
+  for (const listing of listings) {
+    try {
+      ok.push(await insertListing(listing))
+    } catch (err) {
+      failed.push({
+        listing,
+        error: err instanceof Error ? err.message : 'Insert failed',
+      })
+    }
+  }
+  return { ok, failed }
+}
+
 export async function markPaidAndLive(id: string): Promise<Listing | null> {
   const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',
@@ -182,7 +203,63 @@ export async function updateListingPhotos(id: string, photoUrls: string[]): Prom
   await throwIfNotOk(res)
 }
 
-/** Admin: load every listing (including unpaid / not live). */
+export type ListingPatch = Partial<{
+  live: boolean
+  paid: boolean
+  activeUntil: string | null
+  type: ListingType
+  address: string
+  city: string
+  state: string
+  zip: string
+  beds: number
+  baths: number
+  price: number
+  pets: Listing['pets']
+  description: string
+  ownerName: string
+  ownerPhone: string
+  ownerEmail: string
+  is_mls: boolean
+}>
+
+/** Admin: patch listing fields (live toggle, active_until, etc.). */
+export async function updateListing(id: string, patch: ListingPatch): Promise<Listing> {
+  const body: Record<string, unknown> = {}
+  if (patch.live != null) body.live = patch.live
+  if (patch.paid != null) body.paid = patch.paid
+  if (patch.activeUntil !== undefined) body.active_until = patch.activeUntil || null
+  if (patch.type != null) body.type = patch.type
+  if (patch.address != null) body.address = patch.address
+  if (patch.city != null) body.city = patch.city
+  if (patch.state != null) body.state = patch.state
+  if (patch.zip != null) body.zip = patch.zip
+  if (patch.beds != null) body.beds = patch.beds
+  if (patch.baths != null) body.baths = patch.baths
+  if (patch.price != null) body.price = patch.price
+  if (patch.pets != null) body.pets = patch.pets
+  if (patch.description != null) body.description = patch.description
+  if (patch.ownerName != null) body.owner_name = patch.ownerName
+  if (patch.ownerPhone != null) body.owner_phone = patch.ownerPhone
+  if (patch.ownerEmail != null) body.owner_email = patch.ownerEmail
+  if (patch.is_mls != null) body.is_mls = patch.is_mls
+
+  const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(body),
+  })
+  await throwIfNotOk(res)
+  const data = (await res.json()) as ListingRow[]
+  if (!data.length) throw new Error('Update failed — 0 rows (check RLS).')
+  return rowToListing(data[0])
+}
+
+/** Admin: load every listing (including unpaid / not live / expired active_until). */
 export async function allListings(): Promise<Listing[]> {
   const res = await supabaseFetch('/rest/v1/listings?select=*&order=created_at.desc', {
     method: 'GET',
