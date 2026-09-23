@@ -1,12 +1,37 @@
 /**
  * Client-side MLS PDF text extract + heuristic property parsing.
- * Uses pdf.js in the browser (Vite-friendly). Output is editable before publish.
+ * Uses pdf.js legacy build for Safari / older browsers (Promise.withResolvers polyfill).
+ * Worker loaded from jsDelivr CDN matching the installed package version (Vite/Vercel-safe).
  */
-import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist'
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { getDocument, GlobalWorkerOptions, version } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import type { ListingType } from './types'
 
-GlobalWorkerOptions.workerSrc = pdfWorker
+/** Safari < 17.4 and some WebViews lack Promise.withResolvers — belt-and-suspenders. */
+function ensurePromiseWithResolvers() {
+  const P = Promise as typeof Promise & {
+    withResolvers?: <T>() => {
+      promise: Promise<T>
+      resolve: (value: T | PromiseLike<T>) => void
+      reject: (reason?: unknown) => void
+    }
+  }
+  if (typeof P.withResolvers === 'function') return
+  P.withResolvers = function withResolvers<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void
+    let reject!: (reason?: unknown) => void
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res
+      reject = rej
+    })
+    return { promise, resolve, reject }
+  }
+}
+
+ensurePromiseWithResolvers()
+
+// Exact version CDN worker — avoids Vite hashed ?url module-worker breakage on Safari.
+const PDFJS_VERSION = typeof version === 'string' && version ? version : '5.6.205'
+GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/legacy/build/pdf.worker.min.mjs`
 
 export type MlsDraft = {
   key: string
@@ -35,18 +60,57 @@ const BATHS_RE = /\b(\d{1,2}(?:\.\d)?)\s*(?:baths?|bathrooms?|ba|bas)\b/i
 const RENT_HINT = /\b(for\s+rent|rental|lease|\/\s*mo|per\s+month|monthly)\b/i
 const SALE_HINT = /\b(for\s+sale|list\s*price|asking|mls\s*#|sold)\b/i
 
+function itemText(it: unknown): string {
+  if (!it || typeof it !== 'object') return ''
+  if ('str' in it && typeof (it as { str: unknown }).str === 'string') {
+    return (it as { str: string }).str
+  }
+  return ''
+}
+
 export async function extractPdfText(file: File): Promise<string> {
-  const buf = await file.arrayBuffer()
-  const pdf = await getDocument({ data: buf }).promise
+  ensurePromiseWithResolvers()
+  let buf: ArrayBuffer
+  try {
+    buf = await file.arrayBuffer()
+  } catch (err) {
+    throw new Error(
+      `Could not read PDF file bytes: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+
+  let pdf
+  try {
+    const task = getDocument({
+      data: new Uint8Array(buf),
+      useSystemFonts: true,
+      isEvalSupported: false,
+      useWorkerFetch: false,
+    })
+    pdf = await task.promise
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(
+      `PDF.js failed to open the file (${msg}). Try another PDF, or export as text-based PDF (not a scan).`,
+    )
+  }
+
+  const pageCount = Number(pdf?.numPages) || 0
+  if (pageCount < 1) {
+    throw new Error('PDF reported zero pages.')
+  }
+
   const parts: string[] = []
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p)
-    const content = await page.getTextContent()
-    const line = content.items
-      .map((it) => ('str' in it ? String((it as { str: string }).str) : ''))
-      .filter(Boolean)
-      .join(' ')
-    parts.push(line)
+  for (let p = 1; p <= pageCount; p++) {
+    try {
+      const page = await pdf.getPage(p)
+      const content = await page.getTextContent()
+      const items = Array.isArray(content?.items) ? content.items : []
+      const line = items.map(itemText).filter(Boolean).join(' ')
+      if (line.trim()) parts.push(line)
+    } catch (err) {
+      console.warn(`PDF page ${p} text extract failed:`, err)
+    }
   }
   return parts.join('\n\n')
 }
@@ -58,7 +122,6 @@ function parsePriceNear(chunk: string): number {
   while ((m = PRICE_RE.exec(chunk)) !== null) {
     const n = Number(m[1].replace(/,/g, ''))
     if (!Number.isFinite(n)) continue
-    // Prefer realistic home prices / rents
     if (n >= 500 && n <= 50_000_000 && n > best) best = n
   }
   return best
@@ -67,7 +130,6 @@ function parsePriceNear(chunk: string): number {
 function guessType(chunk: string, price: number): ListingType {
   if (RENT_HINT.test(chunk) && !SALE_HINT.test(chunk)) return 'rent'
   if (SALE_HINT.test(chunk) && !RENT_HINT.test(chunk)) return 'sale'
-  // Heuristic: under 20k and not "sale" → likely rent
   if (price > 0 && price < 20000) return 'rent'
   return 'sale'
 }
@@ -98,8 +160,12 @@ export function parseMlsCandidates(text: string): MlsDraft[] {
   let m: RegExpExecArray | null
   while ((m = STREET_RE.exec(cleaned)) !== null) {
     const address = m[1].replace(/\s+/g, ' ').trim()
-    // Dedupe overlapping / identical nearby
-    if (addresses.some((a) => Math.abs(a.index - m!.index) < 20 || a.address.toLowerCase() === address.toLowerCase())) {
+    if (
+      addresses.some(
+        (a) =>
+          Math.abs(a.index - m!.index) < 20 || a.address.toLowerCase() === address.toLowerCase(),
+      )
+    ) {
       continue
     }
     addresses.push({ index: m.index, address })
@@ -108,7 +174,6 @@ export function parseMlsCandidates(text: string): MlsDraft[] {
   const drafts: MlsDraft[] = []
 
   if (addresses.length === 0) {
-    // Fallback: one blank-ish draft from whole text so admin can fill manually
     const price = parsePriceNear(cleaned)
     const { beds, baths } = parseBedsBaths(cleaned)
     const loc = parseCityStateZip(cleaned)
@@ -156,9 +221,13 @@ export function parseMlsCandidates(text: string): MlsDraft[] {
 }
 
 export async function parseMlsPdf(file: File): Promise<{ text: string; drafts: MlsDraft[] }> {
+  if (!file) throw new Error('No PDF file selected.')
+  if (file.size === 0) throw new Error('PDF file is empty.')
   const text = await extractPdfText(file)
   if (!text.trim()) {
-    throw new Error('PDF had no extractable text (scanned image-only PDFs need OCR).')
+    throw new Error(
+      'PDF had no extractable text (image-only / scanned PDFs need OCR). Try a text-based MLS export.',
+    )
   }
   return { text, drafts: parseMlsCandidates(text) }
 }

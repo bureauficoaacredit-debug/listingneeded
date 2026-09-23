@@ -329,8 +329,13 @@ export default function Admin() {
       setPdfDrafts(drafts)
       setStatus(`Parsed ${drafts.length} candidate(s) from ${file.name}. Edit, then Publish all.`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'PDF parse failed')
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('MLS PDF parse failed:', err)
+      setError(
+        `PDF upload failed: ${msg}. Hard-refresh this page (Cmd+Shift+R), then try again. Image-only scans will not parse.`,
+      )
       setPdfName('')
+      setPdfDrafts([])
     } finally {
       setPdfBusy(false)
     }
