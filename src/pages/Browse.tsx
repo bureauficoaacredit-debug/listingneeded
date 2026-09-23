@@ -10,12 +10,20 @@ function parseFilter(raw: string | null): Filter {
   return 'all'
 }
 
+function norm(s: string) {
+  return s.trim().toLowerCase()
+}
+
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filter = parseFilter(searchParams.get('type'))
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [zipQ, setZipQ] = useState('')
+  const [cityQ, setCityQ] = useState('')
+  const [streetQ, setStreetQ] = useState('')
+  const [stateQ, setStateQ] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -34,14 +42,35 @@ export default function Browse() {
     }
   }, [])
 
+  const locationActive = Boolean(zipQ.trim() || cityQ.trim() || streetQ.trim() || stateQ.trim())
+
   const filtered = useMemo(() => {
-    if (filter === 'all') return listings
-    return listings.filter((l) => l.type === filter)
-  }, [listings, filter])
+    let rows = listings
+    if (filter !== 'all') rows = rows.filter((l) => l.type === filter)
+
+    const zip = norm(zipQ)
+    const city = norm(cityQ)
+    const street = norm(streetQ)
+    const state = norm(stateQ)
+
+    if (zip) rows = rows.filter((l) => norm(l.zip).includes(zip))
+    if (city) rows = rows.filter((l) => norm(l.city).includes(city))
+    if (street) rows = rows.filter((l) => norm(l.address).includes(street))
+    if (state) rows = rows.filter((l) => norm(l.state).includes(state))
+
+    return rows
+  }, [listings, filter, zipQ, cityQ, streetQ, stateQ])
 
   function setFilter(next: Filter) {
     if (next === 'all') setSearchParams({})
     else setSearchParams({ type: next })
+  }
+
+  function listAll() {
+    setZipQ('')
+    setCityQ('')
+    setStreetQ('')
+    setStateQ('')
   }
 
   const title =
@@ -92,10 +121,79 @@ export default function Browse() {
         </button>
       </div>
 
+      <div className="search-filters" aria-label="Location filters">
+        <div className="search-filters-row">
+          <label>
+            ZIP
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              placeholder="e.g. 06824"
+              value={zipQ}
+              onChange={(e) => setZipQ(e.target.value)}
+            />
+          </label>
+          <label>
+            City
+            <input
+              type="text"
+              autoComplete="address-level2"
+              placeholder="e.g. Fairfield"
+              value={cityQ}
+              onChange={(e) => setCityQ(e.target.value)}
+            />
+          </label>
+          <label>
+            Street
+            <input
+              type="text"
+              autoComplete="street-address"
+              placeholder="Partial address"
+              value={streetQ}
+              onChange={(e) => setStreetQ(e.target.value)}
+            />
+          </label>
+          <label>
+            State
+            <input
+              type="text"
+              autoComplete="address-level1"
+              placeholder="CT, NY, MA…"
+              maxLength={2}
+              value={stateQ}
+              onChange={(e) => setStateQ(e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, 2))}
+              aria-label="State (2-letter abbreviation)"
+            />
+          </label>
+        </div>
+        <div className="search-filters-actions">
+          <button type="button" className="btn secondary" onClick={listAll} disabled={!locationActive}>
+            List all
+          </button>
+          {locationActive && (
+            <p className="search-filters-meta">
+              Showing {filtered.length} of {listings.filter((l) => filter === 'all' || l.type === filter).length} listings
+            </p>
+          )}
+        </div>
+      </div>
+
       {filtered.length === 0 ? (
         <div className="card"><div className="body">
-          No live {filter === 'all' ? 'listings' : filter === 'rent' ? 'rentals' : 'homes for sale'} yet.{' '}
-          <Link to="/list">Be the first to list</Link>.
+          {locationActive ? (
+            <>
+              No homes match those filters.{' '}
+              <button type="button" className="btn ghost" style={{padding:'0.35rem 0.75rem', fontSize:'0.8rem', verticalAlign:'middle'}} onClick={listAll}>
+                List all
+              </button>
+            </>
+          ) : (
+            <>
+              No live {filter === 'all' ? 'listings' : filter === 'rent' ? 'rentals' : 'homes for sale'} yet.{' '}
+              <Link to="/list">Be the first to list</Link>.
+            </>
+          )}
         </div></div>
       ) : (
         <div className="grid">
