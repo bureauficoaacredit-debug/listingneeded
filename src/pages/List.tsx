@@ -181,7 +181,10 @@ export default function List() {
       <button className="btn big" type="submit" disabled={busy}>
         {busy ? 'Starting Stripe…' : `Pay $${listingFeeUsd(listingType)} with Stripe`}
       </button>
-      <p className="note">After payment, Stripe sends you back here and the listing publishes automatically.</p>
+      <p className="note">
+        After payment, Stripe emails a receipt to the address you entered and can also notify Listing Needed
+        at the business inbox. Stripe then sends you back here and the listing publishes automatically.
+      </p>
     </form>
   )
 }
