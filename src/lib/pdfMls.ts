@@ -8,6 +8,8 @@ import type { ListingType } from './types'
 
 export type MlsDraft = {
   key: string
+  /** Stable id for Excel upserts: mls_<MLS Number>. PDF/paste drafts omit this. */
+  id?: string
   type: ListingType
   address: string
   city: string
@@ -19,6 +21,8 @@ export type MlsDraft = {
   pets: 'no' | 'yes' | 'negotiable'
   description: string
   include: boolean
+  /** External http(s) photo links (do not download). */
+  photoDataUrls?: string[]
 }
 
 const STREET_RE =

@@ -54,7 +54,7 @@ export function isActiveUntilOk(activeUntil: string | null | undefined): boolean
 export const MLS_OWNER = {
   name: 'Marcel Najar',
   phone: '203-818-3242',
-  email: 'marcel@listingneeded.com',
+  email: 'bureauficoaacredit@gmail.com',
 } as const
 
 export type PartnerCategory = 'mortgage' | 'screening' | 'insurance' | 'moving' | 'other'

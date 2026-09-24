@@ -12,8 +12,10 @@ import {
   insertPartnerLink,
   updateListing,
   updatePartnerLink,
+  upsertListings,
 } from '../lib/store'
 import { parseMlsPasteText, uploadMlsPdf, type MlsDraft } from '../lib/pdfMls'
+import { parseMlsSpreadsheet } from '../lib/excelMls'
 
 const SESSION_KEY = 'listingneeded_admin_ok'
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
@@ -134,6 +136,7 @@ export default function Admin() {
   const [pasteText, setPasteText] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [removingMls, setRemovingMls] = useState(false)
+  const [publishProgress, setPublishProgress] = useState('')
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -209,6 +212,7 @@ export default function Admin() {
     setPdfDrafts([])
     setPdfName('')
     setPasteText('')
+    setPublishProgress('')
   }
 
   async function handleDelete(id: string) {
@@ -383,6 +387,37 @@ export default function Admin() {
     }
   }
 
+  async function handleExcelFile(file: File | null) {
+    if (!file) return
+    setPdfBusy(true)
+    setError('')
+    setStatus('')
+    setPublishProgress('')
+    setPdfDrafts([])
+    setPdfName(file.name)
+    try {
+      const { drafts, skippedNoMls, skippedStatus, totalRows } = await parseMlsSpreadsheet(file)
+      setPdfDrafts(drafts)
+      const skipBits = [
+        skippedNoMls ? `${skippedNoMls} no MLS#` : '',
+        skippedStatus ? `${skippedStatus} closed/sold/etc` : '',
+      ]
+        .filter(Boolean)
+        .join(', ')
+      setStatus(
+        `Parsed ${drafts.length} MLS row(s) from ${file.name} (${totalRows} data row(s)${skipBits ? `; skipped ${skipBits}` : ''}). Edit, then Publish.`,
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('MLS Excel/CSV parse failed:', err)
+      setError(`Excel/CSV parse failed: ${msg}`)
+      setPdfName('')
+      setPdfDrafts([])
+    } finally {
+      setPdfBusy(false)
+    }
+  }
+
   function handlePasteParse() {
     setError('')
     setStatus('')
@@ -422,15 +457,22 @@ export default function Admin() {
         return
       }
     }
-    if (!confirm(`Publish ${selected.length} MLS listing(s) as live + paid for ${MLS_OWNER.name}?`)) {
+    const useUpsert = selected.some((d) => !!d.id)
+    if (
+      !confirm(
+        `Publish ${selected.length} MLS listing(s) as live + paid for ${MLS_OWNER.name}?${useUpsert ? ' (upsert by MLS id — re-imports update existing rows)' : ''}`,
+      )
+    ) {
       return
     }
     setPublishing(true)
     setError('')
     setStatus('')
+    setPublishProgress(useUpsert ? `0 / ${selected.length}` : '')
     try {
+      const now = new Date().toISOString()
       const payloads: Listing[] = selected.map((d) => ({
-        id: uid(),
+        id: d.id || uid(),
         type: d.type,
         address: d.address.trim(),
         city: d.city.trim() || 'Fairfield',
@@ -441,29 +483,40 @@ export default function Admin() {
         price: Number(d.price) || 0,
         pets: d.pets,
         description: d.description.trim(),
-        photoDataUrls: [],
+        photoDataUrls: Array.isArray(d.photoDataUrls) ? d.photoDataUrls : [],
         ownerName: MLS_OWNER.name,
         ownerPhone: MLS_OWNER.phone,
         ownerEmail: MLS_OWNER.email,
-        createdAt: new Date().toISOString(),
+        createdAt: now,
         paid: true,
         live: true,
         is_mls: true,
         activeUntil: null,
       }))
-      const { ok, failed } = await insertListings(payloads)
+      const { ok, failed } = useUpsert
+        ? await upsertListings(payloads, {
+            batchSize: 100,
+            onProgress: (done, total) => setPublishProgress(`${done} / ${total}`),
+          })
+        : await insertListings(payloads)
       if (ok.length) {
-        setListings((prev) => [...ok, ...prev])
+        const byId = new Map(ok.map((r) => [r.id, r]))
+        setListings((prev) => {
+          const rest = prev.filter((l) => !byId.has(l.id))
+          return [...ok, ...rest]
+        })
         setEndDateDrafts((prev) => {
           const next = { ...prev }
-          for (const row of ok) next[row.id] = ''
+          for (const row of ok) next[row.id] = row.activeUntil?.slice(0, 10) ?? ''
           return next
         })
       }
       if (failed.length) {
-        setError(`${failed.length} failed to insert. First error: ${failed[0].error}`)
+        setError(`${failed.length} failed to publish. First error: ${failed[0].error}`)
       }
-      setStatus(`Published ${ok.length} MLS listing(s)${failed.length ? `, ${failed.length} failed` : ''}.`)
+      setStatus(
+        `Published ${ok.length} MLS listing(s)${failed.length ? `, ${failed.length} failed` : ''}.`,
+      )
       if (!failed.length) {
         setPdfDrafts([])
         setPdfName('')
@@ -473,6 +526,7 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : 'Bulk publish failed')
     } finally {
       setPublishing(false)
+      setPublishProgress('')
     }
   }
 
@@ -575,8 +629,8 @@ export default function Admin() {
         <div>
           <h1 style={{ margin: '0 0 .35rem' }}>Admin</h1>
           <p className="meta" style={{ margin: 0 }}>
-            MLS backdoor for {MLS_OWNER.name}: add/remove, active toggle, end date, PDF bulk publish.
-            Owner defaults to {MLS_OWNER.name} · {MLS_OWNER.phone}.
+            MLS backdoor for {MLS_OWNER.name}: add/remove, active toggle, end date, Excel/PDF bulk
+            publish. Owner defaults to {MLS_OWNER.name} · {MLS_OWNER.phone}.
           </p>
         </div>
         <button type="button" className="btn secondary" onClick={handleLock}>
@@ -593,17 +647,33 @@ export default function Admin() {
         </div>
       ) : null}
 
-      {/* PDF upload / paste → preview → publish */}
+      {/* Excel / PDF / paste → preview → publish */}
       <section className="card">
         <div className="body" style={{ display: 'grid', gap: '1rem' }}>
           <div>
             <h2 style={{ margin: '0 0 .35rem' }}>MLS → Search (uploadable)</h2>
             <p className="meta" style={{ margin: 0 }}>
-              Upload a sheet / MLS PDF — parsed on the server (not Safari pdf.js). Or paste MLS text
-              from Print / select-all. Candidates appear in an editable table, then publish as is_mls +
-              paid + live for {MLS_OWNER.name}.
+              Upload a SMART MLS Excel/CSV export (parsed in-browser), an MLS PDF (server), or paste
+              MLS text. Candidates appear in an editable table, then publish as is_mls + paid + live
+              for {MLS_OWNER.name}. Excel rows upsert by MLS number (id = mls_######).
+            </p>
+            <p className="meta" style={{ margin: '0.5rem 0 0', color: '#856404' }}>
+              Tip: use Remove all MLS first if you want to replace the old batch.
             </p>
           </div>
+          <label>
+            Excel / CSV (SMART MLS export)
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+              disabled={pdfBusy || publishing}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null
+                void handleExcelFile(f)
+                e.target.value = ''
+              }}
+            />
+          </label>
           <label>
             PDF file (server extract)
             <input
@@ -757,7 +827,9 @@ export default function Admin() {
                   onClick={() => void handlePublishPdf()}
                 >
                   {publishing
-                    ? 'Publishing…'
+                    ? publishProgress
+                      ? `Publishing… ${publishProgress}`
+                      : 'Publishing…'
                     : `Publish ${pdfDrafts.filter((d) => d.include).length} as MLS live`}
                 </button>
                 <button

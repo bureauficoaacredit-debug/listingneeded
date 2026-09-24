@@ -175,6 +175,95 @@ export async function insertListings(listings: Listing[]): Promise<{ ok: Listing
   return { ok, failed }
 }
 
+/**
+ * Admin MLS Excel publish: upsert in batches (~100) on primary key `id`
+ * (PostgREST Prefer: resolution=merge-duplicates). Re-imports update instead of duplicating.
+ * onProgress(done, total) is called after each batch.
+ */
+export async function upsertListings(
+  listings: Listing[],
+  opts?: {
+    batchSize?: number
+    onProgress?: (done: number, total: number) => void
+  },
+): Promise<{ ok: Listing[]; failed: { listing: Listing; error: string }[] }> {
+  const batchSize = Math.max(1, opts?.batchSize ?? 100)
+  const ok: Listing[] = []
+  const failed: { listing: Listing; error: string }[] = []
+  const total = listings.length
+
+  for (let i = 0; i < listings.length; i += batchSize) {
+    const batch = listings.slice(i, i + batchSize)
+    const rows = batch.map((l) => listingToRow(l))
+    try {
+      const res = await supabaseFetch('/rest/v1/listings?on_conflict=id', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          Prefer: 'resolution=merge-duplicates,return=representation',
+        },
+        body: JSON.stringify(rows),
+      })
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        // Fall back to one-by-one upsert so a single bad row does not drop the batch.
+        for (const listing of batch) {
+          try {
+            const one = await upsertListing(listing)
+            ok.push(one)
+          } catch (err) {
+            failed.push({
+              listing,
+              error: err instanceof Error ? err.message : text || 'Upsert failed',
+            })
+          }
+        }
+      } else {
+        const data = (await res.json()) as ListingRow[]
+        if (Array.isArray(data) && data.length) {
+          for (const row of data) ok.push(rowToListing(row))
+        } else {
+          // Some PostgREST configs return empty representation; treat as success by id
+          for (const listing of batch) ok.push(listing)
+        }
+      }
+    } catch (err) {
+      for (const listing of batch) {
+        try {
+          ok.push(await upsertListing(listing))
+        } catch (inner) {
+          failed.push({
+            listing,
+            error: inner instanceof Error ? inner.message : err instanceof Error ? err.message : 'Upsert failed',
+          })
+        }
+      }
+    }
+    opts?.onProgress?.(Math.min(i + batch.length, total), total)
+  }
+
+  return { ok, failed }
+}
+
+async function upsertListing(listing: Listing): Promise<Listing> {
+  const row = listingToRow(listing)
+  const res = await supabaseFetch('/rest/v1/listings?on_conflict=id', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=representation',
+    },
+    body: JSON.stringify(row),
+  })
+  await throwIfNotOk(res)
+  const data = (await res.json()) as ListingRow[]
+  if (Array.isArray(data) && data.length) return rowToListing(data[0])
+  return listing
+}
+
+
 export async function markPaidAndLive(id: string): Promise<Listing | null> {
   const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',
