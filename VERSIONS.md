@@ -24,7 +24,8 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v18 | `v18-excel-upload` | Admin: SMART MLS Excel/CSV upload (SheetJS) → editable preview → batch upsert publish |
 | v19 | `v19-collapsible-search` | Search: after Search/Enter, collapse sticky panel to slim summary bar (Edit search + List all); mobile expanded not sticky |
 | v20 | `v20-search-always-on` | Search: collapsed bar keeps a live search box + Search button; More filters opens full panel; List all shows only when filtered |
-| v21 | `v21-paste-mls-link` | Admin: paste SMART MLS shared link → `/api/import-mls-link` → editable preview (w/ thumbs) → batch upsert (**current**) |
+| v21 | `v21-paste-mls-link` | Admin: paste SMART MLS shared link → `/api/import-mls-link` → editable preview (w/ thumbs) → batch upsert |
+| v22 | `v22-price-range` | Search: Min $ / Max $ price filters on the always-visible bar (collapsed + full panel), with Search/List all (**current**) |
 
 ## How to restore
 

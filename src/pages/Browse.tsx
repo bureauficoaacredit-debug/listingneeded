@@ -27,8 +27,33 @@ function hasLocationParams(params: URLSearchParams) {
       params.get('zip')?.trim() ||
       params.get('city')?.trim() ||
       params.get('street')?.trim() ||
-      params.get('state')?.trim(),
+      params.get('state')?.trim() ||
+      params.get('min')?.trim() ||
+      params.get('max')?.trim(),
   )
+}
+
+/** Parse "2500" / "2,500" / "$2,500" → number, or null if blank/invalid. */
+function parsePriceInput(raw: string): number | null {
+  const cleaned = String(raw || '').replace(/[^0-9.]/g, '')
+  if (!cleaned) return null
+  const n = Number(cleaned)
+  return Number.isFinite(n) ? n : null
+}
+
+/** If both set and min > max, swap quietly. */
+function normalizePriceRange(
+  minRaw: string,
+  maxRaw: string,
+): { min: number | null; max: number | null } {
+  let min = parsePriceInput(minRaw)
+  let max = parsePriceInput(maxRaw)
+  if (min != null && max != null && min > max) {
+    const tmp = min
+    min = max
+    max = tmp
+  }
+  return { min, max }
 }
 
 function filterSummary(parts: {
@@ -37,6 +62,8 @@ function filterSummary(parts: {
   city: string
   street: string
   state: string
+  minPrice: number | null
+  maxPrice: number | null
 }) {
   const bits: string[] = []
   if (parts.street.trim()) bits.push(parts.street.trim())
@@ -44,8 +71,18 @@ function filterSummary(parts: {
   if (parts.state.trim()) bits.push(parts.state.trim().toUpperCase())
   if (parts.zip.trim()) bits.push(parts.zip.trim())
   if (parts.keyword.trim() && bits.length === 0) bits.push(parts.keyword.trim())
-  else if (parts.keyword.trim() && !bits.some((b) => b.toLowerCase() === parts.keyword.trim().toLowerCase())) {
+  else if (
+    parts.keyword.trim() &&
+    !bits.some((b) => b.toLowerCase() === parts.keyword.trim().toLowerCase())
+  ) {
     bits.unshift(parts.keyword.trim())
+  }
+  if (parts.minPrice != null || parts.maxPrice != null) {
+    const lo = parts.minPrice != null ? `$${parts.minPrice.toLocaleString()}` : ''
+    const hi = parts.maxPrice != null ? `$${parts.maxPrice.toLocaleString()}` : ''
+    if (lo && hi) bits.push(`${lo}–${hi}`)
+    else if (lo) bits.push(`from ${lo}`)
+    else if (hi) bits.push(`up to ${hi}`)
   }
   return bits.length ? bits.join(' · ') : 'All listings'
 }
@@ -63,6 +100,9 @@ export default function Browse() {
   const initialCity = searchParams.get('city') ?? ''
   const initialStreet = searchParams.get('street') ?? ''
   const initialState = searchParams.get('state') ?? ''
+  const initialMin = searchParams.get('min') ?? ''
+  const initialMax = searchParams.get('max') ?? ''
+  const initialPrice = normalizePriceRange(initialMin, initialMax)
   const hadUrlFilters = hasLocationParams(searchParams)
 
   // Draft fields (what the user types)
@@ -71,6 +111,8 @@ export default function Browse() {
   const [cityDraft, setCityDraft] = useState(initialCity)
   const [streetDraft, setStreetDraft] = useState(initialStreet)
   const [stateDraft, setStateDraft] = useState(initialState)
+  const [minDraft, setMinDraft] = useState(initialMin)
+  const [maxDraft, setMaxDraft] = useState(initialMax)
 
   // Applied filters (updated by Search / List all)
   const [keywordQ, setKeywordQ] = useState(initialQ)
@@ -78,6 +120,8 @@ export default function Browse() {
   const [cityQ, setCityQ] = useState(initialCity)
   const [streetQ, setStreetQ] = useState(initialStreet)
   const [stateQ, setStateQ] = useState(initialState)
+  const [minPrice, setMinPrice] = useState<number | null>(initialPrice.min)
+  const [maxPrice, setMaxPrice] = useState<number | null>(initialPrice.max)
 
   // Expanded on first load when no filters; collapsed if filters came from URL
   const [searchExpanded, setSearchExpanded] = useState(!hadUrlFilters)
@@ -100,7 +144,13 @@ export default function Browse() {
   }, [])
 
   const locationActive = Boolean(
-    keywordQ.trim() || zipQ.trim() || cityQ.trim() || streetQ.trim() || stateQ.trim(),
+    keywordQ.trim() ||
+      zipQ.trim() ||
+      cityQ.trim() ||
+      streetQ.trim() ||
+      stateQ.trim() ||
+      minPrice != null ||
+      maxPrice != null,
   )
 
   const typeCount = useMemo(
@@ -124,9 +174,11 @@ export default function Browse() {
     if (city) rows = rows.filter((l) => norm(l.city).includes(city))
     if (street) rows = rows.filter((l) => norm(l.address).includes(street))
     if (state) rows = rows.filter((l) => norm(l.state).includes(state))
+    if (minPrice != null) rows = rows.filter((l) => l.price >= minPrice)
+    if (maxPrice != null) rows = rows.filter((l) => l.price <= maxPrice)
 
     return rows
-  }, [listings, filter, keywordQ, zipQ, cityQ, streetQ, stateQ])
+  }, [listings, filter, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
 
   function writeParams(next: {
     type?: Filter
@@ -135,6 +187,8 @@ export default function Browse() {
     city?: string
     street?: string
     state?: string
+    min?: number | null
+    max?: number | null
   }) {
     const params = new URLSearchParams()
     const type = next.type ?? filter
@@ -144,11 +198,15 @@ export default function Browse() {
     const city = (next.city ?? cityQ).trim()
     const street = (next.street ?? streetQ).trim()
     const state = (next.state ?? stateQ).trim()
+    const min = next.min !== undefined ? next.min : minPrice
+    const max = next.max !== undefined ? next.max : maxPrice
     if (kw) params.set('q', kw)
     if (zip) params.set('zip', zip)
     if (city) params.set('city', city)
     if (street) params.set('street', street)
     if (state) params.set('state', state)
+    if (min != null) params.set('min', String(min))
+    if (max != null) params.set('max', String(max))
     setSearchParams(params, { replace: true })
   }
 
@@ -165,17 +223,25 @@ export default function Browse() {
 
   function applySearch(e?: FormEvent) {
     e?.preventDefault()
+    const range = normalizePriceRange(minDraft, maxDraft)
+    // Reflect a quiet swap in the draft boxes so Min/Max stay consistent with the filter.
+    setMinDraft(range.min != null ? String(range.min) : minDraft.trim() ? minDraft : '')
+    setMaxDraft(range.max != null ? String(range.max) : maxDraft.trim() ? maxDraft : '')
     setKeywordQ(keywordDraft)
     setZipQ(zipDraft)
     setCityQ(cityDraft)
     setStreetQ(streetDraft)
     setStateQ(stateDraft)
+    setMinPrice(range.min)
+    setMaxPrice(range.max)
     writeParams({
       keyword: keywordDraft,
       zip: zipDraft,
       city: cityDraft,
       street: streetDraft,
       state: stateDraft,
+      min: range.min,
+      max: range.max,
     })
     setSearchExpanded(false)
     scrollToResults()
@@ -187,12 +253,24 @@ export default function Browse() {
     setCityDraft('')
     setStreetDraft('')
     setStateDraft('')
+    setMinDraft('')
+    setMaxDraft('')
     setKeywordQ('')
     setZipQ('')
     setCityQ('')
     setStreetQ('')
     setStateQ('')
-    writeParams({ keyword: '', zip: '', city: '', street: '', state: '' })
+    setMinPrice(null)
+    setMaxPrice(null)
+    writeParams({
+      keyword: '',
+      zip: '',
+      city: '',
+      street: '',
+      state: '',
+      min: null,
+      max: null,
+    })
     setSearchExpanded(false)
     scrollToResults()
   }
@@ -203,10 +281,18 @@ export default function Browse() {
     city: cityQ,
     street: streetQ,
     state: stateQ,
+    minPrice,
+    maxPrice,
   })
 
   const draftDirty = Boolean(
-    keywordDraft.trim() || zipDraft.trim() || cityDraft.trim() || streetDraft.trim() || stateDraft.trim(),
+    keywordDraft.trim() ||
+      zipDraft.trim() ||
+      cityDraft.trim() ||
+      streetDraft.trim() ||
+      stateDraft.trim() ||
+      minDraft.trim() ||
+      maxDraft.trim(),
   )
 
   const title =
@@ -235,7 +321,7 @@ export default function Browse() {
       <div className="browse-heading">
         <h1>{title}</h1>
         <p className="meta">
-          Filter by ZIP, city, street, or state — or type a keyword. MLS rows with a blank ZIP still
+          Filter by ZIP, city, street, state, or price — or type a keyword. MLS rows with a blank ZIP still
           match city / street / state.
         </p>
       </div>
@@ -277,7 +363,7 @@ export default function Browse() {
           onSubmit={applySearch}
         >
           <p className="search-filters-title">Search listings</p>
-          <p className="search-filters-hint">Filter by ZIP, city, street, or state</p>
+          <p className="search-filters-hint">Filter by ZIP, city, street, state, or price</p>
 
           <label className="search-keyword">
             <span>Search</span>
@@ -337,6 +423,28 @@ export default function Browse() {
                 aria-label="State (2-letter abbreviation)"
               />
             </label>
+            <label>
+              Min $
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 2,500"
+                value={minDraft}
+                onChange={(e) => setMinDraft(e.target.value)}
+                aria-label="Minimum price"
+              />
+            </label>
+            <label>
+              Max $
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="e.g. 5,000"
+                value={maxDraft}
+                onChange={(e) => setMaxDraft(e.target.value)}
+                aria-label="Maximum price"
+              />
+            </label>
           </div>
 
           <div className="search-filters-actions">
@@ -375,6 +483,28 @@ export default function Browse() {
             onChange={(e) => setKeywordDraft(e.target.value)}
             aria-label="Search by address, city, ZIP, or state"
           />
+          <label className="search-collapsed-price">
+            <span>Min $</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Min"
+              value={minDraft}
+              onChange={(e) => setMinDraft(e.target.value)}
+              aria-label="Minimum price"
+            />
+          </label>
+          <label className="search-collapsed-price">
+            <span>Max $</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Max"
+              value={maxDraft}
+              onChange={(e) => setMaxDraft(e.target.value)}
+              aria-label="Maximum price"
+            />
+          </label>
           <button type="submit" className="btn search-collapsed-go">
             Search
           </button>

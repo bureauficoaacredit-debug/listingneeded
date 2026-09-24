@@ -697,6 +697,39 @@ a.hero-stat:hover { background: rgba(255,255,255,0.22); text-decoration: none; }
   .search-collapsed-label { max-width: 12rem; }
 }
 
+/* v22: min/max price on collapsed + expanded search bars */
+.search-collapsed-price {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.search-collapsed-price span {
+  font-family: "Montserrat", sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  line-height: 1;
+}
+.search-collapsed-price input {
+  width: 5.25rem;
+  padding: 0.45rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.search-collapsed-price input:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+@media (max-width: 720px) {
+  .search-collapsed-price { flex: 1 1 calc(50% - 0.35rem); }
+  .search-collapsed-price input { width: 100%; }
+}
+
 /* v20: collapsed bar keeps a live search box */
 .search-collapsed-input {
   flex: 1 1 14rem;
