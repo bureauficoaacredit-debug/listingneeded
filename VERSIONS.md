@@ -18,7 +18,8 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v12 | `v12-mls-badge` | MLS-sourced listings show an “MLS listing” badge on Search cards and details |
 | v13 | `v13-admin-mls` | Admin MLS backdoor: add/remove, active (live) toggle, end date, PDF scan → publish |
 | v14 | `v14-pdf-safari-fix` | Fix admin MLS PDF upload crash on Safari/prod (pdf.js legacy + CDN worker + guards) |
-| v15 | `v15-server-pdf-parse` | Admin MLS PDF via server `/api/parse-mls-pdf` (pdf-parse) + Paste MLS text fallback — no client pdf.js (**current**) |
+| v15 | `v15-server-pdf-parse` | Admin MLS PDF via server `/api/parse-mls-pdf` (pdf-parse) + Paste MLS text fallback — no client pdf.js |
+| v16 | `v16-search-bar` | Search: sticky prominent keyword + ZIP/City/Street/State bar, Search + List all — works with empty MLS ZIPs (**current**) |
 
 ## How to restore
 

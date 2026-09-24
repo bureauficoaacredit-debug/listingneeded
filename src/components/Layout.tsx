@@ -7,7 +7,7 @@ export default function Layout() {
       <header className="nav">
         <Link to="/" className="brand"><span className="brand-listing">Listing</span> <span className="brand-needed">Needed</span></Link>
         <nav className="nav-links">
-          <NavLink to="/browse" className={({isActive}) => isActive ? 'active' : ''}>Browse</NavLink>
+          <NavLink to="/browse" className={({isActive}) => isActive ? 'active' : ''}>Search</NavLink>
           <NavLink to="/list" className={({isActive}) => isActive ? 'active' : ''}>List your home</NavLink>
           <a href="tel:2038183242">203-818-3242</a>
         </nav>
