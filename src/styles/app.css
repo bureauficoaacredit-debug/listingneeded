@@ -696,3 +696,22 @@ a.hero-stat:hover { background: rgba(255,255,255,0.22); text-decoration: none; }
   .browse-results { scroll-margin-top: 4.5rem; }
   .search-collapsed-label { max-width: 12rem; }
 }
+
+/* v20: collapsed bar keeps a live search box */
+.search-collapsed-input {
+  flex: 1 1 14rem;
+  min-width: 0;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+.search-collapsed-go {
+  padding: 0.5rem 0.9rem !important;
+  font-size: 0.78rem !important;
+  min-height: 2.2rem;
+}
+@media (max-width: 720px) {
+  .search-collapsed-input { flex-basis: 100%; }
+  .search-collapsed-count { flex: 1 1 auto; }
+}

@@ -27,3 +27,5 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 ## How to restore
 
 Say: “move to v3” (or any number).
+
+| v20 | `v20-search-always-on` | Search: collapsed bar keeps a live search box + Search button; More filters opens full panel; List all shows only when filtered (**current**) |

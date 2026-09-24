@@ -359,38 +359,50 @@ export default function Browse() {
           </div>
         </form>
       ) : (
-        <div
+        <form
           className="search-filters search-filters--sticky search-filters--collapsed"
-          role="status"
-          aria-label="Active search filters"
+          aria-label="Search listings"
+          onSubmit={applySearch}
         >
-          <div className="search-collapsed-summary">
-            <span className="search-collapsed-label">{summary}</span>
-            <span className="search-collapsed-count" aria-live="polite">
-              {locationActive
-                ? `${filtered.length} of ${typeCount}`
-                : `${typeCount} listing${typeCount === 1 ? '' : 's'}`}
-            </span>
-          </div>
+          <input
+            type="search"
+            name="q"
+            className="search-collapsed-input"
+            enterKeyHint="search"
+            autoComplete="off"
+            placeholder="Search city, street, ZIP, or state"
+            value={keywordDraft}
+            onChange={(e) => setKeywordDraft(e.target.value)}
+            aria-label="Search by address, city, ZIP, or state"
+          />
+          <button type="submit" className="btn search-collapsed-go">
+            Search
+          </button>
+          <span className="search-collapsed-count" aria-live="polite">
+            {locationActive
+              ? `${summary} · ${filtered.length} of ${typeCount}`
+              : `${typeCount} listing${typeCount === 1 ? '' : 's'}`}
+          </span>
           <div className="search-collapsed-actions">
             <button
               type="button"
               className="btn ghost search-collapsed-edit"
               onClick={() => setSearchExpanded(true)}
             >
-              Edit search
+              More filters
             </button>
-            <button
-              type="button"
-              className="btn secondary search-collapsed-clear"
-              onClick={listAll}
-              disabled={!locationActive}
-              title="Clear filters and list all"
-            >
-              List all
-            </button>
+            {locationActive ? (
+              <button
+                type="button"
+                className="btn secondary search-collapsed-clear"
+                onClick={listAll}
+                title="Clear filters and list all"
+              >
+                List all
+              </button>
+            ) : null}
           </div>
-        </div>
+        </form>
       )}
 
       <div ref={resultsRef} className="browse-results">
