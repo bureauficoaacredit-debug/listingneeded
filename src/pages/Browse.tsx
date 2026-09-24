@@ -362,22 +362,17 @@ export default function Browse() {
           aria-label="Search listings"
           onSubmit={applySearch}
         >
-          <p className="search-filters-title">Search listings</p>
-          <p className="search-filters-hint">Filter by ZIP, city, street, state, or price</p>
-
-          <label className="search-keyword">
-            <span>Search</span>
-            <input
-              type="search"
-              name="q"
-              enterKeyHint="search"
-              autoComplete="off"
-              placeholder="Type city or ZIP…"
-              value={keywordDraft}
-              onChange={(e) => setKeywordDraft(e.target.value)}
-              aria-label="Search by address, city, ZIP, or state"
-            />
-          </label>
+          <input
+            className="search-keyword-input"
+            type="search"
+            name="q"
+            enterKeyHint="search"
+            autoComplete="off"
+            placeholder="City, street, ZIP, or state…"
+            value={keywordDraft}
+            onChange={(e) => setKeywordDraft(e.target.value)}
+            aria-label="Search by address, city, ZIP, or state"
+          />
 
           <div className="search-filters-row">
             <label>
