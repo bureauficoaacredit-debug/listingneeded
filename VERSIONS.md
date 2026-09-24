@@ -19,7 +19,8 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v13 | `v13-admin-mls` | Admin MLS backdoor: add/remove, active (live) toggle, end date, PDF scan → publish |
 | v14 | `v14-pdf-safari-fix` | Fix admin MLS PDF upload crash on Safari/prod (pdf.js legacy + CDN worker + guards) |
 | v15 | `v15-server-pdf-parse` | Admin MLS PDF via server `/api/parse-mls-pdf` (pdf-parse) + Paste MLS text fallback — no client pdf.js |
-| v16 | `v16-search-bar` | Search: sticky prominent keyword + ZIP/City/Street/State bar, Search + List all — works with empty MLS ZIPs (**current**) |
+| v16 | `v16-search-bar` | Search: sticky prominent keyword + ZIP/City/Street/State bar, Search + List all — works with empty MLS ZIPs |
+| v17 | `v17-remove-all-mls` | Admin: **Remove all MLS** danger button — bulk-deletes is_mls=true; DIY listings stay (**current**) |
 
 ## How to restore
 

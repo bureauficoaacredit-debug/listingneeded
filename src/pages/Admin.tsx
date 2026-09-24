@@ -4,6 +4,7 @@ import { isActiveUntilOk, MLS_OWNER, PARTNER_CATEGORY_LABELS } from '../lib/type
 import {
   allListings,
   allPartnerLinks,
+  deleteAllMlsListings,
   deleteListing,
   deletePartnerLink,
   insertListing,
@@ -132,6 +133,7 @@ export default function Admin() {
   const [pdfName, setPdfName] = useState('')
   const [pasteText, setPasteText] = useState('')
   const [publishing, setPublishing] = useState(false)
+  const [removingMls, setRemovingMls] = useState(false)
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -228,6 +230,42 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : 'Delete failed')
     } finally {
       setBusyId(null)
+    }
+  }
+
+
+  async function handleRemoveAllMls() {
+    const mlsCount = listings.filter((l) => l.is_mls).length
+    if (mlsCount === 0) {
+      setStatus('No MLS listings to remove.')
+      return
+    }
+    if (
+      !confirm(
+        `Remove ALL ${mlsCount} MLS listing(s)? DIY / non-MLS listings will stay. This cannot be undone.`,
+      )
+    ) {
+      return
+    }
+    setRemovingMls(true)
+    setStatus('')
+    setError('')
+    try {
+      const { mode, deleted } = await deleteAllMlsListings()
+      const rows = await allListings()
+      setListings(rows)
+      const dates: Record<string, string> = {}
+      for (const r of rows) {
+        dates[r.id] = r.activeUntil?.slice(0, 10) ?? ''
+      }
+      setEndDateDrafts(dates)
+      const how =
+        mode === 'hard' ? 'hard-deleted' : mode === 'soft' ? 'soft-deleted' : 'removed (mixed hard/soft)'
+      setStatus(`${how} ${deleted} MLS listing(s). DIY listings untouched.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Remove all MLS failed')
+    } finally {
+      setRemovingMls(false)
     }
   }
 
@@ -876,6 +914,29 @@ export default function Admin() {
               {savingAdd ? 'Saving…' : 'Add MLS listing'}
             </button>
           </form>
+        </div>
+      </section>
+
+      {/* Remove all MLS */}
+      <section className="card" style={{ borderColor: '#721c24' }}>
+        <div className="body" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ margin: '0 0 .35rem', color: '#721c24' }}>Remove all MLS</h2>
+            <p className="meta" style={{ margin: 0 }}>
+              Deletes every listing with is_mls=true in one shot. DIY / owner-posted listings are kept.
+              Currently{' '}
+              <strong>{listings.filter((l) => l.is_mls).length}</strong> MLS listing(s) loaded.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn danger"
+            style={{ padding: '0.7rem 1.15rem', fontSize: '0.95rem' }}
+            disabled={removingMls || loading || listings.filter((l) => l.is_mls).length === 0}
+            onClick={() => void handleRemoveAllMls()}
+          >
+            {removingMls ? 'Removing…' : 'Remove all MLS'}
+          </button>
         </div>
       </section>
 

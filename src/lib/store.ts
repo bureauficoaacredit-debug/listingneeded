@@ -312,6 +312,78 @@ export async function deleteListing(id: string): Promise<'hard' | 'soft'> {
   return 'soft'
 }
 
+/**
+ * Admin: remove every listing where is_mls=true. DIY/non-MLS rows are untouched.
+ * Prefers one PostgREST DELETE with is_mls=eq.true (Prefer: return=representation).
+ * Falls back to listing MLS ids and deleting in batches via deleteListing.
+ */
+export async function deleteAllMlsListings(): Promise<{
+  mode: 'hard' | 'soft' | 'mixed'
+  deleted: number
+}> {
+  const bulkPath = '/rest/v1/listings?is_mls=eq.true'
+
+  const delRes = await supabaseFetch(bulkPath, {
+    method: 'DELETE',
+    headers: {
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+  })
+
+  if (delRes.ok) {
+    const deleted = (await delRes.json()) as unknown[]
+    if (Array.isArray(deleted) && deleted.length > 0) {
+      return { mode: 'hard', deleted: deleted.length }
+    }
+  }
+
+  // Bulk hard-delete returned 0 rows or failed — try bulk soft-delete
+  const softRes = await supabaseFetch(bulkPath, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify({ live: false, paid: false }),
+  })
+
+  if (softRes.ok) {
+    const patched = (await softRes.json()) as unknown[]
+    if (Array.isArray(patched) && patched.length > 0) {
+      return { mode: 'soft', deleted: patched.length }
+    }
+  }
+
+  // Fallback: fetch MLS ids and deleteListing in batches
+  const listRes = await supabaseFetch('/rest/v1/listings?is_mls=eq.true&select=id', {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+  })
+  await throwIfNotOk(listRes)
+  const rows = (await listRes.json()) as { id: string }[]
+  if (!rows.length) {
+    return { mode: 'hard', deleted: 0 }
+  }
+
+  let hard = 0
+  let soft = 0
+  const batchSize = 25
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize)
+    for (const row of batch) {
+      const mode = await deleteListing(row.id)
+      if (mode === 'hard') hard += 1
+      else soft += 1
+    }
+  }
+
+  const deleted = hard + soft
+  const mode = hard > 0 && soft > 0 ? 'mixed' : soft > 0 ? 'soft' : 'hard'
+  return { mode, deleted }
+}
+
 /** Partner / resource links (mortgage, screening, etc.) */
 type PartnerRow = {
   id: string
