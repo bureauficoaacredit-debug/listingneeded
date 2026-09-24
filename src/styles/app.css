@@ -524,10 +524,11 @@ a.hero-stat:hover { background: rgba(255,255,255,0.22); text-decoration: none; }
   letter-spacing: 0.04em;
 }
 
-/* Search — sticky, prominent filter bar (v16) */
+/* Search — collapsible sticky filter bar (v19) */
 .browse-page { display: grid; gap: 1rem; }
 .browse-heading h1 { margin: 0 0 0.35rem; }
 .browse-heading .meta { margin: 0; }
+.browse-results { scroll-margin-top: 5.5rem; }
 
 .search-filters {
   background: #fff;
@@ -629,10 +630,69 @@ a.hero-stat:hover { background: rgba(255,255,255,0.22); text-decoration: none; }
   flex: 1 1 auto;
 }
 
-@media (max-width: 640px) {
-  .search-filters--sticky {
+/* Collapsed slim sticky bar (~44–56px) */
+.search-filters--collapsed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  min-height: 48px;
+  padding: 0.45rem 0.85rem;
+}
+.search-collapsed-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.75rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.search-collapsed-label {
+  font-family: "Montserrat", sans-serif;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: min(100%, 28rem);
+}
+.search-collapsed-count {
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.search-collapsed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 0 0 auto;
+}
+.search-collapsed-edit,
+.search-collapsed-clear {
+  padding: 0.4rem 0.75rem !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.03em;
+  min-height: 2rem;
+}
+
+@media (max-width: 720px) {
+  /* Expanded panel scrolls with page so it never covers the list */
+  .search-filters--expanded.search-filters--sticky {
+    position: static;
+    top: auto;
+  }
+  /* Slim collapsed bar stays sticky under the nav */
+  .search-filters--collapsed.search-filters--sticky {
+    position: sticky;
     top: 3.6rem;
+  }
+  .search-filters--expanded {
     padding: 0.85rem 0.9rem;
   }
   .search-filters-submit { width: 100%; }
+  .browse-results { scroll-margin-top: 4.5rem; }
+  .search-collapsed-label { max-width: 12rem; }
 }

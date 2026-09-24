@@ -21,7 +21,8 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v15 | `v15-server-pdf-parse` | Admin MLS PDF via server `/api/parse-mls-pdf` (pdf-parse) + Paste MLS text fallback — no client pdf.js |
 | v16 | `v16-search-bar` | Search: sticky prominent keyword + ZIP/City/Street/State bar, Search + List all — works with empty MLS ZIPs |
 | v17 | `v17-remove-all-mls` | Admin: **Remove all MLS** danger button — bulk-deletes is_mls=true; DIY listings stay |
-| v18 | `v18-excel-upload` | Admin: SMART MLS Excel/CSV upload (SheetJS) → editable preview → batch upsert publish (**current**) |
+| v18 | `v18-excel-upload` | Admin: SMART MLS Excel/CSV upload (SheetJS) → editable preview → batch upsert publish |
+| v19 | `v19-collapsible-search` | Search: after Search/Enter, collapse sticky panel to slim summary bar (Edit search + List all); mobile expanded not sticky (**current**) |
 
 ## How to restore
 
