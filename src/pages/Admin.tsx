@@ -16,6 +16,7 @@ import {
 } from '../lib/store'
 import { parseMlsPasteText, uploadMlsPdf, type MlsDraft } from '../lib/pdfMls'
 import { parseMlsSpreadsheet } from '../lib/excelMls'
+import { importMlsSharedLink } from '../lib/importMlsLink'
 
 const SESSION_KEY = 'listingneeded_admin_ok'
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
@@ -134,6 +135,7 @@ export default function Admin() {
   const [pdfDrafts, setPdfDrafts] = useState<MlsDraft[]>([])
   const [pdfName, setPdfName] = useState('')
   const [pasteText, setPasteText] = useState('')
+  const [mlsLinkUrl, setMlsLinkUrl] = useState('')
   const [publishing, setPublishing] = useState(false)
   const [removingMls, setRemovingMls] = useState(false)
   const [publishProgress, setPublishProgress] = useState('')
@@ -361,6 +363,43 @@ export default function Admin() {
     }
   }
 
+
+  async function handleMlsLinkImport() {
+    const url = mlsLinkUrl.trim()
+    if (!url) {
+      setError('Paste a SMART MLS shared-link URL first.')
+      return
+    }
+    setPdfBusy(true)
+    setError('')
+    setStatus('')
+    setPublishProgress('')
+    setPdfDrafts([])
+    try {
+      const { drafts, skippedNoMls, skippedStatus, totalRows } = await importMlsSharedLink(url)
+      setPdfDrafts(drafts)
+      setPdfName('shared link')
+      const skipBits = [
+        skippedNoMls ? `${skippedNoMls} no MLS#` : '',
+        skippedStatus ? `${skippedStatus} closed/sold/etc` : '',
+      ]
+        .filter(Boolean)
+        .join(', ')
+      const withPhotos = drafts.filter((d) => (d.photoDataUrls?.length ?? 0) > 0).length
+      setStatus(
+        `Imported ${drafts.length} MLS listing(s) from shared link (${totalRows} row(s)${skipBits ? `; skipped ${skipBits}` : ''}; ${withPhotos} with photos). Edit, then Publish (upsert by MLS#).`,
+      )
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('MLS shared-link import failed:', err)
+      setError(`Shared-link import failed: ${msg}`)
+      setPdfName('')
+      setPdfDrafts([])
+    } finally {
+      setPdfBusy(false)
+    }
+  }
+
   async function handlePdfFile(file: File | null) {
     if (!file) return
     setPdfBusy(true)
@@ -521,6 +560,7 @@ export default function Admin() {
         setPdfDrafts([])
         setPdfName('')
         setPasteText('')
+        setMlsLinkUrl('')
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bulk publish failed')
@@ -629,8 +669,8 @@ export default function Admin() {
         <div>
           <h1 style={{ margin: '0 0 .35rem' }}>Admin</h1>
           <p className="meta" style={{ margin: 0 }}>
-            MLS backdoor for {MLS_OWNER.name}: add/remove, active toggle, end date, Excel/PDF bulk
-            publish. Owner defaults to {MLS_OWNER.name} · {MLS_OWNER.phone}.
+            MLS backdoor for {MLS_OWNER.name}: add/remove, active toggle, end date, shared-link / Excel / PDF
+            bulk publish. Owner defaults to {MLS_OWNER.name} · {MLS_OWNER.phone}.
           </p>
         </div>
         <button type="button" className="btn secondary" onClick={handleLock}>
@@ -653,13 +693,39 @@ export default function Admin() {
           <div>
             <h2 style={{ margin: '0 0 .35rem' }}>MLS → Search (uploadable)</h2>
             <p className="meta" style={{ margin: 0 }}>
-              Upload a SMART MLS Excel/CSV export (parsed in-browser), an MLS PDF (server), or paste
+              Paste a SMART MLS shared link, upload an Excel/CSV export, an MLS PDF (server), or paste
               MLS text. Candidates appear in an editable table, then publish as is_mls + paid + live
-              for {MLS_OWNER.name}. Excel rows upsert by MLS number (id = mls_######).
+              for {MLS_OWNER.name}. Shared-link and Excel rows upsert by MLS number (id = mls_######).
             </p>
             <p className="meta" style={{ margin: '0.5rem 0 0', color: '#856404' }}>
               Tip: use Remove all MLS first if you want to replace the old batch.
             </p>
+          </div>
+          <label>
+            Paste MLS link (SMART MLS shared link)
+            <input
+              type="url"
+              placeholder="https://smartmls-portal.connectmls.com/shared-link/…/uuid"
+              value={mlsLinkUrl}
+              disabled={pdfBusy || publishing}
+              onChange={(e) => setMlsLinkUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void handleMlsLinkImport()
+                }
+              }}
+            />
+          </label>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn"
+              disabled={pdfBusy || publishing || !mlsLinkUrl.trim()}
+              onClick={() => void handleMlsLinkImport()}
+            >
+              {pdfBusy ? 'Importing…' : 'Import MLS link'}
+            </button>
           </div>
           <label>
             Excel / CSV (SMART MLS export)
@@ -717,6 +783,7 @@ export default function Admin() {
                   <thead>
                     <tr>
                       <th>Use</th>
+                      <th>Photo</th>
                       <th>Type</th>
                       <th>Address</th>
                       <th>City</th>
@@ -737,6 +804,21 @@ export default function Admin() {
                             checked={d.include}
                             onChange={(e) => updateDraft(d.key, { include: e.target.checked })}
                           />
+                        </td>
+                        <td>
+                          {d.photoDataUrls?.[0] ? (
+                            <img
+                              src={d.photoDataUrls[0]}
+                              alt=""
+                              width={48}
+                              height={36}
+                              style={{ objectFit: 'cover', borderRadius: 4, display: 'block' }}
+                              loading="lazy"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <span className="meta">—</span>
+                          )}
                         </td>
                         <td>
                           <select
@@ -840,6 +922,7 @@ export default function Admin() {
                     setPdfDrafts([])
                     setPdfName('')
                     setPasteText('')
+                    setMlsLinkUrl('')
                   }}
                 >
                   Clear preview

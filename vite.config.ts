@@ -2,80 +2,119 @@ import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vite'
 
-/** Dev-only /api/parse-mls-pdf so Admin upload works without `vercel dev`. */
-function parseMlsPdfApiPlugin(): Plugin {
+function readJsonBody(req: import('http').IncomingMessage): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)))
+    req.on('end', () => {
+      try {
+        const raw = Buffer.concat(chunks).toString('utf8') || '{}'
+        resolve(JSON.parse(raw) as Record<string, unknown>)
+      } catch (err) {
+        reject(err)
+      }
+    })
+    req.on('error', reject)
+  })
+}
+
+function sendJson(
+  res: import('http').ServerResponse,
+  status: number,
+  payload: unknown,
+) {
+  res.statusCode = status
+  res.setHeader('Content-Type', 'application/json')
+  res.end(JSON.stringify(payload))
+}
+
+/** Dev-only /api/* so Admin works without `vercel dev`. */
+function listingNeededApiPlugin(): Plugin {
   return {
-    name: 'parse-mls-pdf-api',
+    name: 'listingneeded-api',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         const url = req.url?.split('?')[0] || ''
-        if (url !== '/api/parse-mls-pdf') return next()
 
-        if (req.method === 'OPTIONS') {
-          res.statusCode = 204
-          res.setHeader('Access-Control-Allow-Origin', '*')
-          res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-          res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-          res.end()
-          return
-        }
-
-        if (req.method !== 'POST') {
-          res.statusCode = 405
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ error: 'Method not allowed' }))
-          return
-        }
-
-        try {
-          // @ts-expect-error plain JS shared with Vercel api/ — no types
-          const { parseMlsCandidates, parseMlsPdfBuffer } = await import('./api/_lib/mlsParse.js')
-
-          const chunks: Buffer[] = []
-          await new Promise<void>((resolve, reject) => {
-            req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)))
-            req.on('end', () => resolve())
-            req.on('error', reject)
-          })
-          const raw = Buffer.concat(chunks)
-          const body = JSON.parse(raw.toString('utf8') || '{}') as {
-            pdfBase64?: string
-            text?: string
-            filename?: string
-          }
-
-          if (body.text != null && String(body.text).trim()) {
-            const text = String(body.text)
-            const drafts = parseMlsCandidates(text)
-            res.statusCode = 200
-            res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ text, drafts, source: 'text' }))
+        if (url === '/api/parse-mls-pdf') {
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 204
+            res.setHeader('Access-Control-Allow-Origin', '*')
+            res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+            res.end()
             return
           }
-
-          if (!body.pdfBase64) {
-            res.statusCode = 400
-            res.setHeader('Content-Type', 'application/json')
-            res.end(JSON.stringify({ error: 'Send JSON { pdfBase64 } or { text }.' }))
+          if (req.method !== 'POST') {
+            sendJson(res, 405, { error: 'Method not allowed' })
             return
           }
-
-          const b64 = String(body.pdfBase64).replace(/^data:application\/pdf;base64,/i, '')
-          const buf = Buffer.from(b64, 'base64')
-          const { text, drafts } = await parseMlsPdfBuffer(buf)
-          res.statusCode = 200
-          res.setHeader('Content-Type', 'application/json')
-          res.end(JSON.stringify({ text, drafts, source: 'pdf' }))
-        } catch (err) {
-          console.error('[vite parse-mls-pdf]', err)
-          res.statusCode = 500
-          res.setHeader('Content-Type', 'application/json')
-          res.end(
-            JSON.stringify({
+          try {
+            const { parseMlsCandidates, parseMlsPdfBuffer } = await import(
+              // @ts-expect-error plain JS shared with Vercel api/ — no types
+              './api/_lib/mlsParse.js'
+            )
+            const body = await readJsonBody(req)
+            if (body.text != null && String(body.text).trim()) {
+              const text = String(body.text)
+              const drafts = parseMlsCandidates(text)
+              sendJson(res, 200, { text, drafts, source: 'text' })
+              return
+            }
+            if (!body.pdfBase64) {
+              sendJson(res, 400, { error: 'Send JSON { pdfBase64 } or { text }.' })
+              return
+            }
+            const b64 = String(body.pdfBase64).replace(/^data:application\/pdf;base64,/i, '')
+            const buf = Buffer.from(b64, 'base64')
+            const { text, drafts } = await parseMlsPdfBuffer(buf)
+            sendJson(res, 200, { text, drafts, source: 'pdf' })
+          } catch (err) {
+            console.error('[vite parse-mls-pdf]', err)
+            sendJson(res, 500, {
               error: err instanceof Error ? err.message : 'PDF parse failed',
-            }),
-          )
+            })
+          }
+          return
         }
+
+        if (url === '/api/import-mls-link') {
+          if (req.method === 'OPTIONS') {
+            res.statusCode = 204
+            res.setHeader('Access-Control-Allow-Origin', '*')
+            res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+            res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+            res.end()
+            return
+          }
+          if (req.method !== 'POST') {
+            sendJson(res, 405, { error: 'Method not allowed' })
+            return
+          }
+          try {
+            const { extractSharedLinkUuid, fetchSharedLinkDrafts } = await import(
+              // @ts-expect-error plain JS shared with Vercel api/ — no types
+              './api/_lib/sharedLinkMls.js'
+            )
+            const body = await readJsonBody(req)
+            const raw = body.url ?? body.link ?? body.sharedLink ?? ''
+            const extracted = extractSharedLinkUuid(raw)
+            if (extracted.error) {
+              sendJson(res, 400, { error: extracted.error })
+              return
+            }
+            const result = await fetchSharedLinkDrafts(extracted.uuid)
+            sendJson(res, 200, result)
+          } catch (err) {
+            console.error('[vite import-mls-link]', err)
+            const msg = err instanceof Error ? err.message : 'Shared-link import failed'
+            const status = /not found|invalid|must be|Could not find|Paste a/i.test(msg) ? 400 : 502
+            sendJson(res, status, { error: msg })
+          }
+          return
+        }
+
+        return next()
       })
     },
   }
@@ -84,5 +123,5 @@ function parseMlsPdfApiPlugin(): Plugin {
 // https://vite.dev/config/
 export default defineConfig({
   base: '/',
-  plugins: [react(), parseMlsPdfApiPlugin()],
+  plugins: [react(), listingNeededApiPlugin()],
 })
