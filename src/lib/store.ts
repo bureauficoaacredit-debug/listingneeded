@@ -603,3 +603,38 @@ export async function deletePartnerLink(id: string): Promise<void> {
   })
   await throwIfNotOk(res)
 }
+
+/**
+ * Admin: remove every DIY / owner-posted listing (is_mls false or null). MLS rows are untouched.
+ * Hard DELETE first; if RLS returns 0 rows, soft-delete (live=false, paid=false).
+ */
+export async function deleteAllDiyListings(): Promise<{ mode: 'hard' | 'soft'; deleted: number }> {
+  const bulkPath = '/rest/v1/listings?or=(is_mls.eq.false,is_mls.is.null)'
+  const delRes = await supabaseFetch(bulkPath, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', Prefer: 'return=representation' },
+  })
+  if (delRes.ok) {
+    const deleted = (await delRes.json()) as unknown[]
+    if (Array.isArray(deleted) && deleted.length > 0) return { mode: 'hard', deleted: deleted.length }
+  }
+  const softRes = await supabaseFetch(bulkPath, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ live: false, paid: false }),
+  })
+  await throwIfNotOk(softRes)
+  const patched = (await softRes.json()) as unknown[]
+  return { mode: 'soft', deleted: Array.isArray(patched) ? patched.length : 0 }
+}
+
+/** Admin: delete every partner link. */
+export async function deleteAllPartnerLinks(): Promise<number> {
+  const res = await supabaseFetch('/rest/v1/partner_links?id=not.is.null', {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', Prefer: 'return=representation' },
+  })
+  await throwIfNotOk(res)
+  const rows = (await res.json()) as unknown[]
+  return Array.isArray(rows) ? rows.length : 0
+}

@@ -1,6 +1,17 @@
 import { Fragment, useEffect, useState, type FormEvent } from 'react'
 import * as XLSX from 'xlsx'
-import { fetchCmaLeads, money, type CmaLead } from '../lib/cma'
+import {
+  deleteAllCmaLeads,
+  deleteCmaLead,
+  fetchCmaLeads,
+  isValidEmail,
+  money,
+  normalizeUsPhone,
+  updateCmaLead,
+  type CmaLead,
+  type CmaLeadEdit,
+} from '../lib/cma'
+import { ConfirmDeleteAll, Modal } from './AdminModal'
 
 const CODE_KEY = 'listingneeded_cma_leads_code'
 
@@ -30,6 +41,7 @@ function leadsToRows(leads: CmaLead[]) {
     'Baths (entered)': l.baths ?? '',
     'Sq ft (entered)': l.sqft ?? '',
     Comps: l.comps_count ?? '',
+    Notes: l.notes ?? '',
     Summary: l.result_summary ?? '',
     'Created (UTC)': l.created_at,
     ID: l.id,
@@ -38,7 +50,7 @@ function leadsToRows(leads: CmaLead[]) {
 
 function download(leads: CmaLead[], kind: 'xlsx' | 'csv') {
   const ws = XLSX.utils.json_to_sheet(leadsToRows(leads))
-  ws['!cols'] = [18, 22, 30, 16, 40, 12, 12, 12, 8, 8, 8, 7, 70, 26, 38].map((wch) => ({ wch }))
+  ws['!cols'] = [18, 22, 30, 16, 40, 12, 12, 12, 8, 8, 8, 7, 40, 70, 26, 38].map((wch) => ({ wch }))
   const stamp = new Date().toISOString().slice(0, 10)
   if (kind === 'csv') {
     const csv = XLSX.utils.sheet_to_csv(ws)
@@ -62,6 +74,72 @@ export default function CmaLeadsPanel() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [openId, setOpenId] = useState<string | null>(null)
+  const [editing, setEditing] = useState<CmaLead | null>(null)
+  const [editForm, setEditForm] = useState<CmaLeadEdit>({ name: '', email: '', phone: '', address: '', notes: '' })
+  const [editError, setEditError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [confirmAll, setConfirmAll] = useState(false)
+  const [deletingAll, setDeletingAll] = useState(false)
+  const [status, setStatus] = useState('')
+
+  function startEdit(l: CmaLead) {
+    setEditing(l)
+    setEditError('')
+    setEditForm({ name: l.name, email: l.email, phone: l.phone, address: l.address, notes: l.notes ?? '' })
+  }
+
+  async function saveEdit(e: FormEvent) {
+    e.preventDefault()
+    if (!editing) return
+    const phone = normalizeUsPhone(editForm.phone)
+    if (!editForm.name.trim()) return setEditError('Name is required.')
+    if (!isValidEmail(editForm.email)) return setEditError('Enter a valid email.')
+    if (!phone) return setEditError('Enter a valid 10-digit US phone number.')
+    if (editForm.address.trim().length < 3) return setEditError('Address is required.')
+    setSaving(true)
+    setEditError('')
+    try {
+      const updated = await updateCmaLead(code, editing.id, { ...editForm, phone })
+      setLeads((prev) => (prev || []).map((x) => (x.id === updated.id ? updated : x)))
+      setStatus(`Saved ${updated.name}.`)
+      setEditing(null)
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function removeLead(l: CmaLead) {
+    if (!confirm(`Delete the lead for ${l.name} (${l.address})? This cannot be undone.`)) return
+    setBusyId(l.id)
+    setError('')
+    try {
+      await deleteCmaLead(code, l.id)
+      setLeads((prev) => (prev || []).filter((x) => x.id !== l.id))
+      setStatus(`Deleted lead ${l.name}.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function removeAll() {
+    setDeletingAll(true)
+    setError('')
+    try {
+      const n = await deleteAllCmaLeads(code)
+      setLeads([])
+      setStatus(`Deleted all ${n} lead(s).`)
+      setConfirmAll(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete all failed')
+    } finally {
+      setDeletingAll(false)
+    }
+  }
 
   async function load(c: string) {
     setLoading(true)
@@ -161,8 +239,12 @@ export default function CmaLeadsPanel() {
             <button type="button" className="btn ghost" onClick={forget} title="Remove the saved access code from this browser">
               Forget code
             </button>
+            <button type="button" className="btn danger" onClick={() => setConfirmAll(true)} disabled={!list.length}>
+              Delete all leads
+            </button>
           </div>
         </div>
+        {status ? <div className="success">{status}</div> : null}
         {error ? <div style={{ color: '#b91c1c', fontSize: '.92rem' }}>{error}</div> : null}
         {list.length ? (
           <div style={{ overflowX: 'auto' }}>
@@ -175,6 +257,7 @@ export default function CmaLeadsPanel() {
                   <th>Phone</th>
                   <th>Address</th>
                   <th>Estimate</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -197,11 +280,28 @@ export default function CmaLeadsPanel() {
                         </td>
                         <td>{l.address}</td>
                         <td style={{ whiteSpace: 'nowrap' }}><strong>{money(l.estimate)}</strong></td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <div className="row-actions">
+                            <button type="button" className="btn secondary btn-sm" onClick={() => startEdit(l)}>
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              className="btn danger btn-sm"
+                              onClick={() => void removeLead(l)}
+                              disabled={busyId === l.id}
+                            >
+                              {busyId === l.id ? '…' : 'Delete'}
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                       {open ? (
                         <tr className="lead-detail">
-                          <td colSpan={6}>
+                          <td colSpan={7}>
                             <dl>
+                              <dt>Notes</dt>
+                              <dd>{l.notes || '—'}</dd>
                               <dt>Estimate range</dt>
                               <dd>{l.estimate_low ? `${money(l.estimate_low)} – ${money(l.estimate_high)}` : '—'}</dd>
                               <dt>Entered details</dt>
@@ -237,6 +337,57 @@ export default function CmaLeadsPanel() {
           <p className="meta" style={{ margin: 0 }}>No CMA requests yet.</p>
         ) : null}
       </div>
+      {editing ? (
+        <Modal title={`Edit lead — ${editing.name}`} onClose={() => setEditing(null)}>
+          <form className="modal-body" onSubmit={saveEdit}>
+            <label>
+              Name
+              <input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </label>
+            <div className="row">
+              <label>
+                Email
+                <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+              </label>
+              <label>
+                Phone
+                <input type="tel" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+              </label>
+            </div>
+            <label>
+              Address
+              <input value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+            </label>
+            <label>
+              Notes
+              <textarea
+                rows={4}
+                value={editForm.notes}
+                onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                placeholder="Follow-up notes (only visible in Admin)"
+              />
+            </label>
+            {editError ? <div style={{ color: '#b91c1c', fontSize: '.92rem' }}>{editError}</div> : null}
+            <div className="modal-actions">
+              <button type="button" className="btn secondary" onClick={() => setEditing(null)} disabled={saving}>
+                Cancel
+              </button>
+              <button type="submit" className="btn" disabled={saving}>
+                {saving ? 'Saving…' : 'Save lead'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+      {confirmAll ? (
+        <ConfirmDeleteAll
+          title="Delete all leads"
+          message={<>This permanently deletes all <strong>{list.length}</strong> CMA lead(s). Download an Excel copy first if you need one.</>}
+          busy={deletingAll}
+          onConfirm={removeAll}
+          onCancel={() => setConfirmAll(false)}
+        />
+      ) : null}
     </section>
   )
 }

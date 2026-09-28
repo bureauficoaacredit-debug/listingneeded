@@ -933,3 +933,19 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .lead-detail dd { margin: 0; }
 .lead-detail .btn { padding: .45rem .8rem; font-size: .8rem; }
 @media (max-width: 560px) { .lead-detail dl { grid-template-columns: 1fr; } }
+
+/* ---------- v28 edit / delete / delete-all ---------- */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(10, 20, 35, .55); display: grid; place-items: center; padding: 1rem; z-index: 1000; overflow-y: auto; }
+.modal-card { background: #fff; width: min(100%, 560px); max-height: calc(100vh - 2rem); overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); border-top: 4px solid #0B3A6E; }
+.modal-card.wide { width: min(100%, 820px); }
+.modal-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.25rem .5rem; }
+.modal-head h2 { margin: 0; font-size: 1.1rem; }
+.modal-x { background: none; border: none; font-size: 1.8rem; line-height: 1; cursor: pointer; color: var(--muted); }
+.modal-body { display: grid; gap: .8rem; padding: .5rem 1.25rem 1.25rem; }
+.modal-actions { display: flex; justify-content: flex-end; gap: .5rem; flex-wrap: wrap; }
+.danger-note { background: #fdecea; border: 1px solid #f5c2c0; color: #721c24; padding: .8rem 1rem; }
+.btn.danger.big-danger { padding: .7rem 1.1rem; font-size: .9rem; }
+.btn.btn-sm { padding: .35rem .65rem; font-size: .75rem; }
+.row-actions { display: flex; gap: .35rem; flex-wrap: nowrap; }
+.check-label { display: flex; align-items: center; gap: .5rem; align-self: end; padding-bottom: .7rem; }
+.check-label input { width: auto; }

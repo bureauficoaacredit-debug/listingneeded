@@ -4,7 +4,9 @@ import { isActiveUntilOk, MLS_OWNER, PARTNER_CATEGORY_LABELS } from '../lib/type
 import {
   allListings,
   allPartnerLinks,
+  deleteAllDiyListings,
   deleteAllMlsListings,
+  deleteAllPartnerLinks,
   deleteListing,
   deletePartnerLink,
   insertListing,
@@ -19,6 +21,8 @@ import { parseMlsSpreadsheet } from '../lib/excelMls'
 import { importMlsSharedLink } from '../lib/importMlsLink'
 import { useSearchParams } from 'react-router-dom'
 import CmaLeadsPanel from '../components/CmaLeadsPanel'
+import { ConfirmDeleteAll } from '../components/AdminModal'
+import { ListingEditModal, PartnerEditModal } from '../components/AdminEditors'
 
 const SESSION_KEY = 'listingneeded_admin_ok'
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
@@ -129,6 +133,12 @@ export default function Admin() {
   const [partnerSetupError, setPartnerSetupError] = useState('')
   const [status, setStatus] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [editListing, setEditListing] = useState<Listing | null>(null)
+  const [editLink, setEditLink] = useState<PartnerLink | null>(null)
+  const [confirmDiy, setConfirmDiy] = useState(false)
+  const [removingDiy, setRemovingDiy] = useState(false)
+  const [confirmLinks, setConfirmLinks] = useState(false)
+  const [removingLinks, setRemovingLinks] = useState(false)
   const [form, setForm] = useState<LinkForm>(emptyForm())
   const [savingLink, setSavingLink] = useState(false)
   const [addForm, setAddForm] = useState<AddForm>(emptyAddForm())
@@ -276,6 +286,42 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : 'Remove all MLS failed')
     } finally {
       setRemovingMls(false)
+    }
+  }
+
+  async function handleRemoveAllDiy() {
+    setRemovingDiy(true)
+    setStatus('')
+    setError('')
+    try {
+      const { mode, deleted } = await deleteAllDiyListings()
+      const rows = await allListings()
+      setListings(rows)
+      const dates: Record<string, string> = {}
+      for (const r of rows) dates[r.id] = r.activeUntil?.slice(0, 10) ?? ''
+      setEndDateDrafts(dates)
+      setStatus(`${mode === 'hard' ? 'Deleted' : 'Soft-deleted'} ${deleted} DIY listing(s). MLS listings untouched.`)
+      setConfirmDiy(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete all DIY failed')
+    } finally {
+      setRemovingDiy(false)
+    }
+  }
+
+  async function handleRemoveAllLinks() {
+    setRemovingLinks(true)
+    setStatus('')
+    setError('')
+    try {
+      const n = await deleteAllPartnerLinks()
+      setLinks([])
+      setStatus(`Deleted ${n} partner link(s).`)
+      setConfirmLinks(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete all partner links failed')
+    } finally {
+      setRemovingLinks(false)
     }
   }
 
@@ -614,7 +660,7 @@ export default function Admin() {
   }
 
   async function removeLink(link: PartnerLink) {
-    if (!confirm(`Remove “${link.title}”?`)) return
+    if (!confirm(`Delete partner link “${link.title}”?`)) return
     setBusyId(link.id)
     setError('')
     try {
@@ -921,7 +967,7 @@ export default function Admin() {
                             className="btn danger"
                             onClick={() => removeDraft(d.key)}
                           >
-                            Drop
+                            Delete
                           </button>
                         </td>
                       </tr>
@@ -953,7 +999,7 @@ export default function Admin() {
                     setMlsLinkUrl('')
                   }}
                 >
-                  Clear preview
+                  Delete all (clear preview)
                 </button>
               </div>
             </>
@@ -1123,6 +1169,28 @@ export default function Admin() {
         </div>
       </section>
 
+      {/* Delete all DIY */}
+      <section className="card" style={{ borderColor: '#721c24' }}>
+        <div className="body" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ margin: '0 0 .35rem', color: '#721c24' }}>Delete all DIY listings</h2>
+            <p className="meta" style={{ margin: 0 }}>
+              Deletes every owner-posted (non-MLS) listing. MLS listings are kept. Currently{' '}
+              <strong>{listings.filter((l) => !l.is_mls).length}</strong> DIY listing(s) loaded.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn danger"
+            style={{ padding: '0.7rem 1.15rem', fontSize: '0.95rem' }}
+            disabled={removingDiy || loading || listings.filter((l) => !l.is_mls).length === 0}
+            onClick={() => setConfirmDiy(true)}
+          >
+            Delete all DIY
+          </button>
+        </div>
+      </section>
+
       {/* All listings with toggle / end date / delete */}
       <section>
         <h2 style={{ margin: '0 0 .75rem' }}>All listings</h2>
@@ -1224,6 +1292,15 @@ export default function Admin() {
                     </td>
                     <td className="meta">{formatDate(l.createdAt)}</td>
                     <td style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="btn secondary"
+                        style={{ padding: '0.4rem 0.7rem', fontSize: '0.8rem' }}
+                        disabled={busyId === l.id}
+                        onClick={() => setEditListing(l)}
+                      >
+                        Edit
+                      </button>
                       <button
                         type="button"
                         className="btn secondary"
@@ -1344,6 +1421,12 @@ export default function Admin() {
           {links.length === 0 ? (
             <p className="meta">No partner links yet.</p>
           ) : (
+            <>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn danger" onClick={() => setConfirmLinks(true)} disabled={removingLinks}>
+                Delete all partner links
+              </button>
+            </div>
             <div style={{ overflowX: 'auto' }}>
               <table className="admin-table">
                 <thead>
@@ -1379,6 +1462,15 @@ export default function Admin() {
                           className="btn secondary"
                           style={{ padding: '0.4rem 0.7rem', fontSize: '0.8rem' }}
                           disabled={busyId === link.id}
+                          onClick={() => setEditLink(link)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          style={{ padding: '0.4rem 0.7rem', fontSize: '0.8rem' }}
+                          disabled={busyId === link.id}
                           onClick={() => void toggleLink(link)}
                         >
                           {link.enabled ? 'Hide' : 'Show'}
@@ -1389,7 +1481,7 @@ export default function Admin() {
                           disabled={busyId === link.id}
                           onClick={() => void removeLink(link)}
                         >
-                          Remove
+                          Delete
                         </button>
                       </td>
                     </tr>
@@ -1397,10 +1489,53 @@ export default function Admin() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
       </section>
       </>
+      ) : null}
+
+      {editListing ? (
+        <ListingEditModal
+          listing={editListing}
+          onClose={() => setEditListing(null)}
+          onSaved={(u) => {
+            setListings((prev) => prev.map((row) => (row.id === u.id ? u : row)))
+            setEndDateDrafts((prev) => ({ ...prev, [u.id]: u.activeUntil?.slice(0, 10) ?? '' }))
+            setStatus(`Saved ${u.address}.`)
+            setEditListing(null)
+          }}
+        />
+      ) : null}
+      {editLink ? (
+        <PartnerEditModal
+          link={editLink}
+          onClose={() => setEditLink(null)}
+          onSaved={(u) => {
+            setLinks((prev) => prev.map((row) => (row.id === u.id ? u : row)))
+            setStatus(`Saved ${u.title}.`)
+            setEditLink(null)
+          }}
+        />
+      ) : null}
+      {confirmDiy ? (
+        <ConfirmDeleteAll
+          title="Delete all DIY listings"
+          message={<>This deletes all <strong>{listings.filter((l) => !l.is_mls).length}</strong> owner-posted (non-MLS) listing(s). MLS listings stay.</>}
+          busy={removingDiy}
+          onConfirm={handleRemoveAllDiy}
+          onCancel={() => setConfirmDiy(false)}
+        />
+      ) : null}
+      {confirmLinks ? (
+        <ConfirmDeleteAll
+          title="Delete all partner links"
+          message={<>This deletes all <strong>{links.length}</strong> partner link(s) from the homepage.</>}
+          busy={removingLinks}
+          onConfirm={handleRemoveAllLinks}
+          onCancel={() => setConfirmLinks(false)}
+        />
       ) : null}
     </div>
   )

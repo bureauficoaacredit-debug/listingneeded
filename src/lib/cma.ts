@@ -75,6 +75,7 @@ export type CmaLead = {
   comps_count: number | null
   result_summary: string | null
   email_status: string | null
+  notes: string | null
 }
 
 /** Same rules as the server: 10-digit NANP number (optional leading 1). Returns "(203) 818-3242" or null. */
@@ -112,20 +113,41 @@ export async function requestCma(body: Record<string, unknown>): Promise<CmaResp
 }
 
 /**
- * Admin: read leads through the token-gated Postgres function public.get_cma_leads(p_token).
- * The table itself has no public read policy; the function only returns rows when the code's SHA-256
- * matches the hash stored in the private schema (not reachable through the public API).
+ * Admin lead functions (Postgres SECURITY DEFINER RPCs). Every call carries the leads access code;
+ * the database checks its SHA-256 against the hash stored in the private schema before doing anything.
+ * The table itself has no public read / update / delete policy.
  */
-export async function fetchCmaLeads(accessCode: string): Promise<CmaLead[]> {
-  const res = await supabaseFetch('/rest/v1/rpc/get_cma_leads', {
+async function leadsRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
+  const res = await supabaseFetch(`/rest/v1/rpc/${fn}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ p_token: accessCode.trim() }),
+    body: JSON.stringify(args),
   })
   const data = await res.json().catch(() => null)
   if (!res.ok) {
-    const msg = (data && (data.message as string)) || `Could not load leads (${res.status})`
+    const msg = (data && (data.message as string)) || `Request failed (${res.status})`
     throw new Error(/Invalid leads access code/i.test(msg) ? 'Wrong access code.' : msg)
   }
-  return data as CmaLead[]
+  return data as T
 }
+
+export const fetchCmaLeads = (code: string) => leadsRpc<CmaLead[]>('get_cma_leads', { p_token: code.trim() })
+
+export type CmaLeadEdit = { name: string; email: string; phone: string; address: string; notes: string }
+
+export const updateCmaLead = (code: string, id: string, e: CmaLeadEdit) =>
+  leadsRpc<CmaLead>('update_cma_lead', {
+    p_token: code,
+    p_id: id,
+    p_name: e.name,
+    p_email: e.email,
+    p_phone: e.phone,
+    p_address: e.address,
+    p_notes: e.notes,
+  })
+
+export const deleteCmaLead = (code: string, id: string) =>
+  leadsRpc<number>('delete_cma_lead', { p_token: code, p_id: id })
+
+export const deleteAllCmaLeads = (code: string) =>
+  leadsRpc<number>('delete_all_cma_leads', { p_token: code, p_confirm: 'DELETE' })
