@@ -25,27 +25,25 @@ function BrandMark() {
         fill="#3FA34A"
       />
       {/* Left eye — soft vertical oval, tilted in */}
-      <g transform="rotate(-14 18.2 27.5)">
-        <ellipse
-          className="brand-mark-eye brand-mark-eye--left"
-          cx="18.2"
-          cy="27.5"
-          rx="2.6"
-          ry="4.4"
-          fill="#142018"
-        />
-      </g>
+      <ellipse
+        className="brand-mark-eye brand-mark-eye--left"
+        cx="18.2"
+        cy="27.5"
+        rx="2.6"
+        ry="4.4"
+        transform="rotate(-14 18.2 27.5)"
+        fill="#142018"
+      />
       {/* Right eye — winks on brand hover */}
-      <g transform="rotate(14 29.8 27.5)">
-        <ellipse
-          className="brand-mark-eye brand-mark-eye--right"
-          cx="29.8"
-          cy="27.5"
-          rx="2.6"
-          ry="4.4"
-          fill="#142018"
-        />
-      </g>
+      <ellipse
+        className="brand-mark-eye brand-mark-eye--right"
+        cx="29.8"
+        cy="27.5"
+        rx="2.6"
+        ry="4.4"
+        transform="rotate(14 29.8 27.5)"
+        fill="#142018"
+      />
     </svg>
   )
 }
