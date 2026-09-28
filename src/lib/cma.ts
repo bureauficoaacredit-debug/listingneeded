@@ -1,3 +1,5 @@
+import { supabaseFetch } from './supabase'
+
 export type CmaComp = {
   address: string
   town: string
@@ -109,9 +111,21 @@ export async function requestCma(body: Record<string, unknown>): Promise<CmaResp
   return data as CmaResponse
 }
 
-export async function fetchCmaLeads(adminPassword: string): Promise<CmaLead[]> {
-  const res = await fetch('/api/cma-leads', { headers: { 'x-admin-password': adminPassword } })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || `Could not load leads (${res.status})`)
-  return data.leads as CmaLead[]
+/**
+ * Admin: read leads through the token-gated Postgres function public.get_cma_leads(p_token).
+ * The table itself has no public read policy; the function only returns rows when the code's SHA-256
+ * matches the hash stored in the private schema (not reachable through the public API).
+ */
+export async function fetchCmaLeads(accessCode: string): Promise<CmaLead[]> {
+  const res = await supabaseFetch('/rest/v1/rpc/get_cma_leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_token: accessCode.trim() }),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    const msg = (data && (data.message as string)) || `Could not load leads (${res.status})`
+    throw new Error(/Invalid leads access code/i.test(msg) ? 'Wrong access code.' : msg)
+  }
+  return data as CmaLead[]
 }

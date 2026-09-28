@@ -103,7 +103,7 @@ async function resendSend(apiKey, payload) {
  */
 export async function sendCmaEmails(result, lead, error) {
   const cfg = emailConfig()
-  if (!cfg.apiKey) return 'not sent: RESEND_API_KEY not set'
+  if (!cfg.apiKey) return null // email not configured — nothing to report
   const parts = []
   if (result) {
     try {

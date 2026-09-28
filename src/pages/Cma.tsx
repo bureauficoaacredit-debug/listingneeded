@@ -28,7 +28,6 @@ export default function Cma() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [data, setData] = useState<CmaResponse | null>(null)
-  const [sentTo, setSentTo] = useState('')
 
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: k === 'phone' ? formatPhoneInput(e.target.value) : e.target.value }))
@@ -48,7 +47,6 @@ export default function Cma() {
     try {
       const res = await requestCma({ ...form, phone: normalizeUsPhone(form.phone) })
       setData(res)
-      setSentTo(form.email.trim())
       setTimeout(() => document.getElementById('cma-results')?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
@@ -66,7 +64,7 @@ export default function Cma() {
         <h1>What’s my home worth?</h1>
         <p className="lead">
           Get an instant comparative market analysis from recorded Connecticut sales, town assessor records
-          and active listings. See it on screen, with a copy by email.
+          and active listings. Results show instantly on this page.
         </p>
       </section>
 
@@ -98,7 +96,7 @@ export default function Cma() {
           </label>
         </div>
 
-        <h2>Where should we send your report?</h2>
+        <h2>Your contact info</h2>
         <div className="row">
           <label>
             Name *
@@ -151,12 +149,6 @@ export default function Cma() {
 
       {r ? (
         <section id="cma-results" className="cma-results">
-          <div className={data?.emailed ? 'success' : 'cma-note'}>
-            {data?.emailed
-              ? `A copy of this report was emailed to ${sentTo}.`
-              : 'Your request was received. Marcel will follow up with a full report.'}
-          </div>
-
           <div className="card cma-estimate">
             <p className="cma-kicker">Estimated value · {r.subject.matchedAddress}</p>
             <div className="cma-value">{r.estimate ? money(r.estimate.value) : 'Not enough data'}</div>

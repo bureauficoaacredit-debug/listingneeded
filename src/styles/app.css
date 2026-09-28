@@ -917,3 +917,19 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .cma-sources ul { margin: .25rem 0 .75rem; padding-left: 1.1rem; display: grid; gap: .3rem; font-size: .9rem; }
 .cma-disclaimer { font-size: .82rem; margin: 0; }
 .leads-table td { font-size: .85rem; }
+
+/* ---------- v27 admin leads ---------- */
+.admin-tabs { display: flex; gap: .5rem; border-bottom: 2px solid var(--line); flex-wrap: wrap; }
+.admin-tab { background: none; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; padding: .7rem 1rem; font: inherit; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: .85rem; color: var(--muted); cursor: pointer; }
+.admin-tab:hover { color: #0B3A6E; }
+.admin-tab.active { color: #0B3A6E; border-bottom-color: #0B3A6E; }
+.leads-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
+.leads-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.lead-row { cursor: pointer; }
+.lead-row:hover td, .lead-row.open td { background: #f3f7fc; }
+.lead-detail td { background: #f8fafc; }
+.lead-detail dl { display: grid; grid-template-columns: max-content 1fr; gap: .45rem 1rem; margin: 0; }
+.lead-detail dt { font-weight: 700; color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; padding-top: .15rem; }
+.lead-detail dd { margin: 0; }
+.lead-detail .btn { padding: .45rem .8rem; font-size: .8rem; }
+@media (max-width: 560px) { .lead-detail dl { grid-template-columns: 1fr; } }

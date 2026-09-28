@@ -53,14 +53,14 @@ export async function handleCma(body) {
   })
   if (!leadRes.saved) console.error('[cma] lead not saved:', leadRes.error)
 
-  const emailed = /requester: sent/.test(emailStatus)
+  const emailed = /requester: sent/.test(emailStatus || '')
   if (!result) {
     return {
       status: failure?.status || 502,
       body: { error: failure?.message || 'CMA failed', leadSaved: leadRes.saved, emailed: false },
     }
   }
-  return { status: 200, body: { result, leadSaved: leadRes.saved, emailed, emailStatus: emailed ? 'sent' : emailStatus } }
+  return { status: 200, body: { result, leadSaved: leadRes.saved, emailed, emailStatus: emailed ? 'sent' : null } }
 }
 
 function safeEq(a, b) {
