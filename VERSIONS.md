@@ -27,7 +27,8 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v21 | `v21-paste-mls-link` | Admin: paste SMART MLS shared link → `/api/import-mls-link` → editable preview (w/ thumbs) → batch upsert |
 | v22 | `v22-price-range` | Search: Min $ / Max $ price filters on the always-visible bar (collapsed + full panel), with Search/List all |
 | v23 | `v23-compact-search` | Search: drop panel title/subtitle/Search label; tighter padding so the filter box uses less vertical space |
-| v24 | `v24-triangle-header` | Tall dark-blue header (#0B3A6E); soft green triangle logo (Realtor Marcel style) + white LISTING NEEDED; wine Search icon + List your home button; phone; hover wink (**current**) |
+| v24 | `v24-triangle-header` | Tall dark-blue header (#0B3A6E); soft green triangle logo (Realtor Marcel style) + white LISTING NEEDED; wine Search icon + List your home button; phone; hover wink |
+| v25 | `v25-header-mobile` | Header aligned: logo, wine search icon, List button, phone share one centerline on desktop; phones stack a centered logo row over a centered actions row (no overflow) (**current**) |
 
 ## How to restore
 

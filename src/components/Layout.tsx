@@ -73,6 +73,27 @@ function SearchIcon() {
   )
 }
 
+function PhoneIcon() {
+  return (
+    <svg
+      className="nav-phone-icon"
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        d="M7.5 3.75h2.2l1.1 4.4-1.7 1.05a12.5 12.5 0 0 0 5.7 5.7l1.05-1.7 4.4 1.1v2.2A1.75 1.75 0 0 1 18.5 18.3C10.7 18.3 5.7 13.3 5.7 5.5A1.75 1.75 0 0 1 7.5 3.75Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 export default function Layout() {
   return (
     <div className="shell">
@@ -94,10 +115,12 @@ export default function Layout() {
             to="/list"
             className={({ isActive }) => `nav-list-btn${isActive ? ' active' : ''}`}
           >
-            List your home
+            <span className="nav-list-full">List your home</span>
+            <span className="nav-list-short">List</span>
           </NavLink>
-          <a className="nav-phone" href="tel:2038183242">
-            203-818-3242
+          <a className="nav-phone" href="tel:2038183242" aria-label="Call 203-818-3242" title="203-818-3242">
+            <span className="nav-phone-text">203-818-3242</span>
+            <PhoneIcon />
           </a>
         </nav>
       </header>

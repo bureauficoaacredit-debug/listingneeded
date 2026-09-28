@@ -71,7 +71,7 @@ h1, h2, h3 {
   gap: 0.7rem;
 }
 .brand:hover { text-decoration: none; opacity: 1; color: #fff; }
-.brand-wordmark { color: #fff; white-space: nowrap; }
+.brand-wordmark { color: #fff; white-space: nowrap; line-height: 1; padding-top: 0.08em; }
 .brand-mark {
   flex-shrink: 0;
   width: 2.75rem;
@@ -98,9 +98,18 @@ h1, h2, h3 {
 
 .nav-links {
   display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 1.1rem;
+  flex-wrap: nowrap;
   align-items: center;
+}
+/* v25: every header action shares one height so they center on one line */
+.nav-links > a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.6rem;
+  line-height: 1;
+  box-sizing: border-box;
 }
 .nav-links a {
   color: #fff;
@@ -119,7 +128,8 @@ h1, h2, h3 {
   align-items: center;
   justify-content: center;
   color: #C41E3A !important;
-  padding: 0.2rem;
+  width: 2.6rem;
+  padding: 0;
   border-radius: 6px;
   line-height: 0;
 }
@@ -159,21 +169,59 @@ h1, h2, h3 {
 }
 .nav-phone:hover { opacity: 1; text-decoration: underline; }
 
-@media (max-width: 720px) {
+.nav-list-short { display: none; }
+.nav-phone-icon { display: none; }
+.nav-phone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  /* v25: symmetric stacked header — brand row centered, actions row centered */
   .nav {
-    padding: 0.85rem 0.9rem;
-    min-height: 4.4rem;
-    gap: 0.65rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 0.75rem 0.75rem;
+    min-height: 0;
   }
-  .brand { gap: 0.45rem; font-size: 1.25rem; letter-spacing: 0.05em; }
-  .brand-mark { width: 2.2rem; height: 2.2rem; }
-  .nav-links { gap: 0.55rem; }
+  .brand {
+    gap: 0.45rem;
+    font-size: 1.45rem;
+    letter-spacing: 0.06em;
+    justify-content: center;
+    max-width: 100%;
+  }
+  .brand-mark { width: 2.1rem; height: 2.1rem; }
+  .nav-links {
+    gap: 0.6rem;
+    flex-wrap: nowrap;
+    justify-content: center;
+    width: 100%;
+  }
+  .nav-links > a { height: 2.4rem; }
   .nav-list-btn {
-    padding: 0.5rem 0.7rem !important;
-    font-size: 0.7rem !important;
+    padding: 0 0.85rem !important;
+    font-size: 0.72rem !important;
   }
-  .nav-phone { font-size: 0.78rem !important; }
+  .nav-phone { font-size: 0.8rem !important; }
+  .nav-search { width: 2.4rem; }
   .nav-search-icon { width: 24px; height: 24px; }
+}
+
+/* Only the tiniest phones compact to "List" + a phone icon (still a tel: link) */
+@media (max-width: 359px) {
+  .brand { font-size: 1.2rem; }
+  .brand-mark { width: 1.85rem; height: 1.85rem; }
+  .nav-links { gap: 0.5rem; }
+  .nav-list-full { display: none; }
+  .nav-list-short { display: inline; }
+  .nav-phone-text { display: none; }
+  .nav-phone-icon { display: block; color: #fff; }
+  .nav-phone { width: 2.4rem; border-radius: 6px; }
 }
 
 .btn {
