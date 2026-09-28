@@ -5,6 +5,7 @@ import Browse from './pages/Browse'
 import List from './pages/List'
 import ListingDetail from './pages/ListingDetail'
 import Admin from './pages/Admin'
+import Cma from './pages/Cma'
 
 function ListedBanner() {
   const { search } = useLocation()
@@ -24,6 +25,7 @@ export default function App() {
         <Route path="browse" element={<Browse />} />
         <Route path="list" element={<List />} />
         <Route path="listing/:id" element={<><ListedBanner /><ListingDetail /></>} />
+        <Route path="cma" element={<Cma />} />
         <Route path="admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

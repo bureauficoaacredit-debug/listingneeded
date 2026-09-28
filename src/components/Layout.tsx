@@ -137,6 +137,10 @@ export default function Layout() {
               <a href="tel:2038183242">203-818-3242</a>
             </div>
             <div className="meta" style={{ marginTop: '.5rem' }}>
+              <Link to="/cma" style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>
+                What’s my home worth?
+              </Link>{' '}
+              ·{' '}
               <Link to="/admin" style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>
                 Admin
               </Link>

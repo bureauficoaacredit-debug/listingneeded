@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <div className="home">
       <section className="hero hero-centered">
-        <p className="eyebrow eyebrow-soft">Buy. Sell. Rent.</p>
+        <Link className="eyebrow eyebrow-soft eyebrow-link" to="/cma">What’s my home worth?</Link>
         <h1 className="hero-title-pair">
           <span>Fully automated</span>
           <span className="hero-title-sep" aria-hidden="true" />

@@ -28,7 +28,8 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 | v22 | `v22-price-range` | Search: Min $ / Max $ price filters on the always-visible bar (collapsed + full panel), with Search/List all |
 | v23 | `v23-compact-search` | Search: drop panel title/subtitle/Search label; tighter padding so the filter box uses less vertical space |
 | v24 | `v24-triangle-header` | Tall dark-blue header (#0B3A6E); soft green triangle logo (Realtor Marcel style) + white LISTING NEEDED; wine Search icon + List your home button; phone; hover wink |
-| v25 | `v25-header-mobile` | Header aligned: logo, wine search icon, List button, phone share one centerline on desktop; phones stack a centered logo row over a centered actions row (no overflow) (**current**) |
+| v25 | `v25-header-mobile` | Mobile-only header fix: phones stack a centered logo row over a centered actions row (search, List, phone on one centerline, no overflow; logo eyes fixed on mobile). Desktop header identical to v24 (final commit b7db0b0) |
+| v26 | `v26-cma-tool` | “What’s my home worth?” CMA at /#/cma (the old non-clickable BUY. SELL. RENT. pill on the home hero now links there). Name + email + US phone required; comps from CT recorded sales + town assessor data (data.ct.gov) + Listing Needed active listings; leads saved to Supabase `cma_leads` and listed in Admin; report emailed via Resend when `RESEND_API_KEY` is set (**current**) |
 
 ## How to restore
 

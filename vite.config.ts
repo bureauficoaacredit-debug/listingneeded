@@ -114,6 +114,27 @@ function listingNeededApiPlugin(): Plugin {
           return
         }
 
+        if (url === '/api/cma' && req.method === 'POST') {
+          try {
+            // @ts-expect-error plain JS shared with Vercel api/ — no types
+            const { handleCma } = await import('./api/_lib/cmaHandlers.js')
+            const out = await handleCma(await readJsonBody(req))
+            sendJson(res, out.status, out.body)
+          } catch (err) {
+            console.error('[vite cma]', err)
+            sendJson(res, 500, { error: err instanceof Error ? err.message : 'CMA failed' })
+          }
+          return
+        }
+
+        if (url === '/api/cma-leads' && req.method === 'GET') {
+          // @ts-expect-error plain JS shared with Vercel api/ — no types
+          const { handleCmaLeads } = await import('./api/_lib/cmaHandlers.js')
+          const out = await handleCmaLeads(req.headers['x-admin-password'])
+          sendJson(res, out.status, out.body)
+          return
+        }
+
         return next()
       })
     },

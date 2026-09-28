@@ -17,6 +17,7 @@ import {
 import { parseMlsPasteText, uploadMlsPdf, type MlsDraft } from '../lib/pdfMls'
 import { parseMlsSpreadsheet } from '../lib/excelMls'
 import { importMlsSharedLink } from '../lib/importMlsLink'
+import { fetchCmaLeads, money, type CmaLead } from '../lib/cma'
 
 const SESSION_KEY = 'listingneeded_admin_ok'
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
@@ -140,6 +141,27 @@ export default function Admin() {
   const [removingMls, setRemovingMls] = useState(false)
   const [publishProgress, setPublishProgress] = useState('')
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
+  const [cmaLeads, setCmaLeads] = useState<CmaLead[]>([])
+  const [cmaLeadsError, setCmaLeadsError] = useState('')
+  const [cmaLeadsLoading, setCmaLeadsLoading] = useState(false)
+
+  async function loadCmaLeads() {
+    if (!adminPassword) return
+    setCmaLeadsLoading(true)
+    setCmaLeadsError('')
+    try {
+      setCmaLeads(await fetchCmaLeads(adminPassword))
+    } catch (err) {
+      setCmaLeadsError(err instanceof Error ? err.message : 'Could not load CMA leads')
+    } finally {
+      setCmaLeadsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (unlocked) void loadCmaLeads()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unlocked])
 
   useEffect(() => {
     setUnlockedState(isUnlocked())
@@ -686,6 +708,70 @@ export default function Admin() {
           </div>
         </div>
       ) : null}
+
+      {/* v26: CMA leads */}
+      <section className="card">
+        <div className="body" style={{ display: 'grid', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+            <div>
+              <h2 style={{ margin: '0 0 .35rem' }}>CMA leads ({cmaLeads.length})</h2>
+              <p className="meta" style={{ margin: 0 }}>
+                Everyone who ran “What’s my home worth?” on <a href="/#/cma">/cma</a>. Newest first.
+              </p>
+            </div>
+            <button type="button" className="btn secondary" onClick={() => void loadCmaLeads()} disabled={cmaLeadsLoading}>
+              {cmaLeadsLoading ? 'Loading…' : 'Refresh'}
+            </button>
+          </div>
+          {cmaLeadsError ? <div style={{ color: '#b91c1c', fontSize: '0.92rem' }}>{cmaLeadsError}</div> : null}
+          {cmaLeads.length ? (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="admin-table leads-table">
+                <thead>
+                  <tr>
+                    <th>When</th>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>Property</th>
+                    <th>Estimate</th>
+                    <th>Email</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cmaLeads.map((l) => (
+                    <tr key={l.id}>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {new Date(l.created_at).toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })} ET
+                      </td>
+                      <td>{l.name}</td>
+                      <td>
+                        <a href={`mailto:${l.email}`}>{l.email}</a>
+                        <div><a href={`tel:${l.phone.replace(/\D/g, '')}`}>{l.phone}</a></div>
+                      </td>
+                      <td>
+                        {l.address}
+                        {l.beds || l.baths || l.sqft ? (
+                          <div className="meta">
+                            {l.beds ?? '—'} bd · {l.baths ?? '—'} ba · {l.sqft ?? '—'} sf (entered)
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>
+                        <strong>{money(l.estimate)}</strong>
+                        {l.estimate_low ? <div className="meta">{money(l.estimate_low)} – {money(l.estimate_high)}</div> : null}
+                        <div className="meta" style={{ maxWidth: 320 }}>{l.result_summary}</div>
+                      </td>
+                      <td className="meta" style={{ maxWidth: 220 }}>{l.email_status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : !cmaLeadsError && !cmaLeadsLoading ? (
+            <p className="meta" style={{ margin: 0 }}>No CMA requests yet.</p>
+          ) : null}
+        </div>
+      </section>
 
       {/* Excel / PDF / paste → preview → publish */}
       <section className="card">

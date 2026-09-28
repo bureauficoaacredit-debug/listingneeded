@@ -883,3 +883,37 @@ a.hero-stat:hover { background: rgba(255,255,255,0.22); text-decoration: none; }
   .search-collapsed-input { flex-basis: 100%; }
   .search-collapsed-count { flex: 1 1 auto; }
 }
+
+/* ---------- v26 CMA ---------- */
+a.eyebrow-link { color: #fff; text-decoration: none; cursor: pointer; opacity: 1; border-color: rgba(255,255,255,0.5); transition: background .15s, border-color .15s, opacity .15s; }
+a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.7); opacity: 1; text-decoration: none; }
+.cma { display: grid; gap: 1.25rem; }
+.cma-hero { background: linear-gradient(135deg, #0B3A6E, #2f6aa5); color: #fff; padding: 2rem 1.5rem; text-align: center; display: grid; justify-items: center; gap: .75rem; }
+.cma-hero h1 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.4rem); text-transform: uppercase; letter-spacing: .02em; }
+.cma-form h2 { font-size: 1.05rem; margin: .25rem 0 0; }
+.field-error { color: #b91c1c; font-size: .85rem; font-weight: 600; }
+.cma-form input[aria-invalid="true"] { border-color: #b91c1c; }
+.cma-error { background: #fdecea; border: 1px solid #f5c2c0; color: #8a1c1c; padding: .8rem 1rem; }
+.cma-note { background: #eef4fb; border: 1px solid #c9dbef; color: #0B3A6E; padding: 1rem; }
+.hp-field { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+.cma-results { display: grid; gap: 1rem; scroll-margin-top: 1rem; }
+.cma-estimate { padding: 1.5rem; text-align: center; border-top: 4px solid #0B3A6E; }
+.cma-kicker { margin: 0; font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.cma-value { font-size: clamp(2.2rem, 7vw, 3.2rem); font-weight: 800; color: #0B3A6E; line-height: 1.1; margin: .35rem 0; }
+.cma-range { margin: 0 0 .75rem; font-weight: 600; }
+.cma-facts { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: .4rem; }
+.cma-facts li { background: #eef2f7; padding: .3rem .65rem; font-size: .85rem; }
+.cma-stats { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.cma-stats .card { padding: 1rem; display: grid; gap: .25rem; text-align: center; }
+.cma-stats span { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.cma-stats strong { font-size: 1.25rem; color: #0B3A6E; }
+.cma-methods { margin: .25rem 0 0; padding-left: 1.1rem; display: grid; gap: .35rem; }
+.cma-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cma-table { min-width: 680px; }
+.cma-table td, .cma-table th { padding: .6rem .7rem; }
+.cma-status { display: inline-block; padding: .1rem .5rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.cma-status.sold { background: #e6f4ea; color: #1e6b34; }
+.cma-status.active { background: #fdf0d5; color: #8a5a00; }
+.cma-sources ul { margin: .25rem 0 .75rem; padding-left: 1.1rem; display: grid; gap: .3rem; font-size: .9rem; }
+.cma-disclaimer { font-size: .82rem; margin: 0; }
+.leads-table td { font-size: .85rem; }
