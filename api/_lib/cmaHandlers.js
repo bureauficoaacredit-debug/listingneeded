@@ -1,8 +1,7 @@
-/** Request handlers for /api/cma and /api/cma-leads — shared by Vercel functions and the Vite dev server. */
-import { timingSafeEqual } from 'node:crypto'
-import { isValidEmail, normalizeUsPhone, runCma } from './cma.js'
+/** Request handlers for /api/cma and /api/property-lookup — shared by Vercel functions and the Vite dev server. */
+import { isValidEmail, lookupProperty, normalizeUsPhone, runCma } from './cma.js'
 import { sendCmaEmails } from './cmaEmail.js'
-import { listLeads, saveLead } from './cmaLeads.js'
+import { saveLead } from './cmaLeads.js'
 
 const clip = (v, n) => String(v ?? '').trim().slice(0, n)
 const optNum = (v, max) => {
@@ -38,6 +37,9 @@ export async function handleCma(body) {
     console.error('[cma] failed:', err)
   }
 
+  // Owner names stay server-side: saved on the lead row (admin-only RPC) and removed from the visitor response.
+  const ownerNames = result?._private?.owners?.length ? result._private.owners.join(' / ').slice(0, 400) : null
+  if (result) delete result._private
   const emailStatus = await sendCmaEmails(result, lead, failure?.message)
   const leadRes = await saveLead({
     ...lead,
@@ -50,6 +52,7 @@ export async function handleCma(body) {
     comps_count: result ? result.comps.length : 0,
     result_summary: result ? result.summary : `No report: ${failure?.message || 'unknown error'}`,
     email_status: emailStatus,
+    owner_names: ownerNames,
   })
   if (!leadRes.saved) console.error('[cma] lead not saved:', leadRes.error)
 
@@ -63,19 +66,16 @@ export async function handleCma(body) {
   return { status: 200, body: { result, leadSaved: leadRes.saved, emailed, emailStatus: emailed ? 'sent' : null } }
 }
 
-function safeEq(a, b) {
-  const x = Buffer.from(String(a))
-  const y = Buffer.from(String(b))
-  return x.length === y.length && timingSafeEqual(x, y)
-}
-
-export async function handleCmaLeads(adminPassword) {
-  const expected = process.env.ADMIN_PASSWORD || process.env.VITE_ADMIN_PASSWORD || ''
-  if (!expected) return { status: 500, body: { error: 'Admin password not configured on the server.' } }
-  if (!adminPassword || !safeEq(adminPassword, expected)) return { status: 401, body: { error: 'Unauthorized' } }
-  try {
-    return { status: 200, body: { leads: await listLeads() } }
-  } catch (err) {
-    return { status: err.status || 502, body: { error: err.message, needs: err.needs || null } }
-  }
+/** POST /api/property-lookup — listing-form autofill. Facts only (no owner names). */
+export async function handlePropertyLookup(body) {
+  const address = clip(body.address, 200)
+  if (address.length < 3) return { status: 400, body: { found: false, error: 'Enter an address.' } }
+  const out = await lookupProperty({
+    address,
+    city: clip(body.city, 80),
+    state: clip(body.state, 2) || 'CT',
+    zip: clip(body.zip, 10),
+  })
+  // never expose raw source diagnostics beyond status names
+  return { status: 200, body: { ...out, sources: undefined } }
 }

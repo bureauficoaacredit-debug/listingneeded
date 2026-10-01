@@ -23,6 +23,8 @@ type ListingRow = {
   live: boolean
   is_mls?: boolean | null
   active_until?: string | null
+  sqft?: number | null
+  year_built?: number | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -47,6 +49,8 @@ function rowToListing(row: ListingRow): Listing {
     live: row.live,
     is_mls: row.is_mls ?? false,
     activeUntil: row.active_until ?? null,
+    sqft: row.sqft != null ? Number(row.sqft) : null,
+    yearBuilt: row.year_built != null ? Number(row.year_built) : null,
   }
 }
 
@@ -72,6 +76,9 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     live: listing.live,
     is_mls: listing.is_mls ?? false,
     active_until: listing.activeUntil ?? null,
+    // only sent when known so MLS upserts never blank out a value
+    ...(listing.sqft != null ? { sqft: listing.sqft } : {}),
+    ...(listing.yearBuilt != null ? { year_built: listing.yearBuilt } : {}),
   }
 }
 
@@ -310,6 +317,8 @@ export type ListingPatch = Partial<{
   ownerPhone: string
   ownerEmail: string
   is_mls: boolean
+  sqft: number | null
+  yearBuilt: number | null
 }>
 
 /** Admin: patch listing fields (live toggle, active_until, etc.). */
@@ -332,6 +341,8 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
   if (patch.ownerPhone != null) body.owner_phone = patch.ownerPhone
   if (patch.ownerEmail != null) body.owner_email = patch.ownerEmail
   if (patch.is_mls != null) body.is_mls = patch.is_mls
+  if (patch.sqft !== undefined) body.sqft = patch.sqft
+  if (patch.yearBuilt !== undefined) body.year_built = patch.yearBuilt
 
   const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',

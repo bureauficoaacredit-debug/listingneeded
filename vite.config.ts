@@ -127,11 +127,16 @@ function listingNeededApiPlugin(): Plugin {
           return
         }
 
-        if (url === '/api/cma-leads' && req.method === 'GET') {
-          // @ts-expect-error plain JS shared with Vercel api/ — no types
-          const { handleCmaLeads } = await import('./api/_lib/cmaHandlers.js')
-          const out = await handleCmaLeads(req.headers['x-admin-password'])
-          sendJson(res, out.status, out.body)
+        if (url === '/api/property-lookup' && req.method === 'POST') {
+          try {
+            // @ts-expect-error plain JS shared with Vercel api/ — no types
+            const { handlePropertyLookup } = await import('./api/_lib/cmaHandlers.js')
+            const out = await handlePropertyLookup(await readJsonBody(req))
+            sendJson(res, out.status, out.body)
+          } catch (err) {
+            console.error('[vite property-lookup]', err)
+            sendJson(res, 200, { found: false, reason: 'Public records are unavailable right now.' })
+          }
           return
         }
 

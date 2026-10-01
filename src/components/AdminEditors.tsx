@@ -23,6 +23,8 @@ export function ListingEditModal({
     price: String(listing.price ?? ''),
     beds: String(listing.beds ?? ''),
     baths: String(listing.baths ?? ''),
+    sqft: String(listing.sqft ?? ''),
+    yearBuilt: String(listing.yearBuilt ?? ''),
     pets: listing.pets,
     description: listing.description ?? '',
     ownerName: listing.ownerName ?? '',
@@ -54,6 +56,8 @@ export function ListingEditModal({
         price,
         beds: Number(f.beds) || 0,
         baths: Number(f.baths) || 0,
+        sqft: Number(f.sqft) || null,
+        yearBuilt: Number(f.yearBuilt) || null,
         pets: f.pets,
         description: f.description,
         ownerName: f.ownerName.trim(),
@@ -93,6 +97,14 @@ export function ListingEditModal({
           <label>
             Baths
             <input type="number" step={0.5} value={f.baths} onChange={set('baths')} />
+          </label>
+          <label>
+            Sq ft
+            <input type="number" value={f.sqft} onChange={set('sqft')} />
+          </label>
+          <label>
+            Year built
+            <input type="number" value={f.yearBuilt} onChange={set('yearBuilt')} />
           </label>
         </div>
         <label>

@@ -26,6 +26,9 @@ export type Listing = {
    * treats the listing as inactive even if live=true. Admin still sees it.
    */
   activeUntil?: string | null
+  /** Optional living area (sq ft) and year built — autofilled from public records on the list form. */
+  sqft?: number | null
+  yearBuilt?: number | null
 }
 
 export const LISTING_FEE_RENT_USD = 99

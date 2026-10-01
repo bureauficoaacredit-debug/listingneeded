@@ -949,3 +949,18 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .row-actions { display: flex; gap: .35rem; flex-wrap: nowrap; }
 .check-label { display: flex; align-items: center; gap: .5rem; align-self: end; padding-bottom: .7rem; }
 .check-label input { width: auto; }
+
+/* ---------- v29 autofill + share ---------- */
+.autofill-note { font-size: .88rem; padding: .55rem .8rem; border-left: 4px solid #2f6aa5; background: #eef4fb; color: #0B3A6E; }
+.autofill-note.ok { border-color: #1e6b34; background: #e6f4ea; color: #155724; }
+.autofill-note.none { border-color: #b88a00; background: #fff8e1; color: #6b5200; }
+.detail-top { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.share-wrap { position: relative; }
+.share-btn { display: inline-flex; align-items: center; gap: .45rem; padding: .5rem .9rem; background: #fff; color: #0B3A6E; border: 2px solid #0B3A6E; font: inherit; font-weight: 800; font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.share-btn:hover:not(:disabled) { background: #0B3A6E; color: #fff; }
+.share-btn:disabled { opacity: .6; cursor: wait; }
+.share-menu { position: absolute; right: 0; top: calc(100% + .35rem); z-index: 50; min-width: 13rem; background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.18); display: grid; }
+.share-menu button, .share-menu a { text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); padding: .75rem 1rem; font: inherit; font-weight: 600; color: #1d2733; cursor: pointer; text-decoration: none; }
+.share-menu > :last-child { border-bottom: none; }
+.share-menu button:hover, .share-menu a:hover { background: #eef4fb; color: #0B3A6E; text-decoration: none; }
+.share-toast { position: absolute; right: 0; top: calc(100% + .35rem); background: #1d2733; color: #fff; padding: .5rem .8rem; font-size: .85rem; white-space: nowrap; z-index: 51; }

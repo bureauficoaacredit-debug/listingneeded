@@ -41,6 +41,7 @@ function leadsToRows(leads: CmaLead[]) {
     'Baths (entered)': l.baths ?? '',
     'Sq ft (entered)': l.sqft ?? '',
     Comps: l.comps_count ?? '',
+    'Owner of record': l.owner_names ?? '',
     Notes: l.notes ?? '',
     Summary: l.result_summary ?? '',
     'Created (UTC)': l.created_at,
@@ -50,7 +51,7 @@ function leadsToRows(leads: CmaLead[]) {
 
 function download(leads: CmaLead[], kind: 'xlsx' | 'csv') {
   const ws = XLSX.utils.json_to_sheet(leadsToRows(leads))
-  ws['!cols'] = [18, 22, 30, 16, 40, 12, 12, 12, 8, 8, 8, 7, 40, 70, 26, 38].map((wch) => ({ wch }))
+  ws['!cols'] = [18, 22, 30, 16, 40, 12, 12, 12, 8, 8, 8, 7, 28, 40, 70, 26, 38].map((wch) => ({ wch }))
   const stamp = new Date().toISOString().slice(0, 10)
   if (kind === 'csv') {
     const csv = XLSX.utils.sheet_to_csv(ws)
@@ -300,6 +301,8 @@ export default function CmaLeadsPanel() {
                         <tr className="lead-detail">
                           <td colSpan={7}>
                             <dl>
+                              <dt>Owner of record</dt>
+                              <dd>{l.owner_names || '—'} <span className="meta">(public assessor record · admin only)</span></dd>
                               <dt>Notes</dt>
                               <dd>{l.notes || '—'}</dd>
                               <dt>Estimate range</dt>

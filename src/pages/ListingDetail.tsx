@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
+import ShareButton from '../components/ShareButton'
 import type { Listing } from '../lib/types'
 import { getListing } from '../lib/store'
 
@@ -79,8 +80,13 @@ export default function ListingDetail() {
         )}
       </div>
       <div>
-        <span className={`badge ${listing.type}`}>{listing.type === 'rent' ? 'For rent' : 'For sale'}</span>
-        {listing.is_mls ? <span className="badge mls">MLS listing</span> : null}
+        <div className="detail-top">
+          <div>
+            <span className={`badge ${listing.type}`}>{listing.type === 'rent' ? 'For rent' : 'For sale'}</span>
+            {listing.is_mls ? <span className="badge mls">MLS listing</span> : null}
+          </div>
+          <ShareButton listing={listing} />
+        </div>
         <h1 style={{ margin: '0.4rem 0' }}>{listing.address}</h1>
         <div className="meta">
           {listing.city}, {listing.state} {listing.zip}
@@ -91,7 +97,9 @@ export default function ListingDetail() {
             : `$${listing.price.toLocaleString()}`}
         </div>
         <p className="meta">
-          {listing.beds} beds · {listing.baths} baths · Pets: {listing.pets}
+          {listing.beds} beds · {listing.baths} baths
+          {listing.sqft ? ` · ${listing.sqft.toLocaleString()} sq ft` : ''}
+          {listing.yearBuilt ? ` · built ${listing.yearBuilt}` : ''} · Pets: {listing.pets}
         </p>
         <p>{listing.description || 'No description provided.'}</p>
         <div className="contact-card">

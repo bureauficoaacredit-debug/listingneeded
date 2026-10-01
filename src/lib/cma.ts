@@ -76,6 +76,8 @@ export type CmaLead = {
   result_summary: string | null
   email_status: string | null
   notes: string | null
+  /** Assessor-record owner names — admin lead detail only; never shown to site visitors. */
+  owner_names: string | null
 }
 
 /** Same rules as the server: 10-digit NANP number (optional leading 1). Returns "(203) 818-3242" or null. */

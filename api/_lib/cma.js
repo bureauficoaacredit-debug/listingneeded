@@ -6,14 +6,23 @@
  *  2. Sold comps: CT Office of Policy & Management "Real Estate Sales 2001+" (data.ct.gov 5mzw-sjtu),
  *     official town-clerk recorded sales with coordinates.
  *  3. Property details (beds / baths / living area / assessment): CT GIS Office
- *     "2025 Connecticut Parcel and CAMA Data" (data.ct.gov rny9-6ak2) — town assessor records.
+ *     "2026 Connecticut Parcel and CAMA Data" (data.ct.gov ibe8-9i3q), falling back to the 2025 file
+ *     (rny9-6ak2) — town assessor records. Westchester County NY: NYS ITS tax-parcel centroids and the
+ *     Westchester County GIS tax-parcel layer (same ORPTS roll attributes).
+ *  Owner names come back from these records for ADMIN use only; runCma returns them under `_private`
+ *  and the HTTP handler strips them before replying to site visitors.
  *  4. Active comps: Listing Needed's own Supabase `listings` table (MLS-imported + DIY, for sale, live).
  * Nothing is invented: a comp without a value shows "—", and a failed source is reported in `sources`.
  */
 
 const UA = 'ListingNeeded-CMA/1.0 (+https://www.listingneeded.com; bureauficoaacredit@gmail.com)'
 const SALES_URL = 'https://data.ct.gov/resource/5mzw-sjtu.json'
-const CAMA_URL = 'https://data.ct.gov/resource/rny9-6ak2.json'
+const CAMA_SETS = [
+  { url: 'https://data.ct.gov/resource/ibe8-9i3q.json', label: '2026', coOwner: true },
+  { url: 'https://data.ct.gov/resource/rny9-6ak2.json', label: '2025', coOwner: false },
+]
+const NY_ITS_URL = 'https://gisservices.its.ny.gov/arcgis/rest/services/NYS_Tax_Parcel_Centroid_Points/FeatureServer/0/query'
+const NY_COUNTY_URL = 'https://giswww.westchestergov.com/arcgis/rest/services/DataHub_TaxParcels/MapServer/0/query'
 const MILE_M = 1609.344
 
 export const MARCEL = {
@@ -49,7 +58,7 @@ export function isValidEmail(raw) {
 
 /* ---------------- helpers ---------------- */
 
-async function fetchJson(url, { timeoutMs = 9000, headers = {}, ...init } = {}) {
+export async function fetchJson(url, { timeoutMs = 9000, headers = {}, ...init } = {}) {
   const res = await fetch(url, {
     ...init,
     headers: { 'User-Agent': UA, Accept: 'application/json', ...headers },
@@ -64,7 +73,7 @@ async function fetchJson(url, { timeoutMs = 9000, headers = {}, ...init } = {}) 
   }
 }
 
-function soql(url, params) {
+export function soql(url, params) {
   const u = new URL(url)
   for (const [k, v] of Object.entries(params)) if (v != null) u.searchParams.set(k, String(v))
   return u.toString()
@@ -205,6 +214,7 @@ async function geocodeNominatim(address) {
     lon: Number(r.lon),
     town: a.city || a.town || a.municipality || a.village || a.hamlet || null,
     state: a.state || null,
+    county: a.county || null,
     zip: a.postcode || null,
     houseNumber: a.house_number || null,
     road: a.road || null,
@@ -238,7 +248,7 @@ async function geocodeCensus(address) {
   }
 }
 
-async function geocode(address, notes) {
+export async function geocode(address, notes) {
   const tries = [geocodeNominatim, geocodeCensus]
   for (const fn of tries) {
     try {
@@ -261,12 +271,18 @@ async function latestListYear() {
   return latestListYearCache
 }
 
-function camaFacts(row) {
+const urlOf = (v) => {
+  const u = typeof v === 'string' ? v : v?.url
+  return u && /^https?:/i.test(u) ? u : null
+}
+
+function camaFacts(row, label) {
   if (!row) return null
   const baths = pos(row.number_of_baths)
   const half = num(row.number_of_half_baths) || 0
-  const photo = row.building_photo?.url || null
+  const owners = [row.owner, row.co_owner].map((x) => String(x || '').trim()).filter(Boolean)
   return {
+    state: 'CT',
     location: row.location,
     town: row.property_city,
     beds: pos(row.number_of_bedroom),
@@ -280,52 +296,186 @@ function camaFacts(row) {
     style: row.style_desc || null,
     lastSalePrice: pos(row.sale_price),
     lastSaleDate: row.sale_date || null,
-    url: row.cama_site_link?.url || null,
-    photo: photo && photo.startsWith('http') ? photo.replace(/\\/g, '/').replace(/\/\/+(?=[^/])/g, '/').replace(':/', '://') : null,
+    url: urlOf(row.cama_site_link),
+    owners, // admin-only — never sent to visitors
+    dataset: `CT CAMA ${label}`,
   }
 }
 
-/** Look up assessor records for many (number, street) pairs in one town. Returns Map key → facts. */
-async function camaLookup(town, items) {
+const CAMA_SELECT =
+  'location,street_name,address_number,property_city,property_zip,living_area,number_of_bedroom,number_of_baths,number_of_half_baths,assessed_total,appraised_total,ayb,land_acres,state_use_description,style_desc,sale_price,sale_date,cama_site_link,owner'
+
+const leadNum = (n) => {
+  const m = String(n || '').match(/^\d+/)
+  return m ? Number(m[0]) : null
+}
+
+/**
+ * Look up CT assessor records for many (number, street) pairs in one town (or by ZIP when town misses).
+ * Tries the 2026 dataset first and falls back to 2025 for anything missing / on error.
+ * Returns Map key → facts.
+ */
+async function camaLookup(town, items, { zip } = {}) {
   const out = new Map()
-  const lead = (n) => {
-    const m = String(n || '').match(/^\d+/)
-    return m ? Number(m[0]) : null
-  }
-  const usable = items.filter((i) => lead(i.number) != null && i.street)
-  if (!town || !usable.length) return out
-  const prefixes = [...new Set(usable.map((i) => `${lead(i.number)} ${i.street.split(' ')[0]}`))]
-  const rows = []
-  const chunks = []
-  for (let i = 0; i < prefixes.length; i += 25) chunks.push(prefixes.slice(i, i + 25))
-  const results = await Promise.all(
-    chunks.map((chunk) => {
-      const ors = chunk.map((p) => `starts_with(upper(location), ${q(p)})`).join(' OR ')
-      return fetchJson(
-        soql(CAMA_URL, {
-          $where: `upper(property_city)=${q(String(town).toUpperCase())} AND (${ors})`,
-          $limit: 1000,
-          $select:
-            'location,street_name,address_number,property_city,living_area,number_of_bedroom,number_of_baths,number_of_half_baths,assessed_total,appraised_total,ayb,land_acres,state_use_description,style_desc,sale_price,sale_date,cama_site_link,building_photo',
+  const usable = items.filter((i) => leadNum(i.number) != null && i.street)
+  if (!usable.length || (!town && !zip)) return out
+  let lastErr = null
+  for (const set of CAMA_SETS) {
+    const todo = usable.filter((i) => !out.has(i.key))
+    if (!todo.length) break
+    try {
+      const prefixes = [...new Set(todo.map((i) => `${leadNum(i.number)} ${i.street.split(' ')[0]}`))]
+      const chunks = []
+      for (let i = 0; i < prefixes.length; i += 25) chunks.push(prefixes.slice(i, i + 25))
+      const place = town
+        ? `upper(property_city)=${q(String(town).toUpperCase())}`
+        : `property_zip like ${q(`${String(zip).replace(/^0+/, '').slice(0, 4)}%`)}`
+      const results = await Promise.all(
+        chunks.map((chunk) => {
+          const ors = chunk.map((p) => `starts_with(upper(location), ${q(p)})`).join(' OR ')
+          return fetchJson(
+            soql(set.url, {
+              $where: `${place} AND (${ors})`,
+              $limit: 1000,
+              $select: CAMA_SELECT + (set.coOwner ? ',co_owner' : ''),
+            }),
+          )
         }),
       )
-    }),
-  )
-  for (const r of results) rows.push(...r)
-  for (const it of items) {
-    const cands = rows.filter((r) => lead(r.address_number) === lead(it.number) && sameStreet(r.street_name || r.location.replace(/^\S+\s+/, ''), it.street))
-    if (!cands.length) continue
-    let pick = cands[0]
-    if (it.unit) {
-      const u = cands.find((r) => new RegExp(`(#|UNIT\\s*)${it.unit}\\b`, 'i').test(r.location))
-      if (u) pick = u
-    } else {
-      // prefer the record with living area (skip land/garage-only rows)
-      pick = cands.find((r) => pos(r.living_area)) || pick
+      const rows = results.flat()
+      for (const it of todo) {
+        const cands = rows.filter(
+          (r) =>
+            leadNum(r.address_number) === leadNum(it.number) &&
+            sameStreet(r.street_name || String(r.location).replace(/^\S+\s+/, ''), it.street),
+        )
+        if (!cands.length) continue
+        let pick = cands[0]
+        if (it.unit) {
+          const u = cands.find((r) => new RegExp(`(#|UNIT\\s*)${it.unit}\\b`, 'i').test(r.location))
+          if (u) pick = u
+        } else {
+          pick = cands.find((r) => pos(r.living_area)) || pick
+        }
+        out.set(it.key, camaFacts(pick, set.label))
+      }
+    } catch (err) {
+      lastErr = err
     }
-    out.set(it.key, camaFacts(pick))
   }
+  if (!out.size && lastErr) throw lastErr
   return out
+}
+
+/* ---------------- New York (Westchester) parcels ---------------- */
+
+const NY_ITS_TIMEOUT = 7000
+
+async function nyQuery(base, params, { retries = 1, timeoutMs = 8000 } = {}) {
+  let lastErr
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const data = await fetchJson(soql(base, { outFields: '*', returnGeometry: 'false', f: 'json', ...params }), { timeoutMs })
+      if (data?.error) throw new Error(data.error.message || 'ArcGIS error')
+      return (data.features || []).map((f) => f.attributes)
+    } catch (err) {
+      lastErr = err
+    }
+  }
+  throw lastErr
+}
+
+const sqlStr = (s) => `'${String(s).replace(/'/g, "''")}'`
+
+function nyFacts(r, sourceLabel) {
+  const owners = [r.PRIMARY_OWNER, r.ADD_OWNER].map((x) => String(x || '').trim()).filter(Boolean)
+  const cls = String(r.PROP_CLASS || '')
+  return {
+    state: 'NY',
+    location: r.PARCEL_ADDR,
+    town: r.MUNI_NAME || r.CITYTOWN_NAME || null,
+    beds: pos(r.NBR_BEDROOMS),
+    baths: pos(r.NBR_FULL_BATHS), // full baths only in the NY roll
+    sqft: pos(r.SQFT_LIVING),
+    assessed: null,
+    marketValue: pos(r.FULL_MARKET_VAL) && pos(r.FULL_MARKET_VAL) >= 50000 ? pos(r.FULL_MARKET_VAL) : null,
+    appraised: null,
+    yearBuilt: pos(r.YR_BLT),
+    acres: pos(r.ACRES) || pos(r.CALC_ACRES),
+    use: cls.startsWith('220') ? 'Two Family' : cls.startsWith('230') ? 'Three Family' : null,
+    style: r.BLDG_STYLE_DESC || null,
+    lastSalePrice: null,
+    lastSaleDate: null,
+    url: null,
+    owners,
+    dataset: sourceLabel,
+    _geo: { muni: r.MUNI_NAME, city: r.CITYTOWN_NAME, mail: r.MAIL_CITY, zip: r.LOC_ZIP },
+  }
+}
+
+function pickNyParcel(rows, parsed, { town, zip }) {
+  const same = rows.filter((r) => {
+    const p = parseAddress(r.PARCEL_ADDR)
+    return leadNum(p.number) === leadNum(parsed.number) && sameStreet(p.street, parsed.street)
+  })
+  if (!same.length) return null
+  let c = same
+  if (c.length > 1 && zip) {
+    const z = c.filter((r) => String(r.LOC_ZIP || '').startsWith(String(zip).slice(0, 5)) || String(r.MAIL_ZIP || '').startsWith(String(zip).slice(0, 5)))
+    if (z.length) c = z
+  }
+  if (c.length > 1 && town) {
+    const t = String(town).toUpperCase()
+    const m = c.filter((r) => [r.MUNI_NAME, r.CITYTOWN_NAME, r.MAIL_CITY].some((x) => String(x || '').toUpperCase().includes(t) || t.includes(String(x || '').toUpperCase().replace(/^(TOWN|VILLAGE|CITY) OF /, ''))))
+    if (m.length) c = m
+  }
+  if (c.length > 1) {
+    c = c.filter((r) => pos(r.SQFT_LIVING)) || c
+    if (c.length > 1 && new Set(c.map((r) => `${r.MUNI_NAME}`)).size > 1) return null // ambiguous across towns
+  }
+  return c[0] || null
+}
+
+/**
+ * Westchester lookup. Queries the Westchester County GIS layer and NYS ITS parcel service in parallel and
+ * uses whichever answers first with a match (ITS is slow / sometimes unreachable). Returns { facts, status[] }.
+ */
+export async function nyParcelLookup(parsed, { town, zip, only } = {}) {
+  const status = []
+  if (!parsed.number || !parsed.street) return { facts: null, status }
+  const first = parsed.street.split(' ')[0]
+  const where = `UPPER(PARCEL_ADDR) LIKE ${sqlStr(`${leadNum(parsed.number)} ${first}%`)}`
+  const jobs = []
+  if (only !== 'its') {
+    jobs.push({ name: 'Westchester County GIS tax parcels', run: () => nyQuery(NY_COUNTY_URL, { where: `${where} AND COUNTY_NAME='Westchester'`, resultRecordCount: 200 }, { retries: 1, timeoutMs: 8000 }) })
+  }
+  if (only !== 'county') {
+    jobs.push({ name: 'NYS ITS tax parcel centroids', run: () => nyQuery(NY_ITS_URL, { where: `${where} AND COUNTY_NAME='Westchester'`, resultRecordCount: 200 }, { retries: 1, timeoutMs: NY_ITS_TIMEOUT }) })
+  }
+  const t0 = Date.now()
+  let winner = null
+  await new Promise((resolve) => {
+    let pending = jobs.length
+    const done = () => {
+      pending -= 1
+      if (pending <= 0) resolve()
+    }
+    for (const job of jobs) {
+      job
+        .run()
+        .then((rows) => {
+          const pick = pickNyParcel(rows, parsed, { town, zip })
+          status.push({ name: job.name, status: pick ? 'ok' : 'no match', detail: `${rows.length} candidate rows in ${Date.now() - t0} ms` })
+          if (pick && !winner) {
+            winner = nyFacts(pick, job.name)
+            resolve()
+          }
+        })
+        .catch((err) => status.push({ name: job.name, status: 'failed', detail: `${err.message} (${Date.now() - t0} ms)` }))
+        .finally(done)
+    }
+  })
+  return { facts: winner, status }
 }
 
 function propTypeFromUse(use) {
@@ -371,10 +521,11 @@ async function soldCandidates(center, propType, listYear, notes) {
 /* ---------------- Listing Needed active listings ---------------- */
 
 function supabaseServerConfig() {
+  // Listing Needed's own project + public (anon/publishable) key only — no service-role keys, nothing shared
+  // with any other project. Leads are written via the insert-only policy and read via the code-gated RPCs.
   const url = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '')
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
-  return { url, key, isService: !!process.env.SUPABASE_SERVICE_ROLE_KEY }
+  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
+  return { url, key }
 }
 
 export function supabaseHeaders(key, extra = {}) {
@@ -430,7 +581,8 @@ export async function runCma(input) {
   const parsed = parseAddress(address)
 
   /* 1. geocode */
-  const geo = await geocode(/\bCT\b|connecticut/i.test(address) ? address : `${address}, CT`, notes)
+  const wantsNy = /\bNY\b|new york|westchester/i.test(address)
+  const geo = await geocode(/\b(CT|NY)\b|connecticut|new york/i.test(address) ? address : `${address}, CT`, notes)
   if (!geo) {
     sources.push({ name: 'Geocoding (OpenStreetMap / US Census)', status: 'failed', detail: 'Address not found' })
     throw Object.assign(new Error('We could not locate that address. Include street number, street, town and CT.'), {
@@ -438,11 +590,19 @@ export async function runCma(input) {
       sources,
     })
   }
-  if (geo.state && !/connecticut/i.test(geo.state)) {
+  const isCt = /connecticut/i.test(geo.state || '')
+  const isNy = /new york/i.test(geo.state || '')
+  if (!isCt && !isNy) {
     throw Object.assign(
-      new Error(`This tool covers Connecticut properties; that address resolved to ${geo.state}.`),
+      new Error(`This tool covers Connecticut and Westchester County, NY; that address resolved to ${geo.state || 'another state'}.`),
       { status: 422 },
     )
+  }
+  if (isNy && !/westchester/i.test(geo.county || '') && !wantsNy) {
+    throw Object.assign(new Error('For New York this tool covers Westchester County only.'), { status: 422 })
+  }
+  if (isNy && geo.county && !/westchester/i.test(geo.county)) {
+    throw Object.assign(new Error(`For New York this tool covers Westchester County only (that address is in ${geo.county}).`), { status: 422 })
   }
   sources.push({ name: `Geocoding (${geo.source})`, status: 'ok', detail: geo.display })
   const town = titleCase(geo.town || parsed.town || '')
@@ -451,23 +611,36 @@ export async function runCma(input) {
   const subjectStreet = parsed.street || normStreet(geo.road)
 
   /* 2. subject assessor facts + dataset freshness (parallel) */
-  const [camaRes, lyRes] = await Promise.allSettled([
-    camaLookup(town, [{ key: 'subject', number: subjectNumber, street: subjectStreet, unit: parsed.unit }]),
-    latestListYear(),
-  ])
-  const subjCama = camaRes.status === 'fulfilled' ? camaRes.value.get('subject') || null : null
-  if (camaRes.status === 'rejected') notes.push(`Assessor lookup failed: ${camaRes.reason?.message}`)
-  sources.push({
-    name: 'CT town assessor records (CAMA 2025, data.ct.gov)',
-    status: camaRes.status === 'rejected' ? 'failed' : subjCama ? 'ok' : 'no match',
-    detail: subjCama ? `${subjCama.location}, ${subjCama.town}` : 'Subject not matched; using the details you entered',
-  })
+  const stateCode = isNy ? 'NY' : 'CT'
+  let subjCama = null
+  let subjectLookupFailed = null
+  const subjectJob = isNy
+    ? nyParcelLookup({ ...parsed, number: subjectNumber, street: subjectStreet }, { town, zip: geo.zip || parsed.zip }).then((r) => {
+        subjCama = r.facts
+        for (const st of r.status) sources.push({ name: `${st.name} (NY tax roll 2025)`, status: st.status, detail: st.detail })
+        if (!r.facts) notes.push('No Westchester parcel record matched this address — using the details you entered.')
+      })
+    : camaLookup(town, [{ key: 'subject', number: subjectNumber, street: subjectStreet, unit: parsed.unit }], { zip: geo.zip }).then((m) => {
+        subjCama = m.get('subject') || null
+        sources.push({
+          name: `CT town assessor records (${subjCama?.dataset || 'CAMA 2026'}, data.ct.gov)`,
+          status: subjCama ? 'ok' : 'no match',
+          detail: subjCama ? `${subjCama.location}, ${subjCama.town}` : 'Subject not matched; using the details you entered',
+        })
+      })
+  const [camaRes, lyRes] = await Promise.allSettled([subjectJob, isNy ? Promise.reject(new Error('n/a')) : latestListYear()])
+  if (camaRes.status === 'rejected') {
+    subjectLookupFailed = camaRes.reason?.message
+    notes.push(`Assessor lookup failed: ${subjectLookupFailed}`)
+    sources.push({ name: isNy ? 'Westchester parcel records' : 'CT town assessor records (data.ct.gov)', status: 'failed', detail: String(subjectLookupFailed || '') })
+  }
   const listYear = lyRes.status === 'fulfilled' ? lyRes.value.year : new Date().getFullYear() - 2
   const dataThrough = lyRes.status === 'fulfilled' ? String(lyRes.value.through).slice(0, 10) : null
 
   const subject = {
     input: address,
-    matchedAddress: subjCama ? `${titleCase(subjCama.location)}, ${subjCama.town}, CT` : geo.display,
+    matchedAddress: subjCama ? `${titleCase(subjCama.location)}, ${subjCama.town || town}, ${stateCode}` : geo.display,
+    state: stateCode,
     town,
     lat: center.lat,
     lon: center.lon,
@@ -481,7 +654,7 @@ export async function runCma(input) {
     yearBuilt: subjCama?.yearBuilt || null,
     acres: subjCama?.acres || null,
     assessed: subjCama?.assessed || null,
-    appraised: subjCama?.appraised || null,
+    appraised: subjCama?.appraised || subjCama?.marketValue || null,
     lastSalePrice: subjCama?.lastSalePrice || null,
     lastSaleDate:
       subjCama?.lastSalePrice && subjCama?.lastSaleDate
@@ -492,13 +665,20 @@ export async function runCma(input) {
 
   /* 3. sold comps + active comps (parallel) */
   const [soldRes, activeRes] = await Promise.allSettled([
-    soldCandidates(center, subject.propertyType, listYear, notes),
+    isNy ? Promise.resolve({ rows: [], radiusMi: null, skipped: true }) : soldCandidates(center, subject.propertyType, listYear, notes),
     town ? activeListings(town) : Promise.resolve([]),
   ])
 
   let sold = []
   let radiusMi = null
-  if (soldRes.status === 'fulfilled') {
+  if (soldRes.status === 'fulfilled' && soldRes.value.skipped) {
+    sources.push({
+      name: 'Recorded sold prices (New York)',
+      status: 'unavailable',
+      detail: 'New York has no free public sold-price feed; showing property facts and local Listing Needed listings only',
+    })
+    notes.push('Sold-price comps are not available for New York from free public data, so no automated value estimate is shown. Contact Marcel for a full CMA.')
+  } else if (soldRes.status === 'fulfilled') {
     radiusMi = soldRes.value.radiusMi
     sold = soldRes.value.rows.map((r) => {
       const p = parseAddress(r.address)
@@ -697,5 +877,56 @@ export async function runCma(input) {
     generatedAt: new Date().toISOString(),
     disclaimer: DISCLAIMER,
     contact: MARCEL,
+    // ADMIN ONLY: stripped by handleCma before anything is returned to the browser.
+    _private: { owners: subjCama?.owners || [] },
+  }
+}
+
+/* ---------------- listing-form autofill ---------------- */
+
+/**
+ * Public-record lookup used by the "List your home" form. Returns only facts (never owner names).
+ * @param {{ address: string, city?: string, state?: string, zip?: string, only?: string }} input
+ */
+export async function lookupProperty(input) {
+  const address = String(input.address || '').trim().slice(0, 200)
+  const parsed = parseAddress(address)
+  if (!parsed.number || !parsed.street) {
+    return { found: false, reason: 'Type the street number and name to look up public records.' }
+  }
+  const st = String(input.state || 'CT').trim().toUpperCase().slice(0, 2)
+  const city = String(input.city || '').trim().slice(0, 80)
+  const zip = String(input.zip || '').trim().slice(0, 10)
+  const item = { key: 'subject', number: parsed.number, street: parsed.street, unit: parsed.unit }
+  const sources = []
+  let facts = null
+  try {
+    if (st === 'CT') {
+      let m = city ? await camaLookup(city, [item]) : new Map()
+      if (!m.get('subject') && zip) m = await camaLookup(null, [item], { zip })
+      facts = m.get('subject') || null
+      sources.push({ name: 'CT town assessor records (data.ct.gov)', status: facts ? 'ok' : 'no match' })
+    } else if (st === 'NY') {
+      const r = await nyParcelLookup(parsed, { town: city, zip, only: input.only })
+      facts = r.facts
+      sources.push(...r.status)
+    } else {
+      return { found: false, reason: 'Public-record autofill covers Connecticut and Westchester County, NY.' }
+    }
+  } catch (err) {
+    return { found: false, reason: 'Public records are unavailable right now — enter the details yourself.', error: err.message, sources }
+  }
+  if (!facts || !(facts.beds || facts.baths || facts.sqft || facts.yearBuilt)) {
+    return { found: false, reason: 'No public record found for that address — enter the details yourself.', sources }
+  }
+  return {
+    found: true,
+    beds: facts.beds,
+    baths: facts.baths,
+    sqft: facts.sqft,
+    yearBuilt: facts.yearBuilt,
+    matchedAddress: `${titleCase(facts.location)}, ${facts.town || city}, ${st}`,
+    source: facts.dataset,
+    sources,
   }
 }
