@@ -963,7 +963,7 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .share-menu button, .share-menu a { text-align: left; background: none; border: none; border-bottom: 1px solid var(--line); padding: .75rem 1rem; font: inherit; font-weight: 600; color: #1d2733; cursor: pointer; text-decoration: none; }
 .share-menu > :last-child { border-bottom: none; }
 .share-menu button:hover, .share-menu a:hover { background: #eef4fb; color: #0B3A6E; text-decoration: none; }
-.share-toast { position: absolute; right: 0; top: calc(100% + .35rem); background: #1d2733; color: #fff; padding: .5rem .8rem; font-size: .85rem; white-space: nowrap; z-index: 51; }
+.share-toast { position: absolute; right: 0; top: calc(100% + .35rem); background: #1d2733; color: #fff; padding: .5rem .8rem; font-size: .85rem; width: max-content; max-width: min(18rem, 80vw); z-index: 51; }
 
 /* v30 admin listing search */
 .admin-search { display: grid; gap: .6rem; margin: 0 0 .85rem; }

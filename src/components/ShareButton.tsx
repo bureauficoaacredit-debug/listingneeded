@@ -74,6 +74,38 @@ export default function ShareButton({ listing }: { listing: Listing }) {
     }
   }
 
+  const isPhone = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+  /** Instagram / TikTok have no web share link: copy caption + link, save the photo card, then try the app on phones. */
+  async function shareToApp(app: 'Instagram' | 'TikTok') {
+    const caption = `${text}\n${url}\nMarcel Najar · www.listingneeded.com · 203-818-3242`
+    // copy first, while the tap's user-activation is still fresh (Safari is strict about this)
+    let copied = false
+    try {
+      await navigator.clipboard.writeText(caption)
+      copied = true
+    } catch {
+      /* hint below still tells them where the link is */
+    }
+    setBusy(true)
+    setOpen(false)
+    try {
+      const { blob } = await buildShareCard(listing)
+      downloadBlob(blob, cardFilename(listing))
+      flash(copied ? 'Image saved + link copied — paste in your post' : 'Image saved — add the listing link to your post')
+      if (isPhone) {
+        const scheme = app === 'Instagram' ? 'instagram://camera' : 'snssdk1233://'
+        setTimeout(() => {
+          window.location.href = scheme
+        }, 1200)
+      }
+    } catch {
+      flash(copied ? 'Link copied — could not create the image' : 'Could not create the image')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function onShare() {
     // Native share sheet (phones, Safari/Chrome on Mac, Edge) — include the photo card as a file when supported.
     if (typeof navigator.share === 'function') {
@@ -100,6 +132,9 @@ export default function ShareButton({ listing }: { listing: Listing }) {
   }
 
   const body = encodeURIComponent(`${text}\n${url}`)
+  const fbHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`
+  const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`
+  const waHref = `https://wa.me/?text=${body}`
   return (
     <div className="share-wrap" ref={wrap}>
       <button type="button" className="share-btn" onClick={() => void onShare()} aria-haspopup="menu" aria-expanded={open} disabled={busy}>
@@ -111,6 +146,11 @@ export default function ShareButton({ listing }: { listing: Listing }) {
           <button type="button" role="menuitem" onClick={() => void copyLink()}>Copy link</button>
           <a role="menuitem" href={`mailto:?subject=${encodeURIComponent(listing.address)}&body=${body}`} onClick={() => setOpen(false)}>Email</a>
           <a role="menuitem" href={`sms:?&body=${body}`} onClick={() => setOpen(false)}>Text message</a>
+          <a role="menuitem" href={fbHref} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>Facebook</a>
+          <a role="menuitem" href={xHref} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>X (Twitter)</a>
+          <a role="menuitem" href={waHref} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}>WhatsApp</a>
+          <button type="button" role="menuitem" onClick={() => void shareToApp('Instagram')}>Instagram</button>
+          <button type="button" role="menuitem" onClick={() => void shareToApp('TikTok')}>TikTok</button>
           <button type="button" role="menuitem" onClick={() => void saveImage()}>Save as image (PNG)</button>
         </div>
       ) : null}
