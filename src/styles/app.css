@@ -964,3 +964,21 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .share-menu > :last-child { border-bottom: none; }
 .share-menu button:hover, .share-menu a:hover { background: #eef4fb; color: #0B3A6E; text-decoration: none; }
 .share-toast { position: absolute; right: 0; top: calc(100% + .35rem); background: #1d2733; color: #fff; padding: .5rem .8rem; font-size: .85rem; white-space: nowrap; z-index: 51; }
+
+/* v30 admin listing search */
+.admin-search { display: grid; gap: .6rem; margin: 0 0 .85rem; }
+.admin-search-row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+.admin-search-box { position: relative; flex: 1 1 320px; min-width: 0; }
+.admin-search-input { width: 100%; box-sizing: border-box; font: inherit; padding: .7rem 2.4rem .7rem .9rem; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; -webkit-appearance: none; appearance: none; }
+.admin-search-input::-webkit-search-cancel-button { display: none; }
+.admin-search-input:focus { outline: none; border-color: #0B3A6E; box-shadow: 0 0 0 3px rgba(11,58,110,.15); }
+.admin-search-clear { position: absolute; right: .4rem; top: 50%; transform: translateY(-50%); width: 1.9rem; height: 1.9rem; border-radius: 50%; border: none; background: #e8edf3; color: #0B3A6E; font-size: 1.25rem; line-height: 1; cursor: pointer; }
+.admin-search-clear:hover { background: #d5dde8; }
+.admin-search-count { font-weight: 800; color: #0B3A6E; white-space: nowrap; }
+.admin-chips { display: flex; gap: .45rem; flex-wrap: wrap; }
+.admin-chip { border: 1.5px solid var(--line); background: #fff; color: #0B3A6E; border-radius: 999px; padding: .35rem .8rem; font: inherit; font-weight: 700; font-size: .85rem; cursor: pointer; }
+.admin-chip:hover { border-color: #0B3A6E; }
+.admin-chip.active { background: #0B3A6E; border-color: #0B3A6E; color: #fff; }
+.admin-chip-n { opacity: .7; font-weight: 600; margin-left: .15rem; }
+.admin-chip.reset { border-style: dashed; color: #800020; }
+.admin-showmore { display: flex; gap: .75rem; align-items: center; justify-content: center; flex-wrap: wrap; padding: .9rem; border-top: 1px solid var(--line); }

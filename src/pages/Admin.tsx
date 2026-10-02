@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState, type FormEvent } from 'react'
 import type { Listing, ListingType, PartnerCategory, PartnerLink } from '../lib/types'
 import { isActiveUntilOk, MLS_OWNER, PARTNER_CATEGORY_LABELS } from '../lib/types'
 import {
@@ -71,6 +71,30 @@ function statusLabel(l: Listing): string {
   if (l.live && l.paid) return 'active'
   if (l.live) return 'live (unpaid)'
   return 'inactive'
+}
+
+type ListingFilter = 'all' | 'mls' | 'diy' | 'live' | 'inactive'
+const LISTING_FILTERS: { key: ListingFilter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'mls', label: 'MLS' },
+  { key: 'diy', label: 'DIY' },
+  { key: 'live', label: 'Live' },
+  { key: 'inactive', label: 'Inactive' },
+]
+const PAGE_SIZE = 50
+
+/** Live = switched on and not past its end date. Inactive = switched off or ended. */
+function isLiveNow(l: Listing): boolean {
+  return l.live && isActiveUntilOk(l.activeUntil)
+}
+
+/** Everything the admin can type into the search box, lower-cased once per listing. */
+function searchHaystack(l: Listing): string {
+  const mlsNo = l.id.replace(/^mls_/i, '')
+  return [
+    l.address, l.city, l.state, l.zip, l.id, mlsNo, l.ownerName, l.ownerPhone,
+    l.ownerPhone.replace(/\D/g, ''), l.ownerEmail, l.type, l.type === 'sale' ? 'for sale' : 'for rent',
+  ].join(' \u0001 ').toLowerCase()
 }
 
 type LinkForm = {
@@ -151,9 +175,39 @@ export default function Admin() {
   const [publishing, setPublishing] = useState(false)
   const [removingMls, setRemovingMls] = useState(false)
   const [publishProgress, setPublishProgress] = useState('')
+  const [listingQuery, setListingQuery] = useState('')
+  const [listingFilter, setListingFilter] = useState<ListingFilter>('all')
+  const [listingLimit, setListingLimit] = useState(PAGE_SIZE)
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') === 'leads' ? 'leads' : 'listings'
+
+  const deferredQuery = useDeferredValue(listingQuery)
+  const haystacks = useMemo(() => new Map(listings.map((l) => [l.id, searchHaystack(l)])), [listings])
+  const filteredListings = useMemo(() => {
+    const terms = deferredQuery.toLowerCase().split(/\s+/).filter(Boolean)
+    return listings.filter((l) => {
+      if (listingFilter === 'mls' && !l.is_mls) return false
+      if (listingFilter === 'diy' && l.is_mls) return false
+      if (listingFilter === 'live' && !isLiveNow(l)) return false
+      if (listingFilter === 'inactive' && isLiveNow(l)) return false
+      if (!terms.length) return true
+      const hay = haystacks.get(l.id) ?? ''
+      return terms.every((t) => hay.includes(t))
+    })
+  }, [listings, haystacks, deferredQuery, listingFilter])
+  const filterCounts = useMemo(() => {
+    const c: Record<ListingFilter, number> = { all: listings.length, mls: 0, diy: 0, live: 0, inactive: 0 }
+    for (const l of listings) {
+      if (l.is_mls) c.mls++
+      else c.diy++
+      if (isLiveNow(l)) c.live++
+      else c.inactive++
+    }
+    return c
+  }, [listings])
+  const visibleListings = filteredListings.slice(0, listingLimit)
+  const listingFiltersActive = listingQuery.trim() !== '' || listingFilter !== 'all'
 
   useEffect(() => {
     setUnlockedState(isUnlocked())
@@ -1194,6 +1248,71 @@ export default function Admin() {
       {/* All listings with toggle / end date / delete */}
       <section>
         <h2 style={{ margin: '0 0 .75rem' }}>All listings</h2>
+        {!loading && listings.length > 0 ? (
+          <div className="admin-search" role="search">
+            <div className="admin-search-row">
+              <div className="admin-search-box">
+                <input
+                  type="search"
+                  className="admin-search-input"
+                  aria-label="Search listings"
+                  placeholder="Search address, city, ZIP, MLS #, owner name / phone / email, rent or sale…"
+                  value={listingQuery}
+                  onChange={(e) => {
+                    setListingQuery(e.target.value)
+                    setListingLimit(PAGE_SIZE)
+                  }}
+                  autoComplete="off"
+                />
+                {listingQuery ? (
+                  <button
+                    type="button"
+                    className="admin-search-clear"
+                    aria-label="Clear search"
+                    onClick={() => {
+                      setListingQuery('')
+                      setListingLimit(PAGE_SIZE)
+                    }}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+              <div className="admin-search-count" aria-live="polite">
+                {filteredListings.length} of {listings.length}
+              </div>
+            </div>
+            <div className="admin-chips" role="group" aria-label="Filter listings">
+              {LISTING_FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={`admin-chip${listingFilter === f.key ? ' active' : ''}`}
+                  aria-pressed={listingFilter === f.key}
+                  onClick={() => {
+                    setListingFilter(f.key)
+                    setListingLimit(PAGE_SIZE)
+                  }}
+                >
+                  {f.label} <span className="admin-chip-n">{filterCounts[f.key]}</span>
+                </button>
+              ))}
+              {listingFiltersActive ? (
+                <button
+                  type="button"
+                  className="admin-chip reset"
+                  onClick={() => {
+                    setListingQuery('')
+                    setListingFilter('all')
+                    setListingLimit(PAGE_SIZE)
+                  }}
+                >
+                  Reset
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         {loading ? (
           <div className="card">
             <div className="body">Loading listings…</div>
@@ -1219,7 +1338,15 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {listings.map((l) => (
+                {filteredListings.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="meta" style={{ padding: '1.25rem' }}>
+                      No listings match{listingQuery.trim() ? ` “${listingQuery.trim()}”` : ''}
+                      {listingFilter !== 'all' ? ` in ${LISTING_FILTERS.find((f) => f.key === listingFilter)?.label}` : ''}.
+                    </td>
+                  </tr>
+                ) : null}
+                {visibleListings.map((l) => (
                   <tr key={l.id}>
                     <td>
                       <strong>{l.address}</strong>
@@ -1323,6 +1450,19 @@ export default function Admin() {
                 ))}
               </tbody>
             </table>
+            {filteredListings.length > visibleListings.length ? (
+              <div className="admin-showmore">
+                <span className="meta">
+                  Showing {visibleListings.length} of {filteredListings.length}
+                </span>
+                <button type="button" className="btn secondary" onClick={() => setListingLimit((n) => n + PAGE_SIZE)}>
+                  Show {Math.min(PAGE_SIZE, filteredListings.length - visibleListings.length)} more
+                </button>
+                <button type="button" className="btn ghost" onClick={() => setListingLimit(filteredListings.length)}>
+                  Show all
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </section>
