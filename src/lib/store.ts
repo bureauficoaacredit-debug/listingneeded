@@ -84,16 +84,20 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
 
 /** Public Search feed: paid + live, and active_until not past. */
 export async function liveListings(): Promise<Listing[]> {
-  const res = await supabaseFetch(
-    '/rest/v1/listings?live=eq.true&paid=eq.true&order=created_at.desc',
-    {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    },
-  )
-  await throwIfNotOk(res)
-  const data = (await res.json()) as ListingRow[]
-  return data.map(rowToListing).filter((l) => isActiveUntilOk(l.activeUntil))
+  // PostgREST caps one response at 1000 rows — page so every live listing shows up on Search.
+  const PAGE = 1000
+  const all: ListingRow[] = []
+  for (let offset = 0; offset < 50000; offset += PAGE) {
+    const res = await supabaseFetch(
+      `/rest/v1/listings?live=eq.true&paid=eq.true&order=created_at.desc,id.asc&limit=${PAGE}&offset=${offset}`,
+      { method: 'GET', headers: { Accept: 'application/json' } },
+    )
+    await throwIfNotOk(res)
+    const data = (await res.json()) as ListingRow[]
+    all.push(...data)
+    if (data.length < PAGE) break
+  }
+  return all.map(rowToListing).filter((l) => isActiveUntilOk(l.activeUntil))
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
@@ -361,13 +365,20 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
 
 /** Admin: load every listing (including unpaid / not live / expired active_until). */
 export async function allListings(): Promise<Listing[]> {
-  const res = await supabaseFetch('/rest/v1/listings?select=*&order=created_at.desc', {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-  })
-  await throwIfNotOk(res)
-  const data = (await res.json()) as ListingRow[]
-  return data.map(rowToListing)
+  // PostgREST caps one response at 1000 rows, so page until a short page comes back.
+  const PAGE = 1000
+  const all: ListingRow[] = []
+  for (let offset = 0; offset < 50000; offset += PAGE) {
+    const res = await supabaseFetch(
+      `/rest/v1/listings?select=*&order=created_at.desc,id.asc&limit=${PAGE}&offset=${offset}`,
+      { method: 'GET', headers: { Accept: 'application/json' } },
+    )
+    await throwIfNotOk(res)
+    const data = (await res.json()) as ListingRow[]
+    all.push(...data)
+    if (data.length < PAGE) break
+  }
+  return all.map(rowToListing)
 }
 
 /**
