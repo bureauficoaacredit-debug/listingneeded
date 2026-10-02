@@ -1,50 +1,18 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import '../styles/app.css'
 
-/** Soft fat green triangle (Realtor Marcel style) with two slanted eyes. */
-function BrandMark() {
+/** v32 wordmark: transparent PNG traced from Marcel's logo (white on the blue header), 1x/2x/3x. */
+function BrandLogo() {
   return (
-    <svg
-      className="brand-mark"
-      viewBox="0 0 48 48"
-      width="44"
-      height="44"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {/* Soft/puffy mountain-triangle body */}
-      <path
-        className="brand-mark-body"
-        d="M24 5.5
-           C27.2 5.5 31.5 14.5 36.8 26.8
-           C39.2 32.4 40.5 36.8 39.6 39.4
-           C38.5 42.6 33.2 44.5 24 44.5
-           C14.8 44.5 9.5 42.6 8.4 39.4
-           C7.5 36.8 8.8 32.4 11.2 26.8
-           C16.5 14.5 20.8 5.5 24 5.5Z"
-        fill="#3FA34A"
-      />
-      {/* Left eye — soft vertical oval, tilted in */}
-      <ellipse
-        className="brand-mark-eye brand-mark-eye--left"
-        cx="18.2"
-        cy="27.5"
-        rx="2.6"
-        ry="4.4"
-        transform="rotate(-14 18.2 27.5)"
-        fill="#142018"
-      />
-      {/* Right eye — winks on brand hover */}
-      <ellipse
-        className="brand-mark-eye brand-mark-eye--right"
-        cx="29.8"
-        cy="27.5"
-        rx="2.6"
-        ry="4.4"
-        transform="rotate(14 29.8 27.5)"
-        fill="#142018"
-      />
-    </svg>
+    <img
+      className="brand-logo"
+      src="/logo/logo-white@2x.png"
+      srcSet="/logo/logo-white.png 1x, /logo/logo-white@2x.png 2x, /logo/logo-white@3x.png 3x"
+      width={462}
+      height={45}
+      alt="Listing Needed"
+      decoding="async"
+    />
   )
 }
 
@@ -99,8 +67,7 @@ export default function Layout() {
     <div className="shell">
       <header className="nav">
         <Link to="/" className="brand" aria-label="Listing Needed home">
-          <BrandMark />
-          <span className="brand-wordmark">LISTING NEEDED</span>
+          <BrandLogo />
         </Link>
         <nav className="nav-links" aria-label="Primary">
           <NavLink
@@ -130,6 +97,15 @@ export default function Layout() {
       <footer className="footer">
         <div className="footer-inner">
           <div className="contact">
+            <img
+              className="footer-logo"
+              src="/logo/logo-dark@2x.png"
+              srcSet="/logo/logo-dark.png 1x, /logo/logo-dark@2x.png 2x, /logo/logo-dark@3x.png 3x"
+              width={462}
+              height={45}
+              alt="Listing Needed"
+              loading="lazy"
+            />
             <strong>Listing Needed · Marcel Najar</strong>
             <div className="meta">Licensed Realtor® · Fairfield County, CT · Buy · Sell · Rent</div>
             <div>

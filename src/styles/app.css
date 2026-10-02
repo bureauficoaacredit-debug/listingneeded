@@ -982,3 +982,15 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .admin-chip-n { opacity: .7; font-weight: 600; margin-left: .15rem; }
 .admin-chip.reset { border-style: dashed; color: #800020; }
 .admin-showmore { display: flex; gap: .75rem; align-items: center; justify-content: center; flex-wrap: wrap; padding: .9rem; border-top: 1px solid var(--line); }
+
+/* v32: new LISTINGNEEDED wordmark replaces the v24 triangle-face logo + text */
+.brand-logo { display: block; height: 1.9rem; width: auto; max-width: 100%; }
+.brand { gap: 0; }
+.footer-logo { display: block; height: 1.5rem; width: auto; margin: 0 0 .6rem; max-width: 100%; }
+@media (max-width: 768px) {
+  .brand { gap: 0; max-width: 100%; }
+  .brand-logo { height: auto; width: min(76vw, 17rem); }
+}
+@media (max-width: 359px) {
+  .brand-logo { width: 78vw; }
+}

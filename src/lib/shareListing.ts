@@ -105,8 +105,14 @@ export async function buildShareCard(l: Listing): Promise<{ blob: Blob; photoInc
   ctx.fillStyle = '#0B3A6E'
   ctx.fillRect(0, FY, W, 150)
   ctx.fillStyle = '#fff'
-  ctx.font = '800 40px Arial, Helvetica, sans-serif'
-  ctx.fillText('LISTING NEEDED', 60, FY + 62)
+  const logo = await loadImage('/logo/logo-white@3x.png')
+  if (logo) {
+    const lh = 40
+    ctx.drawImage(logo, 60, FY + 24, (logo.width / logo.height) * lh, lh)
+  } else {
+    ctx.font = '800 40px Arial, Helvetica, sans-serif'
+    ctx.fillText('LISTING NEEDED', 60, FY + 62)
+  }
   ctx.font = '400 32px Arial, Helvetica, sans-serif'
   ctx.fillText(`${CONTACT.name} · ${CONTACT.site} · ${CONTACT.phone}`, 60, FY + 110)
 
