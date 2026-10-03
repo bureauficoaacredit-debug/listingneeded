@@ -249,8 +249,8 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.5rem 0 
   padding: 3rem 2rem 2.25rem;
   border-radius: 0;
   background:
-    linear-gradient(120deg, rgba(0, 40, 70, 0.88) 0%, rgba(88, 137, 181, 0.92) 55%, rgba(50, 111, 165, 0.9) 100%),
-    linear-gradient(180deg, #1a3a55, #5889b5);
+    linear-gradient(120deg, #390a0c 0%, #7f171c 48%, #89181e 100%);
+  /* v35: hero is now the flag-red (was blue); the realtor band below is now the blue */
   color: #fff;
   box-shadow: var(--shadow);
   position: relative;
@@ -491,7 +491,10 @@ main { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 1.5rem 0 
   border-radius: 0;
   padding: 2.25rem 1.6rem;
   /* Deep flag-red from Marcel's swatch (~#7f171c) */
-  background: linear-gradient(120deg, #390a0c 0%, #7f171c 48%, #89181e 100%);
+  /* v35: swapped — was the flag-red, now the hero's former blue */
+  background:
+    linear-gradient(120deg, rgba(0, 40, 70, 0.88) 0%, rgba(88, 137, 181, 0.92) 55%, rgba(50, 111, 165, 0.9) 100%),
+    linear-gradient(180deg, #1a3a55, #5889b5);
   color: #fff7f7;
   box-shadow: var(--shadow);
 }
@@ -1007,9 +1010,10 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 }
 .hero-bg-fade {
   position: absolute; inset: 0;
+  /* v35: red-tinted fade (from the flag-red) keeps the white text readable and lets the globe glow through */
   background:
-    radial-gradient(ellipse at 50% 48%, rgba(11, 58, 110, 0) 0%, rgba(11, 58, 110, 0.55) 100%),
-    linear-gradient(180deg, rgba(11, 58, 110, 0.55) 0%, rgba(11, 58, 110, 0.35) 45%, rgba(11, 58, 110, 0.7) 100%);
+    radial-gradient(ellipse at 50% 48%, rgba(127, 23, 28, 0) 0%, rgba(57, 10, 12, 0.5) 100%),
+    linear-gradient(180deg, rgba(57, 10, 12, 0.5) 0%, rgba(127, 23, 28, 0.2) 45%, rgba(57, 10, 12, 0.62) 100%);
 }
 @media (max-width: 768px) {
   .hero-bg-video { opacity: 0.3; }
