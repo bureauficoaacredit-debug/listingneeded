@@ -1,38 +1,18 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import PartnerResources from '../components/PartnerResources'
 import { LISTING_FEE_RENT_USD, LISTING_FEE_SALE_USD } from '../lib/types'
 
-/** v33: faded looping radar-globe video behind the hero. Poster only for reduced-motion users. */
-function HeroVideoBg() {
-  const [motionOk, setMotionOk] = useState(false)
-  useEffect(() => {
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const update = () => setMotionOk(!mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [])
+/**
+ * v34: faded globe image behind the hero (replaces the v33 radar video; the video files stay in /public/video
+ * and the v33 tag restores it). The "Cerotonin.ai" text in the original art is painted out of this copy.
+ */
+function HeroImageBg() {
   return (
     <div className="hero-bg" aria-hidden="true">
-      {motionOk ? (
-        <video
-          className="hero-bg-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          poster="/video/hero-poster.jpg"
-          tabIndex={-1}
-          disablePictureInPicture
-        >
-          <source src="/video/hero-bg.webm" type="video/webm" />
-          <source src="/video/hero-bg.mp4" type="video/mp4" />
-        </video>
-      ) : (
-        <img className="hero-bg-video" src="/video/hero-poster.jpg" alt="" decoding="async" />
-      )}
+      <picture>
+        <source srcSet="/img/hero-globe.webp" type="image/webp" />
+        <img className="hero-bg-img" src="/img/hero-globe.jpg" alt="" width={1408} height={768} decoding="async" />
+      </picture>
       <div className="hero-bg-fade" />
     </div>
   )
@@ -42,7 +22,7 @@ export default function Home() {
   return (
     <div className="home">
       <section className="hero hero-centered">
-        <HeroVideoBg />
+        <HeroImageBg />
         <Link className="eyebrow eyebrow-soft eyebrow-link" to="/cma">What’s my home worth?</Link>
         <h1 className="hero-title-pair">
           <span>Fully automated</span>

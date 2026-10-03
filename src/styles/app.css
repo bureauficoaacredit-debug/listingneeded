@@ -1014,3 +1014,12 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 @media (max-width: 768px) {
   .hero-bg-video { opacity: 0.3; }
 }
+
+/* v34: globe image replaces the v33 video behind the home hero */
+.hero-bg-img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 55%;
+  opacity: 0.42; mix-blend-mode: screen;
+}
+@media (max-width: 768px) {
+  .hero-bg-img { opacity: 0.38; object-position: 42% 50%; }
+}
