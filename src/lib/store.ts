@@ -26,6 +26,7 @@ type ListingRow = {
   sqft?: number | null
   year_built?: number | null
   deleted_at?: string | null
+  mls_status?: string | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -53,6 +54,7 @@ function rowToListing(row: ListingRow): Listing {
     sqft: row.sqft != null ? Number(row.sqft) : null,
     yearBuilt: row.year_built != null ? Number(row.year_built) : null,
     deletedAt: row.deleted_at ?? null,
+    mlsStatus: row.mls_status ?? null,
   }
 }
 
@@ -82,6 +84,7 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     // only sent when known so MLS upserts never blank out a value
     ...(listing.sqft != null ? { sqft: listing.sqft } : {}),
     ...(listing.yearBuilt != null ? { year_built: listing.yearBuilt } : {}),
+    ...(listing.mlsStatus ? { mls_status: listing.mlsStatus } : {}),
   }
 }
 

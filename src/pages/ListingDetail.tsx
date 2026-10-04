@@ -5,7 +5,7 @@ import type { Listing } from '../lib/types'
 import { getListing, getPaidTerm } from '../lib/store'
 import { isMyListing } from '../lib/myListings'
 import { paymentLinkForListing } from '../lib/checkout'
-import { isActiveUntilOk } from '../lib/types'
+import { isActiveUntilOk, mlsStatusBadge } from '../lib/types'
 
 function fmtEnd(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
@@ -139,6 +139,7 @@ export default function ListingDetail() {
           <div>
             <span className={`badge ${listing.type}`}>{listing.type === 'rent' ? 'For rent' : 'For sale'}</span>
             {listing.is_mls ? <span className="badge mls">MLS listing</span> : null}
+            {mlsStatusBadge(listing.mlsStatus) ? <span className="badge status" title={listing.mlsStatus ?? ''}>{mlsStatusBadge(listing.mlsStatus)}</span> : null}
           </div>
           <ShareButton listing={listing} />
         </div>

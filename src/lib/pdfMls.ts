@@ -23,6 +23,10 @@ export type MlsDraft = {
   include: boolean
   /** External http(s) photo links (do not download). */
   photoDataUrls?: string[]
+  /** v40: from the portal feed */
+  sqft?: number | null
+  yearBuilt?: number | null
+  mlsStatus?: string | null
 }
 
 const STREET_RE =

@@ -31,6 +31,8 @@ export type Listing = {
   yearBuilt?: number | null
   /** v38: set when moved to the admin Trash (undo window 7 days, then purged). */
   deletedAt?: string | null
+  /** v40: MLS status from the feed (e.g. 'Active', 'Under Contract - Continue to Show'); null for DIY. */
+  mlsStatus?: string | null
 }
 
 export const LISTING_FEE_RENT_USD = 99
@@ -81,4 +83,14 @@ export const PARTNER_CATEGORY_LABELS: Record<PartnerCategory, string> = {
   insurance: 'Insurance',
   moving: 'Moving',
   other: 'Other',
+}
+
+/** v40: short badge text for a feed status; null when the home is simply Active (no badge needed). */
+export function mlsStatusBadge(status: string | null | undefined): string | null {
+  const s = String(status || '').trim()
+  if (!s || /^(active|actv|new)$/i.test(s)) return null
+  if (/under\s*contract|\bUC\b/i.test(s)) return 'Under Contract'
+  if (/pending/i.test(s)) return 'Pending'
+  if (/contingent/i.test(s)) return 'Contingent'
+  return s.length > 24 ? s.slice(0, 24) : s
 }

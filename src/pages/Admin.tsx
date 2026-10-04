@@ -31,6 +31,7 @@ import { parseMlsSpreadsheet } from '../lib/excelMls'
 import { importMlsSharedLink } from '../lib/importMlsLink'
 import { useSearchParams } from 'react-router-dom'
 import CmaLeadsPanel from '../components/CmaLeadsPanel'
+import MlsSyncPanel from '../components/MlsSyncPanel'
 import { ConfirmDeleteAll } from '../components/AdminModal'
 import { ListingEditModal, PartnerEditModal } from '../components/AdminEditors'
 import MlsExpiryPanel from '../components/MlsExpiryPanel'
@@ -837,6 +838,9 @@ export default function Admin() {
         live: true,
         is_mls: true,
         activeUntil: null,
+        sqft: d.sqft ?? null,
+        yearBuilt: d.yearBuilt ?? null,
+        mlsStatus: d.mlsStatus ?? null,
       }))
       const { ok, failed } = useUpsert
         ? await upsertListings(payloads, {
@@ -1446,6 +1450,8 @@ export default function Admin() {
           </button>
         </div>
       </section>
+
+      <MlsSyncPanel onImported={reloadListings} />
 
       <MlsExpiryPanel
         listings={listings}

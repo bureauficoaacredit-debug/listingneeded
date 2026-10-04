@@ -178,8 +178,13 @@ export function sharedListingToDraft(L, index) {
   const safePrice = Number.isFinite(price) ? price : 0
   const city = String(L?.City || '').trim()
   const zip = zipForCity(city, L?.Zip)
-  const sqft = L?.SquareFeet != null && L.SquareFeet !== '' ? String(L.SquareFeet) : ''
-  const year = L?.YearBuilt != null && L.YearBuilt !== '' ? String(L.YearBuilt) : ''
+  // v40: 0 / blank sq ft means "unknown" (never print "0 sq ft"); year must be plausible.
+  const sqftNum = Math.round(Number(L?.SquareFeet))
+  const sqftVal = Number.isFinite(sqftNum) && sqftNum > 0 ? sqftNum : null
+  const yearNum = Math.round(Number(L?.YearBuilt))
+  const yearVal = Number.isFinite(yearNum) && yearNum >= 1600 && yearNum <= 2100 ? yearNum : null
+  const sqft = sqftVal ? String(sqftVal) : ''
+  const year = yearVal ? String(yearVal) : ''
   const state = String(L?.State || 'CT').trim().toUpperCase().slice(0, 2) || 'CT'
 
   const parts = [
@@ -212,6 +217,9 @@ export function sharedListingToDraft(L, index) {
     description,
     include: true,
     photoDataUrls: photoUrlsFromListing(L),
+    sqft: sqftVal,
+    yearBuilt: yearVal,
+    mlsStatus: status || null,
   }
 }
 

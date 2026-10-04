@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import type { Listing, ListingType } from '../lib/types'
+import { mlsStatusBadge, type Listing, type ListingType } from '../lib/types'
 import { liveListings } from '../lib/store'
 
 type Filter = 'all' | ListingType
@@ -566,6 +566,7 @@ export default function Browse() {
                 <div className="body">
                   <span className={`badge ${l.type}`}>{l.type === 'rent' ? 'For rent' : 'For sale'}</span>
                   {l.is_mls ? <span className="badge mls">MLS listing</span> : null}
+                  {mlsStatusBadge(l.mlsStatus) ? <span className="badge status" title={l.mlsStatus ?? ''}>{mlsStatusBadge(l.mlsStatus)}</span> : null}
                   <div className="price">
                     {l.type === 'rent' ? `$${l.price.toLocaleString()}/mo` : `$${l.price.toLocaleString()}`}
                   </div>
