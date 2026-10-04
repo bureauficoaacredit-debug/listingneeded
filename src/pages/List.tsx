@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { listingFeeUsd, type Listing, type ListingType } from '../lib/types'
-import { insertListing, markPaidAndLive, uploadListingPhotos } from '../lib/store'
+import { getPaidTerm, insertListing, markPaidAndLive, uploadListingPhotos } from '../lib/store'
+import { rememberMyListing } from '../lib/myListings'
 import { paymentLinkForListing } from '../lib/checkout'
 import { lookupPropertyFacts } from '../lib/propertyLookup'
 
 const PENDING_KEY = 'listingneeded_pending_listing_id'
+const PENDING_RENEW_KEY = 'listingneeded_pending_renew'
 
 function uid() {
   return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
@@ -21,6 +23,11 @@ export default function List() {
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const [listingType, setListingType] = useState<ListingType>('rent')
+  const [termDays, setTermDays] = useState(90)
+
+  useEffect(() => {
+    void getPaidTerm().then((t) => setTermDays(t.days))
+  }, [])
 
   // Public-record autofill (beds / baths / sq ft / year built). Values stay editable; the user's own
   // edits are never overwritten by a later lookup.
@@ -77,9 +84,12 @@ export default function List() {
       }
       setBusy(true)
       try {
-        await markPaidAndLive(id)
+        const renew = localStorage.getItem(PENDING_RENEW_KEY) === '1'
+        await markPaidAndLive(id, { renew })
         localStorage.removeItem(PENDING_KEY)
-        if (!cancelled) navigate(`/listing/${id}?listed=1`, { replace: true })
+        localStorage.removeItem(PENDING_RENEW_KEY)
+        rememberMyListing(id)
+        if (!cancelled) navigate(`/listing/${id}?${renew ? 'renewed=1' : 'listed=1'}`, { replace: true })
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Could not activate listing after payment')
@@ -139,6 +149,8 @@ export default function List() {
 
       await insertListing(draft)
       localStorage.setItem(PENDING_KEY, draft.id)
+      localStorage.removeItem(PENDING_RENEW_KEY)
+      rememberMyListing(draft.id)
 
       const url = paymentLinkForListing({
         listingId: draft.id,
@@ -175,7 +187,7 @@ export default function List() {
       {status ? <div className="success">{status}</div> : null}
       <div className="fee-box">
         <strong>One-time fee: ${listingFeeUsd(listingType)}</strong>
-        <div>Rent $99 or sale $800. You’ll pay on Stripe’s secure page.</div>
+        <div>Rent $99 or sale $800. You’ll pay on Stripe’s secure page. Your listing stays live for <strong>{termDays} days</strong> from the payment date; you can renew it any time.</div>
       </div>
 
       <div className="row">

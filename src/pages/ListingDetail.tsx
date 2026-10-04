@@ -2,15 +2,44 @@ import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import ShareButton from '../components/ShareButton'
 import type { Listing } from '../lib/types'
-import { getListing } from '../lib/store'
+import { getListing, getPaidTerm } from '../lib/store'
+import { isMyListing } from '../lib/myListings'
+import { paymentLinkForListing } from '../lib/checkout'
+import { isActiveUntilOk } from '../lib/types'
+
+function fmtEnd(ymd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
+  if (!m) return ymd
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+}
 
 export default function ListingDetail() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const listed = searchParams.get('listed') === '1'
+  const renewed = searchParams.get('renewed') === '1'
+  const [termDays, setTermDays] = useState(90)
+  const [renewError, setRenewError] = useState('')
   const [listing, setListing] = useState<Listing | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    void getPaidTerm().then((t) => setTermDays(t.days))
+  }, [])
+
+  function renew() {
+    if (!listing) return
+    setRenewError('')
+    try {
+      const url = paymentLinkForListing({ listingId: listing.id, type: listing.type, email: listing.ownerEmail })
+      localStorage.setItem('listingneeded_pending_listing_id', listing.id)
+      localStorage.setItem('listingneeded_pending_renew', '1')
+      window.location.href = url
+    } catch (e) {
+      setRenewError(e instanceof Error ? e.message : 'Could not start the renewal payment')
+    }
+  }
 
   useEffect(() => {
     if (!id) {
@@ -63,9 +92,35 @@ export default function ListingDetail() {
 
   return (
     <div className="detail">
-      {listed ? (
+      {listed || renewed ? (
         <div className="success" style={{ gridColumn: '1 / -1' }}>
-          Payment received. Your listing is live — people will contact you directly.
+          {renewed ? 'Renewal received.' : 'Payment received.'} Your listing is live — people will contact you directly.
+          {listing.activeUntil ? <> It stays live through <strong>{fmtEnd(listing.activeUntil)}</strong>.</> : null}
+        </div>
+      ) : null}
+      {!listing.is_mls && isMyListing(listing.id) ? (
+        <div className="owner-term" style={{ gridColumn: '1 / -1' }}>
+          <div>
+            <strong>Your listing</strong>
+            {listing.activeUntil ? (
+              <>
+                {' '}
+                {isActiveUntilOk(listing.activeUntil) ? 'is live through' : 'ended on'} <strong>{fmtEnd(listing.activeUntil)}</strong>
+                {isActiveUntilOk(listing.activeUntil) ? ` (${termDays}-day term from payment).` : '.'}
+              </>
+            ) : (
+              ' has no end date.'
+            )}
+            <div className="meta">
+              Questions? Marcel Najar · <a href="https://www.listingneeded.com">www.listingneeded.com</a> · <a href="tel:2038183242">203-818-3242</a>
+            </div>
+          </div>
+          <div>
+            <button type="button" className="btn" onClick={renew}>
+              Renew / extend +{termDays} days
+            </button>
+            {renewError ? <div className="meta" style={{ color: '#b91c1c' }}>{renewError}</div> : null}
+          </div>
         </div>
       ) : null}
       <div className="gallery">

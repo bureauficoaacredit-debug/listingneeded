@@ -1008,3 +1008,6 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .bulk-preview { color: #800020; }
 .bulk-trash-note { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; justify-content: space-between; padding: .6rem .75rem; background: #fdf3f3; border: 1px solid #e6c4c8; }
 .admin-table tr.row-selected td { background: #eaf2fb; }
+
+/* v39 owner term box */
+.owner-term { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; align-items: center; justify-content: space-between; padding: .9rem 1.1rem; background: #eef4fb; border: 1px solid var(--line); border-left: 4px solid #0B3A6E; }

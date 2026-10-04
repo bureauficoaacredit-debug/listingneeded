@@ -295,7 +295,24 @@ async function upsertListing(listing: Listing): Promise<Listing> {
 }
 
 
-export async function markPaidAndLive(id: string): Promise<Listing | null> {
+/**
+ * Payment received: mark paid + live and set the end date to payment date + the paid term (admin setting, default 90 days).
+ * With `renew`, the new term is added on top of the current end date when it is still in the future.
+ */
+export async function markPaidAndLive(id: string, opts?: { renew?: boolean }): Promise<Listing | null> {
+  const { days } = await getPaidTerm(true)
+  let base = todayYmd()
+  if (opts?.renew) {
+    const cur = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}&select=active_until`, {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (cur.ok) {
+      const rows = (await cur.json()) as { active_until: string | null }[]
+      const end = rows[0]?.active_until?.slice(0, 10)
+      if (end && /^\d{4}-\d{2}-\d{2}$/.test(end) && end > base) base = end
+    }
+  }
   const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: {
@@ -303,7 +320,7 @@ export async function markPaidAndLive(id: string): Promise<Listing | null> {
       Accept: 'application/json',
       Prefer: 'return=representation',
     },
-    body: JSON.stringify({ paid: true, live: true }),
+    body: JSON.stringify({ paid: true, live: true, active_until: addDaysYmd(base, days) }),
   })
   await throwIfNotOk(res)
   const data = (await res.json()) as ListingRow[]
@@ -863,4 +880,44 @@ export async function applyExpiryToMlsWithoutEndDate(days: number): Promise<numb
   })
   await throwIfNotOk(res)
   return ((await res.json()) as unknown[]).length
+}
+
+
+/* ======================= v39: paid DIY term ======================= */
+
+export type PaidTermSetting = { days: number }
+export const DEFAULT_PAID_TERM: PaidTermSetting = { days: 90 }
+
+let paidTermCache: { at: number; value: PaidTermSetting } | null = null
+
+/** Admin setting "paid listings stay live N days from payment" (app_settings.paid_term, default 90). */
+export async function getPaidTerm(force = false): Promise<PaidTermSetting> {
+  if (!force && paidTermCache && Date.now() - paidTermCache.at < 20_000) return paidTermCache.value
+  let value = DEFAULT_PAID_TERM
+  try {
+    const res = await supabaseFetch('/rest/v1/app_settings?key=eq.paid_term&select=value', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (res.ok) {
+      const rows = (await res.json()) as { value: Partial<PaidTermSetting> }[]
+      if (rows[0]?.value) value = { days: clampDays(rows[0].value.days, DEFAULT_PAID_TERM.days) }
+    }
+  } catch {
+    /* default */
+  }
+  paidTermCache = { at: Date.now(), value }
+  return value
+}
+
+export async function savePaidTerm(next: PaidTermSetting): Promise<PaidTermSetting> {
+  const value = { days: clampDays(next.days, DEFAULT_PAID_TERM.days) }
+  const res = await supabaseFetch('/rest/v1/app_settings?on_conflict=key', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ key: 'paid_term', value, updated_at: new Date().toISOString() }),
+  })
+  await throwIfNotOk(res)
+  paidTermCache = { at: Date.now(), value }
+  return value
 }

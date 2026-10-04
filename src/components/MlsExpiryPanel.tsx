@@ -4,7 +4,9 @@ import {
   applyExpiryToMlsWithoutEndDate,
   DEFAULT_MLS_EXPIRY,
   getMlsExpiry,
+  getPaidTerm,
   saveMlsExpiry,
+  savePaidTerm,
   trashListings,
   TRASH_DAYS,
 } from '../lib/store'
@@ -29,6 +31,8 @@ export default function MlsExpiryPanel({
   const [days, setDays] = useState(String(DEFAULT_MLS_EXPIRY.days))
   const [loaded, setLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [paidDays, setPaidDays] = useState('90')
+  const [savingPaid, setSavingPaid] = useState(false)
   const [olderDays, setOlderDays] = useState('90')
   const [confirmOlder, setConfirmOlder] = useState(false)
   const [working, setWorking] = useState(false)
@@ -45,6 +49,32 @@ export default function MlsExpiryPanel({
       off = true
     }
   }, [])
+
+  useEffect(() => {
+    let off = false
+    void getPaidTerm(true).then((t) => {
+      if (!off) setPaidDays(String(t.days))
+    })
+    return () => {
+      off = true
+    }
+  }, [])
+
+  const paidN = Math.round(Number(paidDays))
+  const paidOk = Number.isFinite(paidN) && paidN >= 1 && paidN <= 3650
+
+  async function savePaid() {
+    if (!paidOk) return onError('Enter a number of days between 1 and 3650.')
+    setSavingPaid(true)
+    try {
+      const t = await savePaidTerm({ days: paidN })
+      onStatus(`Saved: paid DIY listings stay live ${t.days} days from the payment date (applies to new payments and renewals).`)
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Could not save the setting')
+    } finally {
+      setSavingPaid(false)
+    }
+  }
 
   const noEnd = useMemo(() => listings.filter((l) => l.is_mls && !l.activeUntil && !l.deletedAt).length, [listings])
   const olderN = Math.max(0, Math.round(Number(olderDays) || 0))
@@ -135,6 +165,26 @@ export default function MlsExpiryPanel({
             {saving ? 'Saving…' : 'Save'}
           </button>
           <span className="meta">{enabled ? 'ON — imports without an end date get import date + N days.' : 'OFF'}</span>
+        </div>
+
+        <div className="bulk-setting">
+          <span>
+            <strong>Paid DIY listings</strong> stay live
+          </span>
+          <input
+            type="number"
+            min={1}
+            max={3650}
+            value={paidDays}
+            onChange={(e) => setPaidDays(e.target.value)}
+            className="bulk-num"
+            aria-label="Days a paid DIY listing stays live"
+          />
+          <span>days from the payment date</span>
+          <button type="button" className="btn secondary" onClick={() => void savePaid()} disabled={savingPaid}>
+            {savingPaid ? 'Saving…' : 'Save'}
+          </button>
+          <span className="meta">MLS auto-expire above does not apply to DIY / paid listings.</span>
         </div>
 
         <div className="bulk-setting">

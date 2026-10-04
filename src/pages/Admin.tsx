@@ -2,7 +2,9 @@ import { useDeferredValue, useEffect, useMemo, useState, type FormEvent } from '
 import type { Listing, ListingType, PartnerCategory, PartnerLink } from '../lib/types'
 import { isActiveUntilOk, MLS_OWNER, PARTNER_CATEGORY_LABELS } from '../lib/types'
 import {
+  addDaysYmd,
   allListings,
+  todayYmd,
   allPartnerLinks,
   deleteAllDiyListings,
   deleteAllMlsListings,
@@ -92,18 +94,27 @@ function statusLabel(l: Listing): string {
   return 'inactive'
 }
 
-type ListingFilter = 'all' | 'mls' | 'diy' | 'live' | 'inactive' | 'trash'
+type ListingFilter = 'all' | 'mls' | 'diy' | 'live' | 'inactive' | 'ending' | 'trash'
 const LISTING_FILTERS: { key: ListingFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'mls', label: 'MLS' },
   { key: 'diy', label: 'DIY' },
   { key: 'live', label: 'Live' },
   { key: 'inactive', label: 'Inactive' },
+  { key: 'ending', label: 'Ending ≤ 7 days' },
   { key: 'trash', label: 'Trash' },
 ]
 const PAGE_SIZE = 50
 
 /** Live = switched on and not past its end date. Inactive = switched off or ended. */
+/** Paid, live listing whose end date falls within the next 7 days (today included). */
+function endsWithin7Days(l: Listing): boolean {
+  if (!l.paid || !l.live || l.deletedAt || !l.activeUntil) return false
+  const end = l.activeUntil.slice(0, 10)
+  const today = todayYmd()
+  return end >= today && end <= addDaysYmd(today, 7)
+}
+
 function isLiveNow(l: Listing): boolean {
   return l.live && isActiveUntilOk(l.activeUntil)
 }
@@ -212,7 +223,7 @@ export default function Admin() {
   const haystacks = useMemo(() => new Map(listings.map((l) => [l.id, searchHaystack(l)])), [listings])
   const filteredListings = useMemo(() => {
     const terms = deferredQuery.toLowerCase().split(/\s+/).filter(Boolean)
-    return listings.filter((l) => {
+    const out = listings.filter((l) => {
       if (listingFilter === 'trash') {
         if (!l.deletedAt) return false
       } else {
@@ -221,14 +232,17 @@ export default function Admin() {
         if (listingFilter === 'diy' && l.is_mls) return false
         if (listingFilter === 'live' && !isLiveNow(l)) return false
         if (listingFilter === 'inactive' && isLiveNow(l)) return false
+        if (listingFilter === 'ending' && !endsWithin7Days(l)) return false
       }
       if (!terms.length) return true
       const hay = haystacks.get(l.id) ?? ''
       return terms.every((t) => hay.includes(t))
     })
+    if (listingFilter === 'ending') out.sort((a, b) => (a.activeUntil ?? '').localeCompare(b.activeUntil ?? ''))
+    return out
   }, [listings, haystacks, deferredQuery, listingFilter])
   const filterCounts = useMemo(() => {
-    const c: Record<ListingFilter, number> = { all: 0, mls: 0, diy: 0, live: 0, inactive: 0, trash: 0 }
+    const c: Record<ListingFilter, number> = { all: 0, mls: 0, diy: 0, live: 0, inactive: 0, ending: 0, trash: 0 }
     for (const l of listings) {
       if (l.deletedAt) {
         c.trash++
@@ -239,6 +253,7 @@ export default function Admin() {
       else c.diy++
       if (isLiveNow(l)) c.live++
       else c.inactive++
+      if (endsWithin7Days(l)) c.ending++
     }
     return c
   }, [listings])

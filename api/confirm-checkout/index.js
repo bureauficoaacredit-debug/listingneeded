@@ -63,12 +63,25 @@ export default async function handler(req, res) {
       headers.Authorization = `Bearer ${supabaseKey}`
     }
 
+    // v39: paid DIY listings stay live N days (admin setting app_settings.paid_term, default 90) from payment.
+    let termDays = 90
+    try {
+      const sRes = await fetch(`${supabaseUrl}/rest/v1/app_settings?key=eq.paid_term&select=value`, { headers })
+      const sRows = sRes.ok ? await sRes.json() : []
+      const d = Math.round(Number(sRows?.[0]?.value?.days))
+      if (Number.isFinite(d) && d >= 1 && d <= 3650) termDays = d
+    } catch {
+      /* default 90 */
+    }
+    const ymd = (dt) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(dt)
+    const activeUntil = ymd(new Date(Date.now() + termDays * 86_400_000))
+
     const patchRes = await fetch(
       `${supabaseUrl}/rest/v1/listings?id=eq.${encodeURIComponent(listingId)}`,
       {
         method: 'PATCH',
         headers,
-        body: JSON.stringify({ paid: true, live: true }),
+        body: JSON.stringify({ paid: true, live: true, active_until: activeUntil }),
       },
     )
 
