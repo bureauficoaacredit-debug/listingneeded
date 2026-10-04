@@ -29,6 +29,8 @@ export type Listing = {
   /** Optional living area (sq ft) and year built — autofilled from public records on the list form. */
   sqft?: number | null
   yearBuilt?: number | null
+  /** v38: set when moved to the admin Trash (undo window 7 days, then purged). */
+  deletedAt?: string | null
 }
 
 export const LISTING_FEE_RENT_USD = 99

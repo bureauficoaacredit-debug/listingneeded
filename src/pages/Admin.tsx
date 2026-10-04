@@ -8,7 +8,15 @@ import {
   deleteAllMlsListings,
   deleteAllPartnerLinks,
   deleteListing,
+  deleteListingsPermanently,
   deletePartnerLink,
+  emptyTrash,
+  extendListings,
+  purgeOldTrash,
+  restoreListings,
+  setListingsLive,
+  trashListings,
+  TRASH_DAYS,
   insertListing,
   insertListings,
   insertPartnerLink,
@@ -23,9 +31,20 @@ import { useSearchParams } from 'react-router-dom'
 import CmaLeadsPanel from '../components/CmaLeadsPanel'
 import { ConfirmDeleteAll } from '../components/AdminModal'
 import { ListingEditModal, PartnerEditModal } from '../components/AdminEditors'
+import MlsExpiryPanel from '../components/MlsExpiryPanel'
 
 const SESSION_KEY = 'listingneeded_admin_ok'
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
+
+function visibleCount(rows: unknown[], limit: number): number {
+  return Math.min(rows.length, limit)
+}
+
+function trashDaysLeft(deletedAt: string | null | undefined): number {
+  if (!deletedAt) return 0
+  const left = 7 - (Date.now() - new Date(deletedAt).getTime()) / 86_400_000
+  return Math.max(0, Math.ceil(left))
+}
 
 function uid() {
   return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
@@ -73,13 +92,14 @@ function statusLabel(l: Listing): string {
   return 'inactive'
 }
 
-type ListingFilter = 'all' | 'mls' | 'diy' | 'live' | 'inactive'
+type ListingFilter = 'all' | 'mls' | 'diy' | 'live' | 'inactive' | 'trash'
 const LISTING_FILTERS: { key: ListingFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'mls', label: 'MLS' },
   { key: 'diy', label: 'DIY' },
   { key: 'live', label: 'Live' },
   { key: 'inactive', label: 'Inactive' },
+  { key: 'trash', label: 'Trash' },
 ]
 const PAGE_SIZE = 50
 
@@ -178,6 +198,12 @@ export default function Admin() {
   const [listingQuery, setListingQuery] = useState('')
   const [listingFilter, setListingFilter] = useState<ListingFilter>('all')
   const [listingLimit, setListingLimit] = useState(PAGE_SIZE)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkBusy, setBulkBusy] = useState('')
+  const [extendDays, setExtendDays] = useState('30')
+  const [confirmBulkTrash, setConfirmBulkTrash] = useState(false)
+  const [confirmEmptyTrash, setConfirmEmptyTrash] = useState(false)
+  const [confirmPermanent, setConfirmPermanent] = useState(false)
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') === 'leads' ? 'leads' : 'listings'
@@ -187,18 +213,28 @@ export default function Admin() {
   const filteredListings = useMemo(() => {
     const terms = deferredQuery.toLowerCase().split(/\s+/).filter(Boolean)
     return listings.filter((l) => {
-      if (listingFilter === 'mls' && !l.is_mls) return false
-      if (listingFilter === 'diy' && l.is_mls) return false
-      if (listingFilter === 'live' && !isLiveNow(l)) return false
-      if (listingFilter === 'inactive' && isLiveNow(l)) return false
+      if (listingFilter === 'trash') {
+        if (!l.deletedAt) return false
+      } else {
+        if (l.deletedAt) return false
+        if (listingFilter === 'mls' && !l.is_mls) return false
+        if (listingFilter === 'diy' && l.is_mls) return false
+        if (listingFilter === 'live' && !isLiveNow(l)) return false
+        if (listingFilter === 'inactive' && isLiveNow(l)) return false
+      }
       if (!terms.length) return true
       const hay = haystacks.get(l.id) ?? ''
       return terms.every((t) => hay.includes(t))
     })
   }, [listings, haystacks, deferredQuery, listingFilter])
   const filterCounts = useMemo(() => {
-    const c: Record<ListingFilter, number> = { all: listings.length, mls: 0, diy: 0, live: 0, inactive: 0 }
+    const c: Record<ListingFilter, number> = { all: 0, mls: 0, diy: 0, live: 0, inactive: 0, trash: 0 }
     for (const l of listings) {
+      if (l.deletedAt) {
+        c.trash++
+        continue
+      }
+      c.all++
       if (l.is_mls) c.mls++
       else c.diy++
       if (isLiveNow(l)) c.live++
@@ -206,6 +242,9 @@ export default function Admin() {
     }
     return c
   }, [listings])
+  const inTrash = listingFilter === 'trash'
+  const poolSize = inTrash ? filterCounts.trash : filterCounts.all
+  const allVisibleSelected = visibleCount(filteredListings, listingLimit) > 0 && filteredListings.slice(0, listingLimit).every((l) => selected.has(l.id))
   const visibleListings = filteredListings.slice(0, listingLimit)
   const listingFiltersActive = listingQuery.trim() !== '' || listingFilter !== 'all'
 
@@ -221,6 +260,11 @@ export default function Admin() {
       setError('')
       setPartnerSetupError('')
       try {
+        try {
+          await purgeOldTrash()
+        } catch {
+          /* the daily pg_cron job also purges */
+        }
         const rows = await allListings()
         if (!cancelled) {
           setListings(rows)
@@ -376,6 +420,149 @@ export default function Admin() {
       setError(err instanceof Error ? err.message : 'Delete all partner links failed')
     } finally {
       setRemovingLinks(false)
+    }
+  }
+
+  async function reloadListings() {
+    const rows = await allListings()
+    setListings(rows)
+    const dates: Record<string, string> = {}
+    for (const r of rows) dates[r.id] = r.activeUntil?.slice(0, 10) ?? ''
+    setEndDateDrafts(dates)
+    setSelected(new Set())
+  }
+
+  function patchLocal(ids: string[], patch: Partial<Listing>) {
+    const set = new Set(ids)
+    setListings((prev) => prev.map((row) => (set.has(row.id) ? { ...row, ...patch } : row)))
+  }
+
+  function toggleSelected(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function toggleVisible() {
+    const vis = filteredListings.slice(0, listingLimit)
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (vis.every((l) => next.has(l.id))) vis.forEach((l) => next.delete(l.id))
+      else vis.forEach((l) => next.add(l.id))
+      return next
+    })
+  }
+
+  function selectAllMatching() {
+    setSelected(new Set(filteredListings.map((l) => l.id)))
+  }
+
+  async function runBulk(label: string, fn: (ids: string[]) => Promise<string>) {
+    const ids = [...selected]
+    if (!ids.length) return
+    setBulkBusy(label)
+    setStatus('')
+    setError('')
+    try {
+      const msg = await fn(ids)
+      setStatus(msg)
+      setSelected(new Set())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `${label} failed`)
+      // something may have been applied before the error — resync from the database
+      try {
+        await reloadListings()
+      } catch {
+        /* keep the error above */
+      }
+    } finally {
+      setBulkBusy('')
+    }
+  }
+
+  const bulkTrash = () =>
+    runBulk('Move to Trash', async (ids) => {
+      const n = await trashListings(ids, (d) => setBulkBusy(`Moving to Trash… ${d}/${ids.length}`))
+      patchLocal(ids, { deletedAt: new Date().toISOString() })
+      setConfirmBulkTrash(false)
+      return `Moved ${n} listing(s) to Trash. Restore them within ${TRASH_DAYS} days from the Trash view.`
+    })
+
+  const bulkLive = (live: boolean) =>
+    runBulk(live ? 'Activate' : 'Deactivate', async (ids) => {
+      const n = await setListingsLive(ids, live, (d) => setBulkBusy(`${live ? 'Activating' : 'Deactivating'}… ${d}/${ids.length}`))
+      patchLocal(ids, live ? { live: true, paid: true } : { live: false })
+      return `${live ? 'Activated' : 'Deactivated'} ${n} listing(s).`
+    })
+
+  const bulkExtend = () => {
+    const d = Math.round(Number(extendDays))
+    if (!Number.isFinite(d) || d < 1 || d > 3650) {
+      setError('Enter a number of days between 1 and 3650.')
+      return Promise.resolve()
+    }
+    return runBulk('Extend', async (ids) => {
+      const set = new Set(ids)
+      const rows = listings.filter((l) => set.has(l.id))
+      const { updated, dates } = await extendListings(rows, d, (done) => setBulkBusy(`Extending… ${done}/${ids.length}`))
+      const draft: Record<string, string> = {}
+      for (const [date, dIds] of Object.entries(dates)) {
+        patchLocal(dIds, { activeUntil: date })
+        for (const id of dIds) draft[id] = date
+      }
+      setEndDateDrafts((prev) => ({ ...prev, ...draft }))
+      return `Extended ${updated} listing(s) by ${d} days (from their current end date, or from today if none/expired).`
+    })
+  }
+
+  const bulkRestore = () =>
+    runBulk('Restore', async (ids) => {
+      const n = await restoreListings(ids, (d) => setBulkBusy(`Restoring… ${d}/${ids.length}`))
+      patchLocal(ids, { deletedAt: null })
+      return `Restored ${n} listing(s) from Trash.`
+    })
+
+  const bulkPermanent = () =>
+    runBulk('Delete forever', async (ids) => {
+      const n = await deleteListingsPermanently(ids, (d) => setBulkBusy(`Deleting… ${d}/${ids.length}`))
+      const set = new Set(ids)
+      setListings((prev) => prev.filter((row) => !set.has(row.id)))
+      setConfirmPermanent(false)
+      return `Permanently deleted ${n} listing(s) from Trash.`
+    })
+
+  async function handleEmptyTrash() {
+    setBulkBusy('Emptying Trash…')
+    setStatus('')
+    setError('')
+    try {
+      const n = await emptyTrash()
+      setListings((prev) => prev.filter((row) => !row.deletedAt))
+      setSelected(new Set())
+      setConfirmEmptyTrash(false)
+      setStatus(`Emptied Trash — permanently deleted ${n} listing(s).`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Empty Trash failed')
+    } finally {
+      setBulkBusy('')
+    }
+  }
+
+  async function handleRestoreOne(l: Listing) {
+    setBusyId(l.id)
+    setStatus('')
+    setError('')
+    try {
+      await restoreListings([l.id])
+      patchLocal([l.id], { deletedAt: null })
+      setStatus(`Restored ${l.address} from Trash.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Restore failed')
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -1245,6 +1432,19 @@ export default function Admin() {
         </div>
       </section>
 
+      <MlsExpiryPanel
+        listings={listings}
+        onChanged={reloadListings}
+        onStatus={(m) => {
+          setError('')
+          setStatus(m)
+        }}
+        onError={(m) => {
+          setStatus('')
+          setError(m)
+        }}
+      />
+
       {/* All listings with toggle / end date / delete */}
       <section>
         <h2 style={{ margin: '0 0 .75rem' }}>All listings</h2>
@@ -1261,6 +1461,7 @@ export default function Admin() {
                   onChange={(e) => {
                     setListingQuery(e.target.value)
                     setListingLimit(PAGE_SIZE)
+                    setSelected(new Set())
                   }}
                   autoComplete="off"
                 />
@@ -1272,6 +1473,7 @@ export default function Admin() {
                     onClick={() => {
                       setListingQuery('')
                       setListingLimit(PAGE_SIZE)
+                      setSelected(new Set())
                     }}
                   >
                     ×
@@ -1279,7 +1481,7 @@ export default function Admin() {
                 ) : null}
               </div>
               <div className="admin-search-count" aria-live="polite">
-                {filteredListings.length} of {listings.length}
+                {filteredListings.length} of {poolSize}
               </div>
             </div>
             <div className="admin-chips" role="group" aria-label="Filter listings">
@@ -1292,6 +1494,7 @@ export default function Admin() {
                   onClick={() => {
                     setListingFilter(f.key)
                     setListingLimit(PAGE_SIZE)
+                    setSelected(new Set())
                   }}
                 >
                   {f.label} <span className="admin-chip-n">{filterCounts[f.key]}</span>
@@ -1305,12 +1508,101 @@ export default function Admin() {
                     setListingQuery('')
                     setListingFilter('all')
                     setListingLimit(PAGE_SIZE)
+                    setSelected(new Set())
                   }}
                 >
                   Reset
                 </button>
               ) : null}
             </div>
+            {inTrash ? (
+              <div className="bulk-trash-note">
+                <span>
+                  <strong>Trash</strong> — deleted listings are kept {TRASH_DAYS} days so you can undo, then removed for good
+                  (automatically, every day).
+                </span>
+                <button
+                  type="button"
+                  className="btn danger"
+                  disabled={filterCounts.trash === 0 || !!bulkBusy}
+                  onClick={() => setConfirmEmptyTrash(true)}
+                >
+                  Empty trash ({filterCounts.trash})
+                </button>
+              </div>
+            ) : null}
+            {filteredListings.length > 0 ? (
+              <div className="bulk-bar" role="toolbar" aria-label="Bulk actions">
+                <label className="bulk-check">
+                  <input type="checkbox" checked={allVisibleSelected} onChange={toggleVisible} />
+                  <span>Select shown ({visibleListings.length})</span>
+                </label>
+                <button
+                  type="button"
+                  className="btn ghost bulk-sm"
+                  onClick={selectAllMatching}
+                  disabled={selected.size === filteredListings.length}
+                >
+                  Select all {filteredListings.length} matching
+                </button>
+                {selected.size > 0 ? (
+                  <>
+                    <span className="bulk-count">
+                      <strong>{selected.size}</strong> selected
+                    </span>
+                    <button type="button" className="btn ghost bulk-sm" onClick={() => setSelected(new Set())}>
+                      Clear selection
+                    </button>
+                    {inTrash ? (
+                      <>
+                        <button type="button" className="btn secondary bulk-sm" disabled={!!bulkBusy} onClick={() => void bulkRestore()}>
+                          Restore selected
+                        </button>
+                        <button type="button" className="btn danger bulk-sm" disabled={!!bulkBusy} onClick={() => setConfirmPermanent(true)}>
+                          Delete selected forever
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="btn danger bulk-sm"
+                          disabled={!!bulkBusy}
+                          onClick={() => {
+                            if (selected.size > 20) setConfirmBulkTrash(true)
+                            else if (confirm(`Move ${selected.size} listing(s) to Trash? You can restore them for ${TRASH_DAYS} days.`)) void bulkTrash()
+                          }}
+                        >
+                          Delete selected
+                        </button>
+                        <button type="button" className="btn secondary bulk-sm" disabled={!!bulkBusy} onClick={() => void bulkLive(false)}>
+                          Deactivate selected
+                        </button>
+                        <button type="button" className="btn secondary bulk-sm" disabled={!!bulkBusy} onClick={() => void bulkLive(true)}>
+                          Activate selected
+                        </button>
+                        <span className="bulk-extend">
+                          <button type="button" className="btn secondary bulk-sm" disabled={!!bulkBusy} onClick={() => void bulkExtend()}>
+                            Extend selected by
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            max={3650}
+                            value={extendDays}
+                            onChange={(e) => setExtendDays(e.target.value)}
+                            className="bulk-num"
+                            aria-label="Days to extend by"
+                          />
+                          <span>days</span>
+                        </span>
+                      </>
+                    )}
+                  </>
+                ) : null}
+                {bulkBusy ? <span className="bulk-busy">{bulkBusy}</span> : null}
+              </div>
+            ) : null}
           </div>
         ) : null}
         {loading ? (
@@ -1326,6 +1618,9 @@ export default function Admin() {
             <table className="admin-table">
               <thead>
                 <tr>
+                  <th style={{ width: '2.2rem' }}>
+                    <input type="checkbox" aria-label="Select shown listings" checked={allVisibleSelected} onChange={toggleVisible} />
+                  </th>
                   <th>Address</th>
                   <th>Type</th>
                   <th>Price</th>
@@ -1340,14 +1635,22 @@ export default function Admin() {
               <tbody>
                 {filteredListings.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="meta" style={{ padding: '1.25rem' }}>
+                    <td colSpan={10} className="meta" style={{ padding: '1.25rem' }}>
                       No listings match{listingQuery.trim() ? ` “${listingQuery.trim()}”` : ''}
                       {listingFilter !== 'all' ? ` in ${LISTING_FILTERS.find((f) => f.key === listingFilter)?.label}` : ''}.
                     </td>
                   </tr>
                 ) : null}
                 {visibleListings.map((l) => (
-                  <tr key={l.id}>
+                  <tr key={l.id} className={selected.has(l.id) ? 'row-selected' : undefined}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${l.address}`}
+                        checked={selected.has(l.id)}
+                        onChange={() => toggleSelected(l.id)}
+                      />
+                    </td>
                     <td>
                       <strong>{l.address}</strong>
                       <div className="meta">
@@ -1359,10 +1662,19 @@ export default function Admin() {
                     </td>
                     <td>{formatPrice(l)}</td>
                     <td>
-                      <span className="badge">{statusLabel(l)}</span>
-                      <div className="meta">
-                        {l.live ? 'live' : 'off'} / {l.paid ? 'paid' : 'unpaid'}
-                      </div>
+                      {l.deletedAt ? (
+                        <>
+                          <span className="badge">in trash</span>
+                          <div className="meta">purged in {trashDaysLeft(l.deletedAt)}d</div>
+                        </>
+                      ) : (
+                        <>
+                          <span className="badge">{statusLabel(l)}</span>
+                          <div className="meta">
+                            {l.live ? 'live' : 'off'} / {l.paid ? 'paid' : 'unpaid'}
+                          </div>
+                        </>
+                      )}
                     </td>
                     <td>{l.is_mls ? 'yes' : '—'}</td>
                     <td>
@@ -1428,15 +1740,27 @@ export default function Admin() {
                       >
                         Edit
                       </button>
-                      <button
-                        type="button"
-                        className="btn secondary"
-                        style={{ padding: '0.4rem 0.7rem', fontSize: '0.8rem' }}
-                        disabled={busyId === l.id}
-                        onClick={() => void handleToggleLive(l)}
-                      >
-                        {l.live ? 'Deactivate' : 'Activate'}
-                      </button>
+                      {l.deletedAt ? (
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          style={{ padding: '0.4rem 0.7rem', fontSize: '0.8rem' }}
+                          disabled={busyId === l.id}
+                          onClick={() => void handleRestoreOne(l)}
+                        >
+                          Restore
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn secondary"
+                          style={{ padding: '0.4rem 0.7rem', fontSize: '0.8rem' }}
+                          disabled={busyId === l.id}
+                          onClick={() => void handleToggleLive(l)}
+                        >
+                          {l.live ? 'Deactivate' : 'Activate'}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="btn danger"
@@ -1636,6 +1960,46 @@ export default function Admin() {
       </>
       ) : null}
 
+      {confirmBulkTrash ? (
+        <ConfirmDeleteAll
+          title={`Move ${selected.size} to Trash`}
+          message={
+            <>
+              This moves <strong>{selected.size}</strong> selected listing(s) to the Trash. You can restore them for {TRASH_DAYS} days;
+              after that they are removed for good.
+            </>
+          }
+          busy={!!bulkBusy}
+          onConfirm={bulkTrash}
+          onCancel={() => setConfirmBulkTrash(false)}
+        />
+      ) : null}
+      {confirmPermanent ? (
+        <ConfirmDeleteAll
+          title={`Delete ${selected.size} forever`}
+          message={
+            <>
+              This permanently deletes <strong>{selected.size}</strong> listing(s) from the Trash. This cannot be undone.
+            </>
+          }
+          busy={!!bulkBusy}
+          onConfirm={bulkPermanent}
+          onCancel={() => setConfirmPermanent(false)}
+        />
+      ) : null}
+      {confirmEmptyTrash ? (
+        <ConfirmDeleteAll
+          title="Empty trash"
+          message={
+            <>
+              This permanently deletes all <strong>{filterCounts.trash}</strong> listing(s) in the Trash. This cannot be undone.
+            </>
+          }
+          busy={!!bulkBusy}
+          onConfirm={handleEmptyTrash}
+          onCancel={() => setConfirmEmptyTrash(false)}
+        />
+      ) : null}
       {editListing ? (
         <ListingEditModal
           listing={editListing}

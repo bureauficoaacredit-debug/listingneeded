@@ -538,7 +538,7 @@ async function activeListings(town) {
   const { url, key } = supabaseServerConfig()
   if (!url || !key) throw new Error('Supabase URL/key not configured on the server')
   const path =
-    `/rest/v1/listings?type=eq.sale&live=eq.true&paid=eq.true&city=ilike.${encodeURIComponent(town)}` +
+    `/rest/v1/listings?type=eq.sale&live=eq.true&paid=eq.true&deleted_at=is.null&city=ilike.${encodeURIComponent(town)}` +
     '&select=id,address,city,zip,beds,baths,price,is_mls,active_until&limit=300'
   const rows = await fetchJson(`${url}${path}`, { headers: supabaseHeaders(key), timeoutMs: 6000 })
   const today = new Date().toISOString().slice(0, 10)

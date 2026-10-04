@@ -25,6 +25,7 @@ type ListingRow = {
   active_until?: string | null
   sqft?: number | null
   year_built?: number | null
+  deleted_at?: string | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -51,6 +52,7 @@ function rowToListing(row: ListingRow): Listing {
     activeUntil: row.active_until ?? null,
     sqft: row.sqft != null ? Number(row.sqft) : null,
     yearBuilt: row.year_built != null ? Number(row.year_built) : null,
+    deletedAt: row.deleted_at ?? null,
   }
 }
 
@@ -76,20 +78,35 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     live: listing.live,
     is_mls: listing.is_mls ?? false,
     active_until: listing.activeUntil ?? null,
+    deleted_at: null, // (re)importing or adding a listing always makes it active, never trashed
     // only sent when known so MLS upserts never blank out a value
     ...(listing.sqft != null ? { sqft: listing.sqft } : {}),
     ...(listing.yearBuilt != null ? { year_built: listing.yearBuilt } : {}),
   }
 }
 
-/** Public Search feed: paid + live, and active_until not past. */
+/** Local calendar date as YYYY-MM-DD (matches isActiveUntilOk). */
+export function todayYmd(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** YYYY-MM-DD plus N days (local). */
+export function addDaysYmd(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const dt = new Date(y, m - 1, d + days)
+  return todayYmd(dt)
+}
+
+/** Public Search feed: paid + live, not trashed, and active_until not past (filtered in the query AND client-side). */
 export async function liveListings(): Promise<Listing[]> {
   // PostgREST caps one response at 1000 rows — page so every live listing shows up on Search.
   const PAGE = 1000
   const all: ListingRow[] = []
   for (let offset = 0; offset < 50000; offset += PAGE) {
     const res = await supabaseFetch(
-      `/rest/v1/listings?live=eq.true&paid=eq.true&order=created_at.desc,id.asc&limit=${PAGE}&offset=${offset}`,
+      `/rest/v1/listings?live=eq.true&paid=eq.true&deleted_at=is.null` +
+        `&or=(active_until.is.null,active_until.gte.${todayYmd()})` +
+        `&order=created_at.desc,id.asc&limit=${PAGE}&offset=${offset}`,
       { method: 'GET', headers: { Accept: 'application/json' } },
     )
     await throwIfNotOk(res)
@@ -97,7 +114,7 @@ export async function liveListings(): Promise<Listing[]> {
     all.push(...data)
     if (data.length < PAGE) break
   }
-  return all.map(rowToListing).filter((l) => isActiveUntilOk(l.activeUntil))
+  return all.map(rowToListing).filter((l) => !l.deletedAt && isActiveUntilOk(l.activeUntil))
 }
 
 export async function getListing(id: string): Promise<Listing | null> {
@@ -108,7 +125,8 @@ export async function getListing(id: string): Promise<Listing | null> {
   await throwIfNotOk(res)
   const data = (await res.json()) as ListingRow[]
   if (!data.length) return null
-  return rowToListing(data[0])
+  const l = rowToListing(data[0])
+  return l.deletedAt ? null : l
 }
 
 /** Upload image files to the public listing-photos bucket; returns public URLs. */
@@ -152,7 +170,8 @@ export async function uploadListingPhotos(listingId: string, files: File[]): Pro
   return urls
 }
 
-export async function insertListing(listing: Listing): Promise<Listing> {
+export async function insertListing(input: Listing): Promise<Listing> {
+  const [listing] = await withAutoExpiry([input])
   const row = listingToRow(listing)
   const res = await supabaseFetch('/rest/v1/listings', {
     method: 'POST',
@@ -199,6 +218,7 @@ export async function upsertListings(
   },
 ): Promise<{ ok: Listing[]; failed: { listing: Listing; error: string }[] }> {
   const batchSize = Math.max(1, opts?.batchSize ?? 100)
+  listings = await withAutoExpiry(listings)
   const ok: Listing[] = []
   const failed: { listing: Listing; error: string }[] = []
   const total = listings.length
@@ -659,4 +679,188 @@ export async function deleteAllPartnerLinks(): Promise<number> {
   await throwIfNotOk(res)
   const rows = (await res.json()) as unknown[]
   return Array.isArray(rows) ? rows.length : 0
+}
+
+
+/* ======================= v38: MLS auto-expire, bulk actions, trash ======================= */
+
+export type MlsExpirySetting = { enabled: boolean; days: number }
+export const DEFAULT_MLS_EXPIRY: MlsExpirySetting = { enabled: true, days: 60 }
+export const TRASH_DAYS = 7
+
+function clampDays(n: unknown, fallback: number): number {
+  const v = Math.round(Number(n))
+  return Number.isFinite(v) && v >= 1 && v <= 3650 ? v : fallback
+}
+
+let expiryCache: { at: number; value: MlsExpirySetting } | null = null
+
+/** Admin setting "MLS listings expire after N days" (stored in app_settings.mls_expiry). */
+export async function getMlsExpiry(force = false): Promise<MlsExpirySetting> {
+  if (!force && expiryCache && Date.now() - expiryCache.at < 20_000) return expiryCache.value
+  let value = DEFAULT_MLS_EXPIRY
+  try {
+    const res = await supabaseFetch('/rest/v1/app_settings?key=eq.mls_expiry&select=value', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    })
+    if (res.ok) {
+      const rows = (await res.json()) as { value: Partial<MlsExpirySetting> }[]
+      if (rows[0]?.value) {
+        value = {
+          enabled: rows[0].value.enabled !== false,
+          days: clampDays(rows[0].value.days, DEFAULT_MLS_EXPIRY.days),
+        }
+      }
+    }
+  } catch {
+    /* fall back to the default */
+  }
+  expiryCache = { at: Date.now(), value }
+  return value
+}
+
+export async function saveMlsExpiry(next: MlsExpirySetting): Promise<MlsExpirySetting> {
+  const value = { enabled: !!next.enabled, days: clampDays(next.days, DEFAULT_MLS_EXPIRY.days) }
+  const res = await supabaseFetch('/rest/v1/app_settings?on_conflict=key', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ key: 'mls_expiry', value, updated_at: new Date().toISOString() }),
+  })
+  await throwIfNotOk(res)
+  expiryCache = { at: Date.now(), value }
+  return value
+}
+
+/** Imported MLS rows with no end date get today + N days (when the setting is on). */
+export async function withAutoExpiry(listings: Listing[]): Promise<Listing[]> {
+  if (!listings.some((l) => l.is_mls && !l.activeUntil)) return listings
+  const cfg = await getMlsExpiry()
+  if (!cfg.enabled) return listings
+  const until = addDaysYmd(todayYmd(), cfg.days)
+  return listings.map((l) => (l.is_mls && !l.activeUntil ? { ...l, activeUntil: until } : l))
+}
+
+const ID_CHUNK = 120
+
+function inFilter(ids: string[]): string {
+  return `id=in.(${ids.map((id) => `"${id.replace(/"/g, '')}"`).map(encodeURIComponent).join(',')})`
+}
+
+async function runChunks<T>(ids: string[], fn: (chunk: string[]) => Promise<T>, onProgress?: (done: number) => void): Promise<T[]> {
+  const out: T[] = []
+  let done = 0
+  for (let i = 0; i < ids.length; i += ID_CHUNK) {
+    const chunk = ids.slice(i, i + ID_CHUNK)
+    out.push(await fn(chunk))
+    done += chunk.length
+    onProgress?.(done)
+  }
+  return out
+}
+
+async function patchIds(ids: string[], body: Record<string, unknown>, onProgress?: (done: number) => void): Promise<number> {
+  const counts = await runChunks(
+    ids,
+    async (chunk) => {
+      const res = await supabaseFetch(`/rest/v1/listings?${inFilter(chunk)}&select=id`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', Prefer: 'return=representation' },
+        body: JSON.stringify(body),
+      })
+      await throwIfNotOk(res)
+      return ((await res.json()) as unknown[]).length
+    },
+    onProgress,
+  )
+  return counts.reduce((a, b) => a + b, 0)
+}
+
+/** Move listings to the Trash (soft delete, restorable for 7 days). */
+export function trashListings(ids: string[], onProgress?: (done: number) => void) {
+  return patchIds(ids, { deleted_at: new Date().toISOString() }, onProgress)
+}
+
+export function restoreListings(ids: string[], onProgress?: (done: number) => void) {
+  return patchIds(ids, { deleted_at: null }, onProgress)
+}
+
+export function setListingsLive(ids: string[], live: boolean, onProgress?: (done: number) => void) {
+  // activating also marks paid (same as the single-row Activate button)
+  return patchIds(ids, live ? { live: true, paid: true } : { live: false }, onProgress)
+}
+
+/** Extend end dates by N days: from the current end date if it is still in the future, otherwise from today. */
+export async function extendListings(
+  rows: Pick<Listing, 'id' | 'activeUntil'>[],
+  days: number,
+  onProgress?: (done: number) => void,
+): Promise<{ updated: number; dates: Record<string, string[]> }> {
+  const today = todayYmd()
+  const groups = new Map<string, string[]>()
+  for (const r of rows) {
+    const base = r.activeUntil && /^\d{4}-\d{2}-\d{2}$/.test(r.activeUntil.trim()) && r.activeUntil.trim() >= today ? r.activeUntil.trim() : today
+    const next = addDaysYmd(base, days)
+    if (!groups.has(next)) groups.set(next, [])
+    groups.get(next)!.push(r.id)
+  }
+  let updated = 0
+  let done = 0
+  const dates: Record<string, string[]> = {}
+  for (const [date, ids] of groups) {
+    updated += await patchIds(ids, { active_until: date }, (d) => onProgress?.(done + d))
+    done += ids.length
+    dates[date] = ids
+  }
+  return { updated, dates }
+}
+
+/** Permanently delete specific listings (used from the Trash view and per-row delete there). */
+export async function deleteListingsPermanently(ids: string[], onProgress?: (done: number) => void): Promise<number> {
+  const counts = await runChunks(
+    ids,
+    async (chunk) => {
+      const res = await supabaseFetch(`/rest/v1/listings?${inFilter(chunk)}&select=id`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json', Prefer: 'return=representation' },
+      })
+      await throwIfNotOk(res)
+      return ((await res.json()) as unknown[]).length
+    },
+    onProgress,
+  )
+  return counts.reduce((a, b) => a + b, 0)
+}
+
+/** Empty the Trash for good. */
+export async function emptyTrash(): Promise<number> {
+  const res = await supabaseFetch('/rest/v1/listings?deleted_at=not.is.null&select=id', {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', Prefer: 'return=representation' },
+  })
+  await throwIfNotOk(res)
+  return ((await res.json()) as unknown[]).length
+}
+
+/** Purge Trash rows older than 7 days (the daily pg_cron job does this too; this runs when the admin page opens). */
+export async function purgeOldTrash(): Promise<number> {
+  const cutoff = new Date(Date.now() - TRASH_DAYS * 86_400_000).toISOString()
+  const res = await supabaseFetch(`/rest/v1/listings?deleted_at=lt.${encodeURIComponent(cutoff)}&select=id`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', Prefer: 'return=representation' },
+  })
+  if (!res.ok) return 0
+  return ((await res.json()) as unknown[]).length
+}
+
+/** One-time helper: give every live-DB MLS row with no end date an end date of today + N days. */
+export async function applyExpiryToMlsWithoutEndDate(days: number): Promise<number> {
+  const until = addDaysYmd(todayYmd(), days)
+  const res = await supabaseFetch('/rest/v1/listings?is_mls=eq.true&active_until=is.null&deleted_at=is.null&select=id', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', Prefer: 'return=representation' },
+    body: JSON.stringify({ active_until: until }),
+  })
+  await throwIfNotOk(res)
+  return ((await res.json()) as unknown[]).length
 }
