@@ -18,7 +18,22 @@ function norm(s: string | null | undefined) {
 function matchesKeyword(l: Listing, q: string) {
   if (!q) return true
   const hay = `${norm(l.address)} ${norm(l.city)} ${norm(l.zip)} ${norm(l.state)}`
-  return hay.includes(q)
+  if (hay.includes(q)) return true
+  return matchesMlsNumber(l, q)
+}
+
+/**
+ * v41: the same text box also finds a home by MLS number (silent — no label/placeholder). The number is the id suffix
+ * (mls_24206019). Accepts "24206019", "mls_24206019", "MLS #24206019", "#24206019", or partial digits.
+ * A bare query needs 6+ digits (so 5-digit ZIP searches behave exactly as before); with an explicit mls/# prefix 5+ digits.
+ */
+function matchesMlsNumber(l: Listing, q: string) {
+  const m = /^(mls[\s_#:.-]*|#\s*)?(\d[\d\s-]*)$/i.exec(q.trim())
+  if (!m) return false
+  const digits = m[2].replace(/\D/g, '')
+  if (digits.length < (m[1] ? 5 : 6)) return false
+  const num = /^mls_(\d+)$/.exec(l.id)?.[1] ?? (l.is_mls ? /\bMLS\s*#\s*(\d+)/i.exec(l.description)?.[1] : undefined)
+  return !!num && num.includes(digits)
 }
 
 function hasLocationParams(params: URLSearchParams) {
