@@ -1,9 +1,24 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { mlsStatusBadge, type Listing, type ListingType } from '../lib/types'
 import { liveListings } from '../lib/store'
 
 type Filter = 'all' | ListingType
+
+/** v42: phone widths only (matches the existing 720px mobile CSS breakpoint). Desktop markup is untouched. */
+const MOBILE_MQ = '(max-width: 720px)'
+function subscribeMobile(cb: () => void) {
+  const mq = window.matchMedia(MOBILE_MQ)
+  mq.addEventListener('change', cb)
+  return () => mq.removeEventListener('change', cb)
+}
+function useIsMobile() {
+  return useSyncExternalStore(
+    subscribeMobile,
+    () => window.matchMedia(MOBILE_MQ).matches,
+    () => false,
+  )
+}
 
 function parseFilter(raw: string | null): Filter {
   if (raw === 'rent' || raw === 'sale') return raw
@@ -109,6 +124,8 @@ export default function Browse() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const resultsRef = useRef<HTMLDivElement>(null)
+  const isMobile = useIsMobile()
+  const touchY = useRef<number | null>(null)
 
   const initialQ = searchParams.get('q') ?? ''
   const initialZip = searchParams.get('zip') ?? ''
@@ -230,10 +247,10 @@ export default function Browse() {
   }
 
   function scrollToResults() {
-    // Defer so collapse layout settles before scrolling
-    requestAnimationFrame(() => {
-      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
+    // Defer so collapse layout settles before scrolling (phones: wait for the short collapse animation)
+    const go = () => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    if (isMobile) window.setTimeout(go, 260)
+    else requestAnimationFrame(go)
   }
 
   function applySearch(e?: FormEvent) {
@@ -371,7 +388,151 @@ export default function Browse() {
         </button>
       </div>
 
-      {searchExpanded ? (
+      {isMobile ? (
+        <div className={`m-search${searchExpanded ? ' open' : ''}`}>
+          <button
+            type="button"
+            className="m-search-bar"
+            aria-expanded={searchExpanded}
+            aria-controls="m-search-panel"
+            onClick={() => setSearchExpanded((v) => !v)}
+            onTouchStart={(e) => {
+              touchY.current = e.touches[0]?.clientY ?? null
+            }}
+            onTouchEnd={(e) => {
+              const y0 = touchY.current
+              touchY.current = null
+              const y1 = e.changedTouches[0]?.clientY
+              if (y0 == null || y1 == null) return
+              if (y1 - y0 > 28 && !searchExpanded) setSearchExpanded(true)
+              else if (y0 - y1 > 28 && searchExpanded) setSearchExpanded(false)
+            }}
+          >
+            <svg className="m-search-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <circle cx="10" cy="10" r="6.5" fill="none" stroke="currentColor" strokeWidth="2.2" />
+              <path d="M15 15l6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            </svg>
+            <span className="m-search-summary">
+              <strong>{locationActive ? summary : 'Search homes'}</strong>
+              <span className="m-search-count">
+                {locationActive ? `${filtered.length} of ${typeCount}` : `${typeCount} listings`}
+              </span>
+            </span>
+            <span className="m-search-cta">{searchExpanded ? 'Close' : 'Edit'}</span>
+            <svg className="m-search-chev" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M5 9l7 7 7-7" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <div id="m-search-panel" className="m-search-panel" aria-hidden={!searchExpanded}>
+            <div className="m-search-inner">
+              <form
+                  className="search-filters search-filters--sticky search-filters--expanded"
+                  aria-label="Search listings"
+                  onSubmit={applySearch}
+                >
+                  <input
+                    className="search-keyword-input"
+                    type="search"
+                    name="q"
+                    enterKeyHint="search"
+                    autoComplete="off"
+                    placeholder="City, street, ZIP, or state…"
+                    value={keywordDraft}
+                    onChange={(e) => setKeywordDraft(e.target.value)}
+                    aria-label="Search by address, city, ZIP, or state"
+                  />
+
+                  <div className="search-filters-row">
+                    <label>
+                      ZIP
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="postal-code"
+                        placeholder="e.g. 06824"
+                        value={zipDraft}
+                        onChange={(e) => setZipDraft(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      City
+                      <input
+                        type="text"
+                        autoComplete="address-level2"
+                        placeholder="e.g. Fairfield"
+                        value={cityDraft}
+                        onChange={(e) => setCityDraft(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Street
+                      <input
+                        type="text"
+                        autoComplete="street-address"
+                        placeholder="Partial address"
+                        value={streetDraft}
+                        onChange={(e) => setStreetDraft(e.target.value)}
+                      />
+                    </label>
+                    <label>
+                      State
+                      <input
+                        type="text"
+                        autoComplete="address-level1"
+                        placeholder="CT"
+                        maxLength={2}
+                        value={stateDraft}
+                        onChange={(e) => setStateDraft(e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, 2))}
+                        aria-label="State (2-letter abbreviation)"
+                      />
+                    </label>
+                    <label>
+                      Min $
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="e.g. 2,500"
+                        value={minDraft}
+                        onChange={(e) => setMinDraft(e.target.value)}
+                        aria-label="Minimum price"
+                      />
+                    </label>
+                    <label>
+                      Max $
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="e.g. 5,000"
+                        value={maxDraft}
+                        onChange={(e) => setMaxDraft(e.target.value)}
+                        aria-label="Maximum price"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="search-filters-actions">
+                    <button type="submit" className="btn search-filters-submit">
+                      Search
+                    </button>
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      onClick={listAll}
+                      disabled={!locationActive && !draftDirty}
+                    >
+                      List all
+                    </button>
+                    <p className="search-filters-meta" aria-live="polite">
+                      {locationActive
+                        ? `Showing ${filtered.length} of ${typeCount} listings`
+                        : `${typeCount} live listing${typeCount === 1 ? '' : 's'}`}
+                    </p>
+                  </div>
+                </form>
+            </div>
+          </div>
+        </div>
+      ) : searchExpanded ? (
         <form
           className="search-filters search-filters--sticky search-filters--expanded"
           aria-label="Search listings"
