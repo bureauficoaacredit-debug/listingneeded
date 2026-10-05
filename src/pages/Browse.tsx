@@ -127,6 +127,21 @@ export default function Browse() {
   const isMobile = useIsMobile()
   const touchY = useRef<number | null>(null)
 
+  // v42: keep the sticky phone bar exactly below the (wrapping) site header.
+  useEffect(() => {
+    if (!isMobile) return
+    const hdr = document.querySelector('header')
+    if (!hdr) return
+    const set = () => document.documentElement.style.setProperty('--hdr-h', `${Math.round(hdr.getBoundingClientRect().height)}px`)
+    set()
+    const ro = new ResizeObserver(set)
+    ro.observe(hdr)
+    return () => {
+      ro.disconnect()
+      document.documentElement.style.removeProperty('--hdr-h')
+    }
+  }, [isMobile])
+
   const initialQ = searchParams.get('q') ?? ''
   const initialZip = searchParams.get('zip') ?? ''
   const initialCity = searchParams.get('city') ?? ''
