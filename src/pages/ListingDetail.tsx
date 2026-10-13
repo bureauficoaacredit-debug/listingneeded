@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import ShareButton from '../components/ShareButton'
+import ListingMap from '../components/ListingMap'
 import type { Listing } from '../lib/types'
 import { getListing, getPaidTerm } from '../lib/store'
 import { isMyListing } from '../lib/myListings'
@@ -173,6 +174,7 @@ export default function ListingDetail() {
             </a>
           </p>
         </div>
+        <ListingMap listing={listing} />
       </div>
     </div>
   )

@@ -1043,3 +1043,13 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
   .m-search-panel, .m-search-chev { transition: none; }
 }
 @media (max-width: 720px) { .browse-results { scroll-margin-top: calc(var(--hdr-h, 4.5rem) + 4.25rem); } }
+
+/* v44 listing map */
+.listing-map { margin-top: 1rem; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-soft); padding: 1rem 1.1rem 0.9rem; }
+.listing-map-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-bottom: 0.6rem; }
+.listing-map-head h3 { margin: 0; }
+.listing-map-open { font-weight: 700; font-size: 0.85rem; color: #0B3A6E; white-space: nowrap; }
+.listing-map-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: var(--radius); overflow: hidden; background: var(--bg-deep, #e8edf2); border: 1px solid var(--line); }
+.listing-map-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.listing-map-addr { margin: 0.5rem 0 0; font-size: 0.85rem; }
+@media (max-width: 720px) { .listing-map-frame { aspect-ratio: 4 / 3; } .listing-map { padding: 0.85rem; } }
