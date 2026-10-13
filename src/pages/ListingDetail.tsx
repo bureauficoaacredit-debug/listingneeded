@@ -174,6 +174,15 @@ export default function ListingDetail() {
             </a>
           </p>
         </div>
+        {listing.type === 'rent' ? (
+          <Link
+            className="landlord-cta"
+            to={`/check-landlord?address=${encodeURIComponent(listing.address)}&town=${encodeURIComponent(listing.city)}&go=1`}
+          >
+            <strong>Check your Landlord</strong>
+            <span>Free public records for this address: owner of record, foreclosures, evictions ↗</span>
+          </Link>
+        ) : null}
         <ListingMap listing={listing} />
       </div>
     </div>
