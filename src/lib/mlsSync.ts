@@ -26,6 +26,7 @@ export type ImportLogRow = {
   not_seen_count: number
   skipped_count: number
   error_count: number
+  errors: { message?: string } | null
   duration_ms: number | null
   label: string | null
   note: string | null

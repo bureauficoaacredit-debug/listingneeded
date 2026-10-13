@@ -40,6 +40,8 @@ export default async function handler(req, res) {
     return send(res, 405, { error: 'POST only' })
   }
   const t0 = Date.now()
+  let ctx = null
+  let linkHint = null
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
     const auth = String(req.headers?.authorization || '')
@@ -49,7 +51,9 @@ export default async function handler(req, res) {
     const q = new URL(req.url || '/', 'https://x').searchParams
     const dry = body.dry === true || body.dry === 1 || q.get('dry') === '1' || q.get('dry') === 'true'
     const action = String(body.action || 'run')
-    const source = ['scheduled', 'admin', 'api'].includes(body.source) ? body.source : 'scheduled'
+    const rawSource = body.source || q.get('source')
+    const source = ['scheduled', 'auto-hourly', 'admin', 'api'].includes(rawSource) ? rawSource : 'scheduled'
+    ctx = { token, source, dry }
 
     // 1. switch / link updates (also validates the token)
     let settings
@@ -74,11 +78,12 @@ export default async function handler(req, res) {
     if (!settings.enabled && !dry && source !== 'admin') {
       return send(res, 200, { ok: true, skipped: 'off', message: 'MLS auto-import is switched OFF in Admin.', ...base })
     }
-    if (!norm || norm.error) return send(res, 400, { error: norm?.error || 'No MLS link saved yet. Send {"link": "https://smartmls.connectmls.com/servlet/QL?D=…"}.' })
+    if (!norm || norm.error) throw Object.assign(new Error(norm?.error || 'No MLS link saved yet. Send {"link": "https://smartmls.connectmls.com/servlet/QL?D=…"}.'), { status: 400 })
 
+    linkHint = maskCode(norm.code)
     const portalToken = await openPortalLink(norm.url)
     const { listings, totalCount } = await fetchPortalListings(portalToken)
-    if (!listings.length) return send(res, 502, { error: 'The MLS portal returned 0 homes for this link.' })
+    if (!listings.length) throw Object.assign(new Error('The MLS portal returned 0 homes for this link.'), { status: 502 })
     const { homes, skipped, totalRows } = toSyncHomes(listings)
 
     const result = await rpc('mls_sync_apply', {
@@ -101,6 +106,20 @@ export default async function handler(req, res) {
       ...base,
     })
   } catch (err) {
+    // v43: failed runs (expired link, portal down, ...) go into the admin import log as an error row.
+    if (ctx && Number(err?.status) !== 401) {
+      try {
+        await rpc('mls_sync_log_error', {
+          p_token: ctx.token,
+          p_source: ctx.source,
+          p_dry: ctx.dry,
+          p_message: String(err instanceof Error ? err.message : err).slice(0, 500),
+          p_link_hint: linkHint,
+        })
+      } catch {
+        /* logging is best-effort */
+      }
+    }
     const status = Number(err?.status) || (/MLS link|portal|SMART MLS/i.test(String(err?.message)) ? 502 : 500)
     return send(res, status, { error: err instanceof Error ? err.message : 'mls-sync failed' })
   }

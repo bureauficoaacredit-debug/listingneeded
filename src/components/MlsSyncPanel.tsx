@@ -187,6 +187,12 @@ export default function MlsSyncPanel({ onImported }: { onImported: () => void | 
   }
 
   const last = settings.last_result as Record<string, unknown> | null
+  const lastAuto = log.find((r) => r.source === 'auto-hourly')
+  const autoText = lastAuto
+    ? `last run ${fmt(lastAuto.created_at)} — ${
+        lastAuto.errors?.message ? `error: ${lastAuto.errors.message}` : `${lastAuto.new_count} new, ${lastAuto.updated_count} updated`
+      }`
+    : 'no automatic run yet'
   const linkMasked = maskLink(settings.link)
 
   return (
@@ -215,6 +221,14 @@ export default function MlsSyncPanel({ onImported }: { onImported: () => void | 
           <span className="meta">
             Last run: {fmt(settings.last_run_at)}
             {last ? ` — ${String(last.new ?? 0)} new, ${String(last.updated ?? 0)} updated (${last.dry ? 'dry run' : 'real'})` : ''}
+          </span>
+        </div>
+
+        <div className="bulk-setting">
+          <span>
+            <strong>Automatic: every hour (server)</strong> at minute :23 ·{' '}
+            <span className={lastAuto?.errors?.message ? 'bulk-preview' : 'meta'}>{autoText}</span>
+            {!settings.enabled ? <span className="bulk-preview"> · paused (switch is OFF)</span> : null}
           </span>
         </div>
 
@@ -297,6 +311,7 @@ export default function MlsSyncPanel({ onImported }: { onImported: () => void | 
                       <td>{r.not_seen_count}</td>
                       <td>{r.error_count}</td>
                       <td>
+                        {r.errors?.message ? <div className="bulk-preview">Error: {r.errors.message}</div> : null}
                         {r.label ? <strong>{r.label}</strong> : null} {r.note ?? ''}
                       </td>
                       <td>
