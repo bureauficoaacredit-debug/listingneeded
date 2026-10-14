@@ -78,10 +78,6 @@ export default function Layout() {
           >
             <SearchIcon />
           </NavLink>
-          <NavLink to="/check-landlord" className={({ isActive }) => `nav-landlord${isActive ? ' active' : ''}`}>
-            <span className="nav-list-full">Check your Landlord</span>
-            <span className="nav-list-short">Landlord</span>
-          </NavLink>
           <NavLink
             to="/list"
             className={({ isActive }) => `nav-list-btn${isActive ? ' active' : ''}`}
@@ -121,13 +117,18 @@ export default function Layout() {
                 What’s my home worth?
               </Link>{' '}
               ·{' '}
-              <Link to="/check-landlord" style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>
-                Check your Landlord
-              </Link>{' '}
-              ·{' '}
               <Link to="/admin" style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>
                 Admin
               </Link>
+            </div>
+            <div className="footer-records">
+              <span className="footer-records-title">Public records:</span>{' '}
+              <a href="https://www.vgsi.com/connecticut-online-database/" target="_blank" rel="noopener noreferrer">Town assessor (CT)</a> ·{' '}
+              <a href="https://civilinquiry.jud.ct.gov/PropertySearch.aspx" target="_blank" rel="noopener noreferrer">CT court property search (foreclosures)</a> ·{' '}
+              <a href="https://civilinquiry.jud.ct.gov/PartySearch.aspx" target="_blank" rel="noopener noreferrer">CT court party search (evictions)</a> ·{' '}
+              <a href="https://www.uslandrecords.com/ctlr/" target="_blank" rel="noopener noreferrer">CT land records</a> ·{' '}
+              <a href="https://service.ct.gov/business/s/onlinebusinesssearch" target="_blank" rel="noopener noreferrer">CT business registry</a>
+              <div>Information from public records.</div>
             </div>
           </div>
           <img className="qr" src="/qr.png" alt="QR code for listingneeded.com" />
