@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { getQrCodes, QR_URLS, type QrCodesSetting, type QrKind } from '../lib/store'
-import { qrDataUrl, QR_TITLE } from '../lib/qr'
+import { qrBadge, qrDataUrl, QR_TITLE } from '../lib/qr'
 
 /** v50: printable flyer page for one QR code (/#/qr/free or /#/qr/paid). */
 export default function QrPrint() {
@@ -24,7 +24,7 @@ export default function QrPrint() {
       <div className="qr-sheet">
         <img className="qr-sheet-logo" src="/logo/logo-dark@2x.png" alt="Listing Needed" width={462} height={45} />
         <h1>Scan to list your home</h1>
-        <span className={`qr-sheet-label qr-${k}`}>{QR_TITLE[k]} · {c?.label ?? (k === 'free' ? 'Free listing' : 'List your home')}</span>
+        <span className={`qr-sheet-label qr-${k}`}>{qrBadge(k, c?.label ?? (k === 'free' ? 'Free listing' : 'List your home'))}</span>
         {img ? <img className="qr-sheet-code" src={img} alt={`QR code: ${QR_URLS[k]}`} /> : <div className="qr-sheet-code" />}
         <p className="qr-sheet-sub">{k === 'free' ? 'Free listing — no payment needed.' : 'Flat fee: $99 to rent · $800 to sell. Pay securely online.'}</p>
         <div className="qr-sheet-contact">

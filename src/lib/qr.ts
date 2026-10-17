@@ -10,6 +10,11 @@ export function qrDataUrl(kind: QrKind, width = 720): Promise<string> {
 
 export const QR_TITLE: Record<QrKind, string> = { free: 'FREE', paid: 'PAID' }
 
+/** "FREE · List your home", or just the label when it already says Free/Paid (avoids "FREE · FREE LISTING"). */
+export function qrBadge(kind: QrKind, label: string): string {
+  return new RegExp(kind, 'i').test(label) ? label : `${QR_TITLE[kind]} · ${label}`
+}
+
 function loadImg(src: string): Promise<HTMLImageElement> {
   return new Promise((res, rej) => {
     const i = new Image()
@@ -48,7 +53,7 @@ export async function qrCardPng(kind: QrKind, label: string): Promise<string> {
   g.font = '800 92px Inter, Montserrat, sans-serif'
   g.fillText('Scan to list your home', W / 2, 345)
   // label pill
-  const pill = `${QR_TITLE[kind]} · ${label}`.toUpperCase()
+  const pill = qrBadge(kind, label).toUpperCase()
   g.font = '800 46px Inter, Montserrat, sans-serif'
   const pw = g.measureText(pill).width + 90
   g.fillStyle = kind === 'free' ? '#1F7A3A' : '#800020'

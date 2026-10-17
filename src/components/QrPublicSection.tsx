@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getQrCodes, type QrCodesSetting, type QrKind } from '../lib/store'
-import { qrDataUrl, QR_TITLE } from '../lib/qr'
+import { qrBadge, qrDataUrl, QR_TITLE } from '../lib/qr'
 
 /** v50: public QR section — renders nothing unless the admin turned on "Show QR codes on website". */
 export default function QrPublicSection() {
@@ -24,7 +24,7 @@ export default function QrPublicSection() {
       <div className="qr-grid">
         {kinds.map((k) => (
           <div key={k} className="qr-card">
-            <span className={`badge qr-${k}`}>{QR_TITLE[k]} · {cfg[k].label}</span>
+            <span className={`badge qr-${k}`}>{qrBadge(k, cfg[k].label)}</span>
             {imgs[k] ? <img className="qr-img" src={imgs[k]} alt={`${QR_TITLE[k]} QR code`} width={180} height={180} /> : <div className="qr-img" />}
             <Link className="btn secondary bulk-sm" to={k === 'free' ? '/list?plan=free&src=qr' : '/list?src=qr-paid'}>
               {k === 'free' ? 'Open the free form' : 'Open the form'}
