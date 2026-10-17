@@ -59,3 +59,5 @@ Each tag is a full snapshot of the site. To go back later, tell me the version n
 ## How to restore
 
 Say: “move to v3” (or any number).
+
+> GitHub access: since 2026-10-17 all pushes to this repo are made only as **bureauficoaacredit-debug** (Listing Needed shares no GitHub account with any other site).
