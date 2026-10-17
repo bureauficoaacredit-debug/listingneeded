@@ -31,7 +31,7 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }))
   const min = todayEt()
   // v55: ShowingTime has no public deep link by MLS number, so agents copy it and paste it in ShowingTime's search
-  const mlsNumber = /^mls_\d+$/i.test(listing.id) ? listing.id.slice(4) : ''
+  const mlsNumber = listing.is_mls && /^mls_\d+$/i.test(listing.id) ? listing.id.slice(4) : ''
   const [copied, setCopied] = useState(false)
   async function copyMls() {
     try {
@@ -156,6 +156,7 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
               <p className="showing-contact">
                 Or call / text Marcel Najar: <a href="tel:2038183242">203-818-3242</a>
               </p>
+              {listing.is_mls ? (
               <div className="showing-agents-row">
                 <a className="showing-agents" href={SHOWINGTIME_URL} target="_blank" rel="noopener noreferrer">
                   Agents: book on ShowingTime ↗
@@ -170,6 +171,7 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
                 ) : null}
                 {copied ? <span className="showing-toast" role="status">MLS # copied — paste it in ShowingTime search</span> : null}
               </div>
+              ) : null}
             </form>
           )}
         </Modal>
