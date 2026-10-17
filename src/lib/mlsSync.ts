@@ -32,6 +32,18 @@ export type ImportLogRow = {
   note: string | null
 }
 
+/** v48: one saved MLS link (QL?D= portal link or smartmls-portal shared link). */
+export type SyncLink = {
+  id: string
+  created_at: string
+  label: string
+  url: string
+  kind: 'portal' | 'shared'
+  enabled: boolean
+  last_run_at: string | null
+  last_result: { ok?: boolean; summary?: string; homes?: number; error?: string; new?: number; updated?: number } | null
+}
+
 export type SyncRunResult = {
   ok: boolean
   dry?: boolean
@@ -45,6 +57,7 @@ export type SyncRunResult = {
   skipped?: string
   message?: string
   error?: string
+  perLink?: { id: string; label: string; ok: boolean; summary?: string; error?: string; homes?: number }[]
 }
 
 async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
@@ -72,13 +85,46 @@ export const deleteImportLog = (code: string, id: string) => rpc<number>('mls_im
 export const deleteAllImportLog = (code: string) => rpc<number>('mls_import_log_delete_all', { p_token: code, p_confirm: 'DELETE' })
 
 /** Run the import through the server function (reads the portal link server-side). */
-export async function runMlsSync(code: string, dry: boolean): Promise<SyncRunResult> {
+export async function runMlsSync(code: string, dry: boolean, id?: string): Promise<SyncRunResult> {
   const res = await fetch(`/api/mls-sync${dry ? '?dry=1' : ''}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${code}` },
-    body: JSON.stringify({ dry, source: 'admin' }),
+    body: JSON.stringify({ dry, source: 'admin', ...(id ? { id } : {}) }),
   })
   const data = (await res.json().catch(() => ({}))) as SyncRunResult
   if (!res.ok) throw new Error(data.error || `Import failed (${res.status})`)
   return data
+}
+
+// v48: saved links (list / edit / delete / delete all go straight to the token-gated RPCs; add goes through the API,
+// which validates and normalizes either link format)
+export const listSyncLinks = (code: string) => rpc<SyncLink[]>('mls_sync_links_list', { p_token: code })
+export const updateSyncLink = (code: string, id: string, patch: { label?: string; enabled?: boolean }) =>
+  rpc<SyncLink>('mls_sync_link_save', {
+    p_token: code,
+    p_id: id,
+    p_label: patch.label ?? null,
+    p_url: null,
+    p_kind: null,
+    p_enabled: patch.enabled ?? null,
+  })
+export const deleteSyncLink = (code: string, id: string) => rpc<number>('mls_sync_link_delete', { p_token: code, p_id: id })
+export const deleteAllSyncLinks = (code: string) => rpc<number>('mls_sync_link_delete_all', { p_token: code, p_confirm: 'DELETE' })
+
+export async function addSyncLink(code: string, link: string, label: string): Promise<void> {
+  const res = await fetch('/api/mls-sync', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${code}` },
+    body: JSON.stringify({ action: 'link-save', link, ...(label.trim() ? { label: label.trim() } : {}) }),
+  })
+  const data = (await res.json().catch(() => ({}))) as { error?: string }
+  if (!res.ok) throw new Error(data.error || `Could not save the link (${res.status})`)
+}
+
+/** Mask a saved link for display: D=2PUM…S6PD or shared …06f1…8c. */
+export function maskSyncLink(url: string): string {
+  const d = /[?&]D=([A-Za-z0-9]+)/.exec(url)
+  if (d) return `QL?D=${d[1].slice(0, 4)}…${d[1].slice(-4)}`
+  const u = /([0-9a-f]{8}-[0-9a-f-]{27})/i.exec(url)
+  return u ? `shared-link …${u[1].slice(-6)}` : '…'
 }

@@ -6,7 +6,7 @@
  * makes: GET smartmls-apiserver.connectmls.com/api/mylistingsfromagent. Items use the shared-link shape, so the
  * existing mapper (sharedListingToDraft) is reused.
  */
-import { listingsPayloadToDrafts } from './sharedLinkMls.js'
+import { extractSharedLinkUuid, listingsPayloadToDrafts } from './sharedLinkMls.js'
 
 const API = 'https://smartmls-apiserver.connectmls.com/api/'
 const QL_HOST = 'smartmls.connectmls.com'
@@ -35,6 +35,58 @@ export function maskCode(code) {
 
 async function timedFetch(url, init = {}, ms = 20000) {
   return fetch(url, { ...init, signal: AbortSignal.timeout(ms) })
+}
+
+/**
+ * v48: accept either link format.
+ * @returns {{ kind: 'portal'|'shared', url: string, hint: string, label: string } | { error: string }}
+ */
+export function normalizeAnyLink(raw) {
+  const input = String(raw || '').trim()
+  if (/\/servlet\/QL/i.test(input)) {
+    const n = normalizePortalLink(input)
+    if (n.error) return n
+    return { kind: 'portal', url: n.url, hint: maskCode(n.code), label: 'Email portal link (D=)' }
+  }
+  const s = extractSharedLinkUuid(input)
+  if (s.error) return { error: 'Use a SMART MLS link: https://smartmls.connectmls.com/servlet/QL?D=… or https://smartmls-portal.connectmls.com/shared-link/…/<uuid>' }
+  let slug = ''
+  try {
+    const parts = new URL(input).pathname.split('/').filter(Boolean)
+    const i = parts.indexOf('shared-link')
+    if (i >= 0 && parts.length > i + 2) slug = parts[i + 1]
+  } catch {
+    /* bare uuid */
+  }
+  const words = slug.replace(/-plus-\d+-more$/i, '').split('-').filter(Boolean).slice(0, 4)
+  const label = words.length ? words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' (shared link)' : 'Shared link'
+  const url = slug ? `https://smartmls-portal.connectmls.com/shared-link/${slug}/${s.uuid}` : `https://smartmls-portal.connectmls.com/shared-link/${s.uuid}`
+  return { kind: 'shared', url, hint: `${s.uuid.slice(0, 4)}…${s.uuid.slice(-4)}`, label }
+}
+
+/** v48: read all listings of a saved link (either format). Raw shared-link-shape items. */
+export async function fetchLinkListings(link) {
+  if (link.kind === 'portal') {
+    const token = await openPortalLink(link.url)
+    return fetchPortalListings(token)
+  }
+  const s = extractSharedLinkUuid(link.url)
+  if (s.error) throw new Error(s.error)
+  let res
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      res = await timedFetch(`${API}shared-link/${s.uuid}`, { headers: { Accept: 'application/json' } })
+      if (res.status < 500) break
+    } catch (e) {
+      if (attempt === 1) throw new Error(`SMART MLS API unreachable: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  if (res.status === 404) throw new Error('Shared link not found (expired or removed).')
+  if (!res.ok) throw new Error(`SMART MLS API returned HTTP ${res.status} for the shared link.`)
+  const j = await res.json().catch(() => null)
+  const listings = Array.isArray(j) ? j : j && Array.isArray(j.Listings) ? j.Listings : null
+  if (!listings) throw new Error('SMART MLS API returned an unexpected response for the shared link.')
+  return { listings, totalCount: listings.length }
 }
 
 /** Open the portal link, return the client token from the redirect. */

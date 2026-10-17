@@ -1,28 +1,22 @@
 /**
- * POST /api/mls-sync   (v40 — automatic MLS import, Listing Needed only)
+ * POST /api/mls-sync   (v40 automatic MLS import; v48 several saved links, Listing Needed only)
  *
- * Auth: `Authorization: Bearer <sync token>` (or body.token). The token is checked by the database (SHA-256 vs
- * private.admin_secrets) — this function only holds the public anon key.
+ * Auth: `Authorization: Bearer <sync token>` (or body.token), checked by the database (SHA-256 vs private.admin_secrets).
+ * This function only holds the public anon key.
  *
  * Body (JSON, all optional):
- *   link      a smartmls.connectmls.com/servlet/QL?D=… link; it is saved as the link to use from now on
- *   action    'run' (default) | 'save' (only save link/switch) | 'status'
+ *   link      a QL?D= or smartmls-portal shared-link URL -> added to the saved links (kept, also runs with the others)
+ *   label     label for `link`
+ *   action    'run' (default) | 'save' | 'status' | 'links' | 'link-save' | 'link-delete' | 'link-delete-all'
+ *   id        saved link id for link-save / link-delete / run (run only that link)
+ *   enabled   with no id: the global on/off switch; with id: that link's on/off
  *   dry       true -> preview only (also ?dry=1)
- *   enabled   true/false -> flips the on/off switch
- *   source    'scheduled' (default for real runs) | 'admin' | 'api'   (admin runs ignore the off switch)
+ *   source    'scheduled' | 'auto-hourly' | 'admin' | 'api'  (admin runs ignore the global off switch)
  *
- * Response: { ok, dry, summary: "141 new, 159 updated", new, updated, unchanged, notSeen, errors, ... }
- * Rules: add new homes, refresh price/status/photos of existing ones by MLS number, never duplicate, never remove or
- * un-trash, new homes expire after the admin "MLS expire after N days" setting (60).
+ * Each enabled saved link is read and applied in turn (one import-log row per link) with the v40 rules: add new homes,
+ * refresh price/status/photos of existing ones by MLS number, never duplicate, never remove or un-trash.
  */
-import {
-  fetchPortalListings,
-  maskCode,
-  normalizePortalLink,
-  openPortalLink,
-  rpc,
-  toSyncHomes,
-} from '../_lib/mlsSync.js'
+import { fetchLinkListings, normalizeAnyLink, rpc, toSyncHomes } from '../_lib/mlsSync.js'
 
 export const config = { api: { bodyParser: { sizeLimit: '1mb' } }, maxDuration: 60 }
 
@@ -33,6 +27,22 @@ function send(res, status, payload) {
   res.end(JSON.stringify(payload))
 }
 
+function publicLink(l) {
+  const n = normalizeAnyLink(l.url)
+  return {
+    id: l.id,
+    label: l.label,
+    kind: l.kind,
+    enabled: l.enabled,
+    hint: n.error ? '…' : n.hint,
+    lastRunAt: l.last_run_at,
+    lastResult: l.last_result,
+    createdAt: l.created_at,
+  }
+}
+
+const fail = (msg, status) => Object.assign(new Error(msg), { status })
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store')
   if (req.method !== 'POST') {
@@ -41,7 +51,6 @@ export default async function handler(req, res) {
   }
   const t0 = Date.now()
   let ctx = null
-  let linkHint = null
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
     const auth = String(req.headers?.authorization || '')
@@ -53,74 +62,135 @@ export default async function handler(req, res) {
     const action = String(body.action || 'run')
     const rawSource = body.source || q.get('source')
     const source = ['scheduled', 'auto-hourly', 'admin', 'api'].includes(rawSource) ? rawSource : 'scheduled'
+    const id = body.id ? String(body.id) : null
     ctx = { token, source, dry }
 
-    // 1. switch / link updates (also validates the token)
-    let settings
-    const wantsEnabled = typeof body.enabled === 'boolean' ? body.enabled : null
-    const wantsLink = body.link != null ? String(body.link) : null
-    if (wantsLink != null || wantsEnabled != null) {
-      if (wantsLink) {
-        const n = normalizePortalLink(wantsLink)
-        if (n.error) return send(res, 400, { error: n.error })
-      }
-      settings = await rpc('mls_sync_set_settings', { p_token: token, p_enabled: wantsEnabled, p_link: wantsLink })
-    } else {
-      settings = await rpc('mls_sync_get_settings', { p_token: token })
+    // 1. global switch (also validates the token)
+    let settings = await rpc('mls_sync_get_settings', { p_token: token })
+    if (!id && typeof body.enabled === 'boolean' && body.enabled !== settings.enabled) {
+      settings = await rpc('mls_sync_set_settings', { p_token: token, p_enabled: body.enabled, p_link: null })
     }
-    const norm = settings.link ? normalizePortalLink(settings.link) : null
-    const base = { enabled: settings.enabled, linkSaved: !!norm && !norm.error, link: norm && !norm.error ? maskCode(norm.code) : null }
 
-    if (action === 'status') return send(res, 200, { ok: true, ...base, lastRunAt: settings.last_run_at, lastResult: settings.last_result })
-    if (action === 'save') return send(res, 200, { ok: true, saved: true, ...base })
+    // 2. link management
+    if (action === 'link-delete') {
+      if (!id) throw fail('id required', 400)
+      const n = await rpc('mls_sync_link_delete', { p_token: token, p_id: id })
+      return send(res, 200, { ok: true, deleted: n })
+    }
+    if (action === 'link-delete-all') {
+      const n = await rpc('mls_sync_link_delete_all', { p_token: token, p_confirm: String(body.confirm || '') })
+      return send(res, 200, { ok: true, deleted: n })
+    }
+    let added = null
+    if (body.link != null && String(body.link).trim()) {
+      const n = normalizeAnyLink(body.link)
+      if (n.error) throw fail(n.error, 400)
+      added = await rpc('mls_sync_link_save', {
+        p_token: token,
+        p_id: action === 'link-save' ? id : null,
+        p_label: body.label != null ? String(body.label) : action === 'link-save' && id ? null : n.label,
+        p_url: n.url,
+        p_kind: n.kind,
+        p_enabled: id ? null : typeof body.linkEnabled === 'boolean' ? body.linkEnabled : true,
+      })
+    }
+    if (action === 'link-save' && id && !added) {
+      added = await rpc('mls_sync_link_save', {
+        p_token: token,
+        p_id: id,
+        p_label: body.label != null ? String(body.label) : null,
+        p_url: null,
+        p_kind: null,
+        p_enabled: typeof body.enabled === 'boolean' ? body.enabled : null,
+      })
+    }
 
-    // 2. run
+    const rows = await rpc('mls_sync_links_list', { p_token: token })
+    const links = (rows || []).map(publicLink)
+    const base = { enabled: settings.enabled, links, linkSaved: links.length > 0 }
+
+    if (action === 'status' || action === 'links') {
+      return send(res, 200, { ok: true, ...base, lastRunAt: settings.last_run_at, lastResult: settings.last_result })
+    }
+    if (action === 'save' || action === 'link-save') return send(res, 200, { ok: true, saved: true, link: added ? publicLink(added) : null, ...base })
+
+    // 3. run
     if (!settings.enabled && !dry && source !== 'admin') {
       return send(res, 200, { ok: true, skipped: 'off', message: 'MLS auto-import is switched OFF in Admin.', ...base })
     }
-    if (!norm || norm.error) throw Object.assign(new Error(norm?.error || 'No MLS link saved yet. Send {"link": "https://smartmls.connectmls.com/servlet/QL?D=…"}.'), { status: 400 })
+    const targets = (rows || []).filter((l) => (id ? l.id === id : l.enabled))
+    if (!targets.length) {
+      throw fail(id ? 'Saved link not found.' : 'No MLS link saved (or all links are off). Add one in Admin → MLS auto-import.', 400)
+    }
 
-    linkHint = maskCode(norm.code)
-    const portalToken = await openPortalLink(norm.url)
-    const { listings, totalCount } = await fetchPortalListings(portalToken)
-    if (!listings.length) throw Object.assign(new Error('The MLS portal returned 0 homes for this link.'), { status: 502 })
-    const { homes, skipped, totalRows } = toSyncHomes(listings)
-
-    const result = await rpc('mls_sync_apply', {
-      p_token: token,
-      p_homes: homes,
-      p_dry: dry,
-      p_source: source,
-      p_link_hint: maskCode(norm.code),
-      p_skipped: skipped,
-    })
-    return send(res, 200, {
-      ok: true,
-      ...result,
-      summary: `${result.new} new, ${result.updated} updated`,
-      portalTotal: totalCount,
-      portalRows: totalRows,
-      skippedByMapper: skipped,
+    const perLink = []
+    const tot = { new: 0, updated: 0, unchanged: 0, errors: 0, total: 0 }
+    for (const l of targets) {
+      const pl = publicLink(l)
+      const hint = `${l.label || pl.kind} · ${pl.hint}`.slice(0, 120)
+      try {
+        if (Date.now() - t0 > 48000) throw new Error('Skipped this run (time limit); it will run next hour.')
+        const { listings, totalCount } = await fetchLinkListings(l)
+        if (!listings.length) throw new Error('The MLS link returned 0 homes.')
+        const { homes, skipped, totalRows } = toSyncHomes(listings)
+        const r = await rpc('mls_sync_apply', {
+          p_token: token,
+          p_homes: homes,
+          p_dry: dry,
+          p_source: source,
+          p_link_hint: hint,
+          p_skipped: skipped,
+        })
+        const summary = `${r.new} new, ${r.updated} updated`
+        if (!dry) {
+          await rpc('mls_sync_link_set_result', {
+            p_token: token,
+            p_id: l.id,
+            p_result: { ok: true, homes: totalRows, new: r.new, updated: r.updated, unchanged: r.unchanged, summary, logId: r.logId },
+          })
+        }
+        for (const k of Object.keys(tot)) tot[k] += Number(r[k]) || 0
+        perLink.push({ id: l.id, label: l.label, ok: true, portalTotal: totalCount, homes: totalRows, skippedByMapper: skipped, ...r, summary })
+      } catch (err) {
+        const message = String(err instanceof Error ? err.message : err).slice(0, 500)
+        tot.errors += 1
+        perLink.push({ id: l.id, label: l.label, ok: false, error: message })
+        try {
+          await rpc('mls_sync_log_error', { p_token: token, p_source: source, p_dry: dry, p_message: message, p_link_hint: hint })
+          if (!dry) await rpc('mls_sync_link_set_result', { p_token: token, p_id: l.id, p_result: { ok: false, error: message } })
+        } catch {
+          /* best-effort */
+        }
+      }
+    }
+    const allFailed = perLink.every((p) => !p.ok)
+    return send(res, allFailed ? 502 : 200, {
+      ok: !allFailed,
+      dry,
+      ...tot,
+      summary: `${tot.new} new, ${tot.updated} updated`,
+      perLink,
+      ...(allFailed ? { error: perLink.map((p) => `${p.label}: ${p.error}`).join(' | ') } : {}),
       source,
       ms: Date.now() - t0,
       ...base,
+      links: undefined,
     })
   } catch (err) {
-    // v43: failed runs (expired link, portal down, ...) go into the admin import log as an error row.
-    if (ctx && Number(err?.status) !== 401) {
+    if (ctx && Number(err?.status) !== 401 && Number(err?.status) !== 400) {
       try {
         await rpc('mls_sync_log_error', {
           p_token: ctx.token,
           p_source: ctx.source,
           p_dry: ctx.dry,
           p_message: String(err instanceof Error ? err.message : err).slice(0, 500),
-          p_link_hint: linkHint,
+          p_link_hint: null,
         })
       } catch {
-        /* logging is best-effort */
+        /* best-effort */
       }
     }
-    const status = Number(err?.status) || (/MLS link|portal|SMART MLS/i.test(String(err?.message)) ? 502 : 500)
+    const status = Number(err?.status) || 500
     return send(res, status, { error: err instanceof Error ? err.message : 'mls-sync failed' })
   }
 }
