@@ -116,7 +116,7 @@ export default function ShowingRequestsPanel() {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
           <div>
             <h2 style={{ margin: '0 0 .35rem' }}>Showing requests</h2>
-            <p className="meta" style={{ margin: 0 }}>From “Schedule a showing” on every home page. Newest first.</p>
+            <p className="meta" style={{ margin: 0 }}>From “Book a showing with a realtor” on every home page. Newest first.</p>
           </div>
           <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
             <button type="button" className="btn secondary" onClick={() => void load()}>Refresh</button>
