@@ -3,7 +3,7 @@ import type { Listing } from '../lib/types'
 import { requestShowing } from '../lib/showings'
 import { Modal } from './AdminModal'
 
-const SHOWINGTIME_URL = 'https://www.showingtime.com/'
+const SHOWINGTIME_URL = 'https://login.showingtime.com/ui/login'
 const TIMES = [
   'Morning (9–12)',
   'Afternoon (12–4)',
