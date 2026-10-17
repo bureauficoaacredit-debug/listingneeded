@@ -97,7 +97,7 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
               {showAlt ? (
                 <div className="showing-row">
                   <label>
-                    2nd choice date <span className="meta">(optional)</span>
+                    <span>2nd choice date <span className="meta">(optional)</span></span>
                     <input type="date" min={min} value={f.altDate} onChange={set('altDate')} />
                   </label>
                   <label>
@@ -121,12 +121,12 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
                   <input type="tel" autoComplete="tel" inputMode="tel" value={f.phone} onChange={set('phone')} required />
                 </label>
                 <label>
-                  Email <span className="meta">(optional)</span>
+                  <span>Email <span className="meta">(optional)</span></span>
                   <input type="email" autoComplete="email" value={f.email} onChange={set('email')} />
                 </label>
               </div>
               <label>
-                Message <span className="meta">(optional)</span>
+                <span>Message <span className="meta">(optional)</span></span>
                 <textarea rows={3} value={f.message} onChange={set('message')} placeholder="Anything we should know?" />
               </label>
               {/* honeypot: hidden from people, bots fill it */}
