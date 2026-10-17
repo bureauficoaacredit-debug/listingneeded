@@ -1147,3 +1147,19 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .nbhd-note { margin: 0.75rem 0 0; font-size: 0.82rem; color: var(--muted); }
 .nbhd-source { margin: 0.15rem 0 0; font-size: 0.72rem; color: var(--muted); opacity: 0.85; }
 @media (max-width: 720px) { .nbhd { padding: 0.85rem; } .nbhd-stat dd { font-size: 1rem; } .nbhd-schools li { flex-direction: column; gap: 0.1rem; } .nbhd-school-meta { white-space: normal; } }
+
+/* v53 homepage "Explore a neighborhood" (ZIP lookup) */
+.home-zip { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--brand); box-shadow: var(--shadow-soft); padding: 1.1rem 1.3rem; }
+.home-zip-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem 1.5rem; flex-wrap: wrap; }
+.home-zip-head h2 { margin: 0; font-size: 1.2rem; }
+.home-zip-head .meta { margin: 0.2rem 0 0; font-size: 0.9rem; }
+.home-zip-form { display: flex; gap: 0.5rem; flex: 0 1 20rem; }
+.home-zip-form input { flex: 1 1 auto; min-width: 0; font-size: 1rem; letter-spacing: 0.06em; }
+.home-zip-form .btn { flex: 0 0 auto; }
+.home-zip-error { margin: 0.6rem 0 0; color: #b91c1c; font-size: 0.9rem; }
+.home-zip .nbhd { margin-top: 1rem; box-shadow: none; }
+.home-zip .nbhd-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.nbhd-actions { margin-top: 0.85rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 900px) { .home-zip .nbhd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .home-zip { padding: 0.95rem; } .home-zip-form { flex-basis: 100%; } .nbhd-actions .btn { width: 100%; text-align: center; } }

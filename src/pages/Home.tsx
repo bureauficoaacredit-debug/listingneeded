@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import HomeZipLookup from '../components/HomeZipLookup'
 import PartnerResources from '../components/PartnerResources'
 import QrPublicSection from '../components/QrPublicSection'
 import { LISTING_FEE_RENT_USD, LISTING_FEE_SALE_USD } from '../lib/types'
@@ -49,6 +50,8 @@ export default function Home() {
           <Link className="btn" to="/list">Start my listing</Link>
         </article>
       </section>
+
+      <HomeZipLookup />
 
       <section className="how">
         <h2 className="section-title">How automation works</h2>

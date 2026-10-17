@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Listing } from '../lib/types'
 
 type Census = {
@@ -22,8 +22,22 @@ const money = (n: number, top: boolean) => (top ? `$${(n - 1).toLocaleString()}+
  * Loads only when scrolled near, cached by the CDN (/api/neighborhood) and per session; hidden when nothing comes back.
  * Fair housing: no ratings, crime, poverty or demographic data.
  */
-export default function NeighborhoodFacts({ listing }: { listing: Listing }) {
-  const zip = String(listing.zip || '').trim().slice(0, 5)
+type Props = {
+  /** a home page: facts for its ZIP, schools measured from the home */
+  listing?: Pick<Listing, 'zip' | 'address' | 'city' | 'state'>
+  /** v53 homepage lookup: facts for a typed ZIP, schools from the ZIP center */
+  zip?: string
+  /** extra buttons under the schools (homepage: "See homes in this ZIP") */
+  actions?: ReactNode
+  /** called once when the ZIP has no data / the request fails (the box itself renders nothing) */
+  onEmpty?: () => void
+}
+
+export default function NeighborhoodFacts({ listing, zip: zipProp, actions, onEmpty }: Props) {
+  const zip = String(zipProp ?? listing?.zip ?? '').trim().slice(0, 5)
+  const address = listing?.address || ''
+  const city = listing?.city || ''
+  const state = listing?.state || ''
   const ref = useRef<HTMLElement | null>(null)
   const [visible, setVisible] = useState(false)
   const [facts, setFacts] = useState<Facts | null>(null)
@@ -40,7 +54,9 @@ export default function NeighborhoodFacts({ listing }: { listing: Listing }) {
 
   useEffect(() => {
     if (!visible || !/^\d{5}$/.test(zip)) return
-    const qs = new URLSearchParams({ zip, address: listing.address || '', city: listing.city || '', state: listing.state || '' })
+    setFacts(null)
+    setFailed(false)
+    const qs = new URLSearchParams(address ? { zip, address, city, state } : { zip })
     const key = `ln_nbhd_${qs}`
     try {
       const hit = sessionStorage.getItem(key)
@@ -64,9 +80,15 @@ export default function NeighborhoodFacts({ listing }: { listing: Listing }) {
     return () => {
       alive = false
     }
-  }, [visible, zip, listing.address, listing.city, listing.state])
+  }, [visible, zip, address, city, state])
 
-  if (!/^\d{5}$/.test(zip) || failed || (facts && !facts.found)) return null
+  const empty = failed || (facts != null && !facts.found)
+  useEffect(() => {
+    if (empty) onEmpty?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empty])
+
+  if (!/^\d{5}$/.test(zip) || empty) return null
   if (!facts) return <section ref={ref} className="nbhd nbhd-pending" aria-hidden="true" />
 
   const c = facts.census
@@ -120,6 +142,7 @@ export default function NeighborhoodFacts({ listing }: { listing: Listing }) {
           </ul>
         </div>
       ) : null}
+      {actions ? <div className="nbhd-actions">{actions}</div> : null}
       <p className="nbhd-note">Information from public records</p>
       <p className="nbhd-source">
         Source: U.S. Census Bureau ACS{c?.release ? ` ${c.release.replace('ACS ', '')}` : ''} (ZIP code area), NCES
