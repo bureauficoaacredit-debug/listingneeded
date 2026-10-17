@@ -27,6 +27,7 @@ type ListingRow = {
   year_built?: number | null
   deleted_at?: string | null
   mls_status?: string | null
+  source?: string | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -55,6 +56,7 @@ function rowToListing(row: ListingRow): Listing {
     yearBuilt: row.year_built != null ? Number(row.year_built) : null,
     deletedAt: row.deleted_at ?? null,
     mlsStatus: row.mls_status ?? null,
+    source: row.source ?? null,
   }
 }
 
@@ -85,7 +87,55 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     ...(listing.sqft != null ? { sqft: listing.sqft } : {}),
     ...(listing.yearBuilt != null ? { year_built: listing.yearBuilt } : {}),
     ...(listing.mlsStatus ? { mls_status: listing.mlsStatus } : {}),
+    ...(listing.source ? { source: listing.source } : {}),
   }
+}
+
+// ---------------------------------------------------------------- v50 QR codes
+export type QrKind = 'free' | 'paid'
+export type QrCodeSetting = { enabled: boolean; hidden: boolean; label: string; daily_cap?: number }
+export type QrCodesSetting = Record<QrKind, QrCodeSetting>
+export const DEFAULT_QR: QrCodesSetting = {
+  free: { enabled: false, hidden: false, label: 'Free listing', daily_cap: 25 },
+  paid: { enabled: true, hidden: false, label: 'List your home' },
+}
+export const QR_URLS: Record<QrKind, string> = {
+  free: 'https://www.listingneeded.com/#/list?plan=free&src=qr',
+  paid: 'https://www.listingneeded.com/#/list?src=qr-paid',
+}
+
+export async function getQrCodes(): Promise<QrCodesSetting> {
+  const res = await supabaseFetch('/rest/v1/app_settings?key=eq.qr_codes&select=value', { headers: { Accept: 'application/json' } })
+  if (!res.ok) return DEFAULT_QR
+  const rows = (await res.json().catch(() => [])) as { value: Partial<QrCodesSetting> }[]
+  const v = rows[0]?.value || {}
+  return { free: { ...DEFAULT_QR.free, ...(v.free || {}) }, paid: { ...DEFAULT_QR.paid, ...(v.paid || {}) } }
+}
+
+/** Admin only (RLS): save both QR switches. */
+export async function saveQrCodes(next: QrCodesSetting): Promise<QrCodesSetting> {
+  const res = await supabaseFetch('/rest/v1/app_settings?on_conflict=key', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ key: 'qr_codes', value: next, updated_at: new Date().toISOString() }),
+  })
+  await throwIfNotOk(res)
+  return next
+}
+
+/** Free QR: the database creates the live listing only while the free QR switch is ON. */
+export async function createFreeQrListing(listing: Listing): Promise<Listing> {
+  const row = listingToRow(listing)
+  const res = await supabaseFetch('/rest/v1/rpc/create_free_qr_listing', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ p: row }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error((data && data.message) || `Could not create the free listing (${res.status})`)
+  }
+  return rowToListing((await res.json()) as ListingRow)
 }
 
 /** Local calendar date as YYYY-MM-DD (matches isActiveUntilOk). */

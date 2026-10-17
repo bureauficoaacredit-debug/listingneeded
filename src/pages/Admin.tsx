@@ -36,6 +36,7 @@ import { ConfirmDeleteAll } from '../components/AdminModal'
 import { ListingEditModal, PartnerEditModal } from '../components/AdminEditors'
 import MlsExpiryPanel from '../components/MlsExpiryPanel'
 import AdminLogin, { checkIsAdmin } from '../components/AdminLogin'
+import QrCodesPanel from '../components/QrCodesPanel'
 import { signOut, useSession } from '../lib/auth'
 
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
@@ -1403,6 +1404,7 @@ export default function Admin() {
         </div>
       </section>
 
+      <QrCodesPanel />
       <MlsSyncPanel onImported={reloadListings} />
 
       <MlsExpiryPanel

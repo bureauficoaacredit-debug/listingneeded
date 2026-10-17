@@ -7,6 +7,7 @@ import ListingDetail from './pages/ListingDetail'
 import Admin from './pages/Admin'
 import Cma from './pages/Cma'
 import ResetPassword from './pages/ResetPassword'
+import QrPrint from './pages/QrPrint'
 
 function ListedBanner() {
   const { search } = useLocation()
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="check-landlord" element={<Navigate to="/" replace />} />
         <Route path="admin" element={<Admin />} />
         <Route path="reset-password" element={<ResetPassword />} />
+        <Route path="qr/:kind" element={<QrPrint />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

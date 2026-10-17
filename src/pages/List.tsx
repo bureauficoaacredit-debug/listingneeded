@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { listingFeeUsd, type Listing, type ListingType } from '../lib/types'
-import { getPaidTerm, insertListing, markPaidAndLive, uploadListingPhotos } from '../lib/store'
+import { createFreeQrListing, getPaidTerm, getQrCodes, insertListing, markPaidAndLive, uploadListingPhotos, type QrCodesSetting } from '../lib/store'
 import { rememberMyListing } from '../lib/myListings'
 import { paymentLinkForListing } from '../lib/checkout'
 import { lookupPropertyFacts } from '../lib/propertyLookup'
@@ -24,6 +24,15 @@ export default function List() {
   const [status, setStatus] = useState('')
   const [listingType, setListingType] = useState<ListingType>('rent')
   const [termDays, setTermDays] = useState(90)
+  // v50 QR codes: ?plan=free&src=qr (free, only while the admin switch is on) or ?src=qr-paid (normal paid flow)
+  const qrMode: 'free' | 'paid' | null = searchParams.get('plan') === 'free' ? 'free' : searchParams.get('src') === 'qr-paid' ? 'paid' : null
+  const [qr, setQr] = useState<QrCodesSetting | null>(null)
+  useEffect(() => {
+    if (qrMode) void getQrCodes().then(setQr)
+  }, [qrMode])
+  const qrCfg = qrMode && qr ? qr[qrMode] : null
+  const qrActive = !!qrCfg && qrCfg.enabled && !qrCfg.hidden
+  const isFree = qrMode === 'free' && qrActive
 
   useEffect(() => {
     void getPaidTerm().then((t) => setTermDays(t.days))
@@ -147,6 +156,15 @@ export default function List() {
         draft.photoDataUrls = photoUrls
       }
 
+      if (isFree) {
+        // v50: free QR listing — created live by the database (refused if the admin switched the free QR off)
+        const created = await createFreeQrListing(draft)
+        rememberMyListing(created.id)
+        navigate(`/listing/${created.id}?listed=1`)
+        return
+      }
+      if (qrMode === 'paid') draft.source = 'qr-paid'
+
       await insertListing(draft)
       localStorage.setItem(PENDING_KEY, draft.id)
       localStorage.removeItem(PENDING_RENEW_KEY)
@@ -174,27 +192,53 @@ export default function List() {
     return <div className="card"><div className="body">Payment received — publishing your listing…</div></div>
   }
 
+  if (qrMode && !qr) {
+    return <div className="card"><div className="body meta">Loading…</div></div>
+  }
+  if (qrMode && !qrActive) {
+    return (
+      <div className="card qr-inactive" style={{ maxWidth: 560 }}>
+        <div className="body">
+          <h2 style={{ margin: '0 0 .4rem' }}>This QR code isn’t active right now</h2>
+          <p className="meta">
+            {qrMode === 'free' ? 'The free listing offer from this flyer or sign is not running at the moment.' : 'This QR code is paused at the moment.'}{' '}
+            You can still list your home the regular way.
+          </p>
+          <Link className="btn" to="/list">List your home</Link>
+          <p className="meta" style={{ marginTop: '1rem' }}>Questions? Marcel Najar · <a href="tel:2038183242">203-818-3242</a></p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <form className="form" onSubmit={onSubmit}>
-      <h2>List your home</h2>
+      <h2>{isFree ? 'List your home — free' : 'List your home'}</h2>
       <p className="note">
-        Fully automated self-serve listing: pay on Stripe, return here, and your listing goes live.
+        {isFree ? 'Fully automated self-serve listing: fill in the form and your listing goes live.' : 'Fully automated self-serve listing: pay on Stripe, return here, and your listing goes live.'}
         Want a Realtor® instead? Call 203-818-3242 for a consultation.
       </p>
       {canceled ? (
         <div className="fee-box">Payment canceled — submit again when you’re ready to pay.</div>
       ) : null}
       {status ? <div className="success">{status}</div> : null}
+      {isFree ? (
+        <div className="fee-box free-box">
+          <strong>Free listing — no payment</strong>
+          <div>Thanks for scanning! Submit the form and your listing goes live right away for <strong>{termDays} days</strong>.</div>
+        </div>
+      ) : (
       <div className="fee-box">
         <strong>One-time fee: ${listingFeeUsd(listingType)}</strong>
         <div>Rent $99 or sale $800. You’ll pay on Stripe’s secure page. Your listing stays live for <strong>{termDays} days</strong> from the payment date; you can renew it any time.</div>
       </div>
+      )}
 
       <div className="row">
         <label>Type
           <select name="type" value={listingType} onChange={(e) => setListingType(e.target.value as ListingType)} required>
-            <option value="rent">For rent — $99</option>
-            <option value="sale">For sale — $800</option>
+            <option value="rent">{isFree ? 'For rent' : 'For rent — $99'}</option>
+            <option value="sale">{isFree ? 'For sale' : 'For sale — $800'}</option>
           </select>
         </label>
         <label>Ask / rent price ($)
@@ -250,7 +294,7 @@ export default function List() {
 
       {error ? <div style={{ color: '#b91c1c' }}>{error}</div> : null}
       <button className="btn big" type="submit" disabled={busy}>
-        {busy ? 'Starting Stripe…' : `Pay $${listingFeeUsd(listingType)} with Stripe`}
+        {isFree ? (busy ? 'Publishing…' : 'Publish my free listing') : busy ? 'Starting Stripe…' : `Pay $${listingFeeUsd(listingType)} with Stripe`}
       </button>
       <p className="note">
         After payment, Stripe emails a receipt to the address you entered and can also notify Listing Needed

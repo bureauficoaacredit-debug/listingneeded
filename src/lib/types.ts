@@ -33,6 +33,8 @@ export type Listing = {
   deletedAt?: string | null
   /** v40: MLS status from the feed (e.g. 'Active', 'Under Contract - Continue to Show'); null for DIY. */
   mlsStatus?: string | null
+  /** v50: 'free-qr' (free QR listing) | 'qr-paid' (paid QR) | null */
+  source?: string | null
 }
 
 export const LISTING_FEE_RENT_USD = 99
