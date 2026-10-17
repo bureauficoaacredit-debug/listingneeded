@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import ShareButton from '../components/ShareButton'
+import NeighborhoodFacts from '../components/NeighborhoodFacts'
 import ListingMap from '../components/ListingMap'
 import type { Listing } from '../lib/types'
 import { getListing, getPaidTerm } from '../lib/store'
@@ -175,6 +176,7 @@ export default function ListingDetail() {
           </p>
         </div>
         <ListingMap listing={listing} />
+        <NeighborhoodFacts listing={listing} />
       </div>
     </div>
   )
