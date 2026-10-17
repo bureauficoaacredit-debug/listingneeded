@@ -3,7 +3,6 @@ import type { Listing } from '../lib/types'
 import { requestShowing } from '../lib/showings'
 import { Modal } from './AdminModal'
 
-const SHOWINGTIME_URL = 'https://agent.showingtime.com/listings'
 const TIMES = [
   'Morning (9–12)',
   'Afternoon (12–4)',
@@ -30,23 +29,6 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
   const [f, setF] = useState({ date: '', time: '', altDate: '', altTime: '', name: '', phone: '', email: '', message: '', website: '' })
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((x) => ({ ...x, [k]: e.target.value }))
   const min = todayEt()
-  // v55: ShowingTime has no public deep link by MLS number, so agents copy it and paste it in ShowingTime's search
-  const mlsNumber = listing.is_mls && /^mls_\d+$/i.test(listing.id) ? listing.id.slice(4) : ''
-  const [copied, setCopied] = useState(false)
-  async function copyMls() {
-    try {
-      await navigator.clipboard.writeText(mlsNumber)
-    } catch {
-      const t = document.createElement('textarea')
-      t.value = mlsNumber
-      document.body.appendChild(t)
-      t.select()
-      document.execCommand('copy')
-      t.remove()
-    }
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 2200)
-  }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -156,19 +138,6 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
               <p className="showing-contact">
                 Or call / text Marcel Najar: <a href="tel:2038183242">203-818-3242</a>
               </p>
-              {listing.is_mls ? (
-              <div className="showing-agents-row">
-                <a className="showing-agents" href={SHOWINGTIME_URL} target="_blank" rel="noopener noreferrer">
-                  Agents: book on ShowingTime ↗
-                </a>
-                {mlsNumber ? (
-                  <span className="showing-mls">
-                    MLS # {mlsNumber}
-                    <button type="button" className="showing-copy" onClick={copyMls} aria-label={`Copy MLS number ${mlsNumber}`}>
-                      {copied ? 'Copied ✓' : 'Copy'}
-                    </button>
-                  </span>
-                ) : null}
                 {copied ? <span className="showing-toast" role="status">MLS # copied — paste it in ShowingTime search</span> : null}
               </div>
               ) : null}

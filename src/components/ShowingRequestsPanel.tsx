@@ -12,6 +12,41 @@ import {
 import { ConfirmDeleteAll, Modal } from './AdminModal'
 
 const STATUSES: ShowingStatus[] = ['new', 'confirmed', 'done']
+// Marcel's ShowingTime (agent) account. ShowingTime documents no public deep link by MLS number, so the admin
+// opens ShowingTime and pastes the copied MLS # into its search.
+const SHOWINGTIME_URL = 'https://agent.showingtime.com/listings'
+
+function MlsShowingTime({ mls }: { mls: string }) {
+  const [copied, setCopied] = useState(false)
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(mls)
+    } catch {
+      const t = document.createElement('textarea')
+      t.value = mls
+      document.body.appendChild(t)
+      t.select()
+      document.execCommand('copy')
+      t.remove()
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2200)
+  }
+  return (
+    <div className="showing-st-row">
+      <a className="btn secondary showing-st-btn" href={SHOWINGTIME_URL} target="_blank" rel="noopener noreferrer">
+        Open in ShowingTime ↗
+      </a>
+      <span className="showing-mls">
+        MLS # {mls}
+        <button type="button" className="showing-copy" onClick={copy} aria-label={`Copy MLS number ${mls}`}>
+          {copied ? 'Copied ✓' : 'Copy'}
+        </button>
+      </span>
+      {copied ? <span className="showing-toast" role="status">MLS # copied — paste it in ShowingTime search</span> : null}
+    </div>
+  )
+}
 const fmtWhen = (iso: string) =>
   new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })
 const fmtDay = (ymd: string | null) =>
@@ -120,6 +155,7 @@ export default function ShowingRequestsPanel() {
               <div className="meta" style={{ fontSize: '.78rem' }}>
                 Received {fmtWhen(r.created_at)} ET{r.mls_number ? ` · MLS #${r.mls_number}` : ' · DIY listing'}
               </div>
+              {r.mls_number ? <MlsShowingTime mls={r.mls_number} /> : null}
               <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                 <select value={r.status} onChange={(e) => void setStatus(r, e.target.value as ShowingStatus)} style={{ width: 'auto', padding: '.3rem .5rem' }} aria-label="Status">
                   {STATUSES.map((s) => <option key={s} value={s}>{s[0].toUpperCase() + s.slice(1)}</option>)}

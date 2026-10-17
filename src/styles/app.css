@@ -1173,15 +1173,15 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .showing-error { color: #b91c1c; font-size: 0.92rem; }
 .showing-contact { margin: 0; text-align: center; font-size: 0.95rem; }
 .showing-contact a { font-weight: 800; color: #0B3A6E; }
-.showing-agents { justify-self: center; font-size: 0.78rem; color: var(--muted); }
 .hp-field { position: absolute !important; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
 .showing-status { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
 .showing-status.new { background: #fde8e8; color: #7f171c; }
 .showing-status.confirmed { background: #e3edf8; color: #0B3A6E; }
 .showing-status.done { background: #e8f3ea; color: #1f6b36; }
 @media (max-width: 520px) { .showing-row { grid-template-columns: 1fr; } }
-/* v55 ShowingTime agents row: MLS # + copy */
-.showing-agents-row { position: relative; display: flex; justify-content: center; align-items: center; gap: 0.35rem 0.75rem; flex-wrap: wrap; }
+/* v55 admin showing request: Open in ShowingTime + MLS # copy */
+.showing-st-row { position: relative; display: flex; align-items: center; gap: 0.4rem 0.75rem; flex-wrap: wrap; }
+.showing-st-btn { padding: .3rem .8rem; font-size: .8rem; }
 .showing-mls { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--muted); font-weight: 600; }
 .showing-copy { border: 1px solid var(--line); background: #fff; color: #0B3A6E; font: inherit; font-size: 0.74rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; cursor: pointer; }
 .showing-copy:hover { border-color: #0B3A6E; }
