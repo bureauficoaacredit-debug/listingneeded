@@ -1186,3 +1186,6 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .showing-copy { border: 1px solid var(--line); background: #fff; color: #0B3A6E; font: inherit; font-size: 0.74rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; cursor: pointer; }
 .showing-copy:hover { border-color: #0B3A6E; }
 .showing-toast { position: absolute; bottom: calc(100% + 0.4rem); left: 50%; transform: translateX(-50%); background: #0B3A6E; color: #fff; font-size: 0.78rem; padding: 0.35rem 0.7rem; border-radius: 6px; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.2); }
+.showing-cta { margin: 0.25rem 0 1rem; }
+.showing-cta .showing-btn { margin: 0; }
+.showing-sub { margin: 0.4rem 0 0; text-align: center; font-size: 0.85rem; color: var(--muted); }

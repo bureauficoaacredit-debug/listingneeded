@@ -60,15 +60,18 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
 
   return (
     <>
-      <button type="button" className="btn big showing-btn" onClick={() => setOpen(true)}>
-        Schedule a showing
-      </button>
+      <div className="showing-cta">
+        <button type="button" className="btn big showing-btn" onClick={() => setOpen(true)}>
+          Book a showing with a realtor
+        </button>
+        <p className="showing-sub">Pick a time and a licensed realtor will show you the home.</p>
+      </div>
       {open ? (
-        <Modal title="Schedule a showing" onClose={() => setOpen(false)}>
+        <Modal title="Book a showing with a realtor" onClose={() => setOpen(false)}>
           {done ? (
             <div className="modal-body">
               <div className="success">
-                Request sent for <strong>{listing.address}</strong>. We’ll call or text you to confirm the time.
+                Request sent for <strong>{listing.address}</strong>. A licensed realtor will call or text you to confirm the time.
               </div>
               <p className="showing-contact">
                 Questions? Call or text <a href="tel:2038183242">203-818-3242</a>
@@ -138,9 +141,6 @@ export default function ScheduleShowing({ listing }: { listing: Listing }) {
               <p className="showing-contact">
                 Or call / text Marcel Najar: <a href="tel:2038183242">203-818-3242</a>
               </p>
-                {copied ? <span className="showing-toast" role="status">MLS # copied — paste it in ShowingTime search</span> : null}
-              </div>
-              ) : null}
             </form>
           )}
         </Modal>
