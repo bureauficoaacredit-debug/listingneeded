@@ -215,7 +215,7 @@ export default function List() {
     <form className="form" onSubmit={onSubmit}>
       <h2>{isFree ? 'List your home — free' : 'List your home'}</h2>
       <p className="note">
-        {isFree ? 'Fully automated self-serve listing: fill in the form and your listing goes live.' : 'Fully automated self-serve listing: pay on Stripe, return here, and your listing goes live.'}
+        {isFree ? 'Fully automated self-serve listing: fill in the form and your listing goes live.' : 'Fully automated self-serve listing: pay on Stripe, return here, and your listing goes live.'}{' '}
         Want a Realtor® instead? Call 203-818-3242 for a consultation.
       </p>
       {canceled ? (
