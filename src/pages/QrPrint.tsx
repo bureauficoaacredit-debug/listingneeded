@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { getQrCodes, QR_URLS, type QrCodesSetting, type QrKind } from '../lib/store'
-import { qrBadge, qrDataUrl, QR_TITLE } from '../lib/qr'
+import { qrBadge, qrDataUrl } from '../lib/qr'
 
 /** v50: printable flyer page for one QR code (/#/qr/free or /#/qr/paid). */
 export default function QrPrint() {
