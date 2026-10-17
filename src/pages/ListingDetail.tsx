@@ -95,7 +95,7 @@ export default function ListingDetail() {
     <div className="detail">
       {listed || renewed ? (
         <div className="success" style={{ gridColumn: '1 / -1' }}>
-          {renewed ? 'Renewal received.' : 'Payment received.'} Your listing is live — people will contact you directly.
+          {renewed ? 'Renewal received. Your listing is live' : listing.source === 'free-qr' ? 'Thanks! Your free listing is live' : 'Payment received. Your listing is live'} — people will contact you directly.
           {listing.activeUntil ? <> It stays live through <strong>{fmtEnd(listing.activeUntil)}</strong>.</> : null}
         </div>
       ) : null}

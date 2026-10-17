@@ -160,7 +160,7 @@ export default function List() {
         // v50: free QR listing — created live by the database (refused if the admin switched the free QR off)
         const created = await createFreeQrListing(draft)
         rememberMyListing(created.id)
-        navigate(`/listing/${created.id}?listed=1`)
+        navigate(`/listing/${created.id}?listed=1&free=1`)
         return
       }
       if (qrMode === 'paid') draft.source = 'qr-paid'

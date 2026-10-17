@@ -14,7 +14,7 @@ function ListedBanner() {
   if (!search.includes('listed=1')) return null
   return (
     <div className="success" style={{marginBottom:'1rem'}}>
-      Payment received. Your listing is live — people will contact you directly.
+      {search.includes('free=1') ? 'Thanks! Your free listing is live' : 'Payment received. Your listing is live'} — people will contact you directly.
     </div>
   )
 }
