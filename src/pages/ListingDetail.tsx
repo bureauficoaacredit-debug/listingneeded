@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import ShareButton from '../components/ShareButton'
+import ScheduleShowing from '../components/ScheduleShowing'
 import NeighborhoodFacts from '../components/NeighborhoodFacts'
 import ListingMap from '../components/ListingMap'
 import type { Listing } from '../lib/types'
@@ -160,6 +161,7 @@ export default function ListingDetail() {
           {listing.yearBuilt ? ` · built ${listing.yearBuilt}` : ''} · Pets: {listing.pets}
         </p>
         <p>{listing.description || 'No description provided.'}</p>
+        <ScheduleShowing listing={listing} />
         <div className="contact-card">
           <h3 style={{ marginTop: 0 }}>Contact the owner directly</h3>
           <p className="meta">Listing Needed does not middleman this conversation.</p>

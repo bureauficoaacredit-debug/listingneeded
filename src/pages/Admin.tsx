@@ -31,6 +31,7 @@ import { parseMlsSpreadsheet } from '../lib/excelMls'
 import { importMlsSharedLink } from '../lib/importMlsLink'
 import { useSearchParams } from 'react-router-dom'
 import CmaLeadsPanel from '../components/CmaLeadsPanel'
+import ShowingRequestsPanel from '../components/ShowingRequestsPanel'
 import MlsSyncPanel from '../components/MlsSyncPanel'
 import { ConfirmDeleteAll } from '../components/AdminModal'
 import { ListingEditModal, PartnerEditModal } from '../components/AdminEditors'
@@ -202,7 +203,8 @@ export default function Admin() {
   const [confirmPermanent, setConfirmPermanent] = useState(false)
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
   const [searchParams, setSearchParams] = useSearchParams()
-  const tab = searchParams.get('tab') === 'leads' ? 'leads' : 'listings'
+  const tabParam = searchParams.get('tab')
+  const tab = tabParam === 'leads' ? 'leads' : tabParam === 'showings' ? 'showings' : 'listings'
 
   const deferredQuery = useDeferredValue(listingQuery)
   const haystacks = useMemo(() => new Map(listings.map((l) => [l.id, searchHaystack(l)])), [listings])
@@ -969,9 +971,19 @@ export default function Admin() {
         >
           CMA Leads
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'showings'}
+          className={`admin-tab${tab === 'showings' ? ' active' : ''}`}
+          onClick={() => setSearchParams({ tab: 'showings' })}
+        >
+          Showing requests
+        </button>
       </div>
 
       {tab === 'leads' ? <CmaLeadsPanel /> : null}
+      {tab === 'showings' ? <ShowingRequestsPanel /> : null}
       {tab === 'listings' ? (
       <>
       {/* Excel / PDF / paste → preview → publish */}
