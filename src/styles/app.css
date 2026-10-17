@@ -1118,3 +1118,8 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
   .qr-sheet { border: 0; width: 100%; }
   .qr-sheet-label { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+/* v50b public QR section (only when Admin → QR codes → Show QR codes on website is on) */
+.qr-site-switch { align-items: flex-start; padding: .6rem .8rem; border: 1px dashed var(--line); border-radius: var(--radius); }
+.qr-public { text-align: center; }
+.qr-public .qr-grid { max-width: 760px; margin: 1rem auto 0; }
+.qr-public .qr-card { justify-items: center; text-align: center; }

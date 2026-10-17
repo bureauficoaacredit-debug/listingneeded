@@ -94,10 +94,12 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
 // ---------------------------------------------------------------- v50 QR codes
 export type QrKind = 'free' | 'paid'
 export type QrCodeSetting = { enabled: boolean; hidden: boolean; label: string; daily_cap?: number }
-export type QrCodesSetting = Record<QrKind, QrCodeSetting>
+/** show_on_site: show the QR section on the public site (default off). Scanned links work either way, per each code's own switch. */
+export type QrCodesSetting = Record<QrKind, QrCodeSetting> & { show_on_site?: boolean }
 export const DEFAULT_QR: QrCodesSetting = {
   free: { enabled: false, hidden: false, label: 'Free listing', daily_cap: 25 },
   paid: { enabled: true, hidden: false, label: 'List your home' },
+  show_on_site: false,
 }
 export const QR_URLS: Record<QrKind, string> = {
   free: 'https://www.listingneeded.com/#/list?plan=free&src=qr',
@@ -109,7 +111,7 @@ export async function getQrCodes(): Promise<QrCodesSetting> {
   if (!res.ok) return DEFAULT_QR
   const rows = (await res.json().catch(() => [])) as { value: Partial<QrCodesSetting> }[]
   const v = rows[0]?.value || {}
-  return { free: { ...DEFAULT_QR.free, ...(v.free || {}) }, paid: { ...DEFAULT_QR.paid, ...(v.paid || {}) } }
+  return { free: { ...DEFAULT_QR.free, ...(v.free || {}) }, paid: { ...DEFAULT_QR.paid, ...(v.paid || {}) }, show_on_site: v.show_on_site === true }
 }
 
 /** Admin only (RLS): save both QR switches. */

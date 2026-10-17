@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import PartnerResources from '../components/PartnerResources'
+import QrPublicSection from '../components/QrPublicSection'
 import { LISTING_FEE_RENT_USD, LISTING_FEE_SALE_USD } from '../lib/types'
 
 export default function Home() {
@@ -69,6 +70,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <QrPublicSection />
 
       <PartnerResources />
 

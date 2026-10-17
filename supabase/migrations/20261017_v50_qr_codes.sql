@@ -6,8 +6,12 @@ alter table public.listings add column if not exists source text;  -- 'free-qr' 
 
 insert into public.app_settings (key, value) values ('qr_codes', '{
   "free": {"enabled": false, "hidden": false, "label": "Free listing", "daily_cap": 25},
-  "paid": {"enabled": true,  "hidden": false, "label": "List your home"}
+  "paid": {"enabled": true,  "hidden": false, "label": "List your home"},
+  "show_on_site": false
 }'::jsonb) on conflict (key) do nothing;
+-- show_on_site: admin switch "Show QR codes on website" (default off). Off = no QR section/links on the public
+-- site; scanned codes still work according to each code's own enabled switch.
+update public.app_settings set value = jsonb_build_object('show_on_site', false) || value where key = 'qr_codes';
 
 -- The only way to create a live listing without payment. Allowed only while the free QR is ON (and not deleted);
 -- whitelisted fields only; DIY (never MLS); same end date as a paid DIY listing (admin 'paid_term', default 90 days);

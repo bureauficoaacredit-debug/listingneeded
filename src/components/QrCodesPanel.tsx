@@ -77,6 +77,23 @@ export default function QrCodesPanel() {
             Delete all
           </button>
         </div>
+        <label className="bulk-check qr-site-switch">
+          <input
+            type="checkbox"
+            checked={!!cfg.show_on_site}
+            disabled={busy === 'site'}
+            onChange={(e) =>
+              void save(
+                { ...cfg, show_on_site: e.target.checked },
+                e.target.checked ? 'QR codes are now shown on the website (home page).' : 'QR codes are now hidden on the website. Scanned codes still work (per their own switch).',
+                'site',
+              )
+            }
+          />
+          <span>
+            <strong>Show QR codes on website</strong> — {cfg.show_on_site ? 'On: active codes appear on the home page.' : 'Off: nothing about QR codes shows on the public site; printed codes still work when scanned.'}
+          </span>
+        </label>
         {msg ? <div className="success">{msg}</div> : null}
         {err ? <div className="error">{err}</div> : null}
 
@@ -179,7 +196,7 @@ export default function QrCodesPanel() {
           busy={busy === 'all'}
           onConfirm={() =>
             void save(
-              { free: { ...cfg.free, enabled: false, hidden: true }, paid: { ...cfg.paid, enabled: false, hidden: true } },
+              { ...cfg, free: { ...cfg.free, enabled: false, hidden: true }, paid: { ...cfg.paid, enabled: false, hidden: true } },
               'Both QR codes deleted (off and hidden).',
               'all',
             ).then(() => setConfirmAll(false))
