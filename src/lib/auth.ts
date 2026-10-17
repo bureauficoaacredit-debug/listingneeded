@@ -116,36 +116,81 @@ export async function signOut(): Promise<void> {
   }
 }
 
-/** Sends Supabase's password-reset email; the link comes back to /#/reset-password on this site. */
-export async function requestPasswordReset(email: string): Promise<void> {
-  const redirect = `${window.location.origin}/?reset-password=1`
+/**
+ * Sends Supabase's password-reset email. The link comes back to "/?reset=1" (no hash, so it matches the
+ * Auth redirect allow-list https://www.listingneeded.com/** cleanly) and captureRecoveryFromUrl() opens /#/reset-password.
+ */
+export async function requestPasswordReset(email: string = ADMIN_EMAIL): Promise<void> {
+  const redirect = `${window.location.origin}/?reset=1`
   await authFetch(`/recover?redirect_to=${encodeURIComponent(redirect)}`, {
     method: 'POST',
-    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    body: JSON.stringify({ email: (email || ADMIN_EMAIL).trim().toLowerCase() }),
   })
 }
 
 export type Recovery = { access_token?: string; refresh_token?: string; expires_in?: string; error?: string }
 
+export const RECOVERY_EVENT = 'listingneeded:recovery'
+
+function friendlyLinkError(code: string, description: string): string {
+  if (/otp_expired|expired|not found|invalid/i.test(`${code} ${description}`))
+    return 'This reset link was already used, replaced by a newer email, or has expired.'
+  return description || 'The reset link could not be used.'
+}
+
 /**
- * Called before the router starts: the reset link lands on "/?reset-password=1#access_token=…&type=recovery"
- * (or "#error=…"). Keep the tokens out of the URL and open the reset page.
+ * v51: runs BEFORE the hash router renders (and again on every hash change). Supabase sends the reset link back as
+ *   /?reset=1#access_token=…&type=recovery            (implicit flow, success)
+ *   /?reset=1#error=access_denied&error_code=otp_expired&error_description=…   (used / expired link)
+ *   /#error=…  or  /#access_token=…                     (when Supabase falls back to the Site URL)
+ *   /?code=…                                            (PKCE style)
+ * and sometimes glued onto a hash route ("#/reset-password#access_token=…"). Any of these used to fall through to
+ * the router's catch-all and show the homepage. Now every auth return is captured, the tokens are moved out of the
+ * URL into sessionStorage, and the app opens /#/reset-password (form, or a clear "expired link" message).
+ * Returns true when it rerouted.
  */
-export function captureRecoveryFromUrl() {
-  const h = window.location.hash.replace(/^#\/?/, '')
-  if (!/(^|&)(access_token|error)=/.test(h)) return
-  const p = new URLSearchParams(h)
-  const isRecovery = p.get('type') === 'recovery' || /reset-password/.test(window.location.search)
-  if (!isRecovery) return
-  const rec: Recovery = p.get('error')
-    ? { error: p.get('error_description') || p.get('error') || 'The reset link is invalid or has expired.' }
-    : { access_token: p.get('access_token') || '', refresh_token: p.get('refresh_token') || '', expires_in: p.get('expires_in') || '3600' }
+export function captureRecoveryFromUrl(): boolean {
+  const { search, hash, pathname } = window.location
+  const q = new URLSearchParams(search)
+  // the auth part of the hash: everything after the last "#" that looks like key=value (handles "#/x#access_token=…")
+  const rawHash = hash.replace(/^#/, '')
+  const authPart = rawHash.includes('#') ? rawHash.slice(rawHash.lastIndexOf('#') + 1) : rawHash.replace(/^\/?/, '')
+  const h = new URLSearchParams(/(^|&)(access_token|error|error_code|error_description|type)=/.test(authPart) ? authPart : '')
+  const get = (k: string) => h.get(k) || q.get(k) || ''
+
+  const marker = q.has('reset') || q.has('reset-password')
+  const hasToken = !!h.get('access_token')
+  const hasError = !!(get('error') || get('error_code') || get('error_description'))
+  const hasCode = !!q.get('code')
+  const isRecoveryType = get('type') === 'recovery'
+  if (!marker && !hasToken && !hasError && !hasCode && !isRecoveryType) return false
+
+  let rec: Recovery | null = null
+  if (hasToken) {
+    rec = { access_token: h.get('access_token') || '', refresh_token: h.get('refresh_token') || '', expires_in: h.get('expires_in') || '3600' }
+  } else if (hasError) {
+    rec = { error: friendlyLinkError(get('error_code') || get('error'), get('error_description').replace(/\+/g, ' ')) }
+  } else if (hasCode) {
+    // this site uses the implicit flow; a ?code= link can't be exchanged without the browser that requested it
+    rec = { error: 'This reset link can’t be used here (it may be old or opened in a different browser).' }
+  }
   try {
-    sessionStorage.setItem(RECOVERY_KEY, JSON.stringify(rec))
+    if (rec) sessionStorage.setItem(RECOVERY_KEY, JSON.stringify(rec))
   } catch {
     /* ignore */
   }
-  window.history.replaceState(null, '', `${window.location.pathname}#/reset-password`)
+  window.history.replaceState(null, '', `${pathname || '/'}#/reset-password`)
+  window.dispatchEvent(new Event(RECOVERY_EVENT))
+  return true
+}
+
+/** Catch auth returns that arrive after the app is already open (same tab): run before the router's listeners. */
+export function watchRecoveryInUrl() {
+  const check = () => {
+    captureRecoveryFromUrl()
+  }
+  window.addEventListener('popstate', check)
+  window.addEventListener('hashchange', check)
 }
 
 export function takeRecovery(): Recovery | null {

@@ -99,8 +99,8 @@ export default function AdminLogin({ notice }: { notice?: string }) {
               {error ? <div style={{ color: '#b91c1c', fontSize: '0.92rem' }}>{error}</div> : null}
               {sent ? (
                 <div className="success">
-                  {sent} Then copy the email’s <strong>Reset password</strong> link and paste it on the{' '}
-                  <Link to="/reset-password">reset page</Link>.
+                  {sent} Open the <strong>newest</strong> email and click <strong>Reset password</strong> — older emails stop working. Trouble?
+                  Use the <Link to="/reset-password">reset page</Link>.
                 </div>
               ) : null}
               <button type="submit" className="btn" disabled={busy}>
