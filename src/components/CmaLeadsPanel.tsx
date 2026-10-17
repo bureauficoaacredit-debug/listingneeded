@@ -13,18 +13,8 @@ import {
 } from '../lib/cma'
 import { ConfirmDeleteAll, Modal } from './AdminModal'
 
-const CODE_KEY = 'listingneeded_cma_leads_code'
-
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString('en-US', { timeZone: 'America/New_York', dateStyle: 'medium', timeStyle: 'short' })
-
-function readCode(): string {
-  try {
-    return localStorage.getItem(CODE_KEY) || ''
-  } catch {
-    return ''
-  }
-}
 
 /** Flat rows for Excel / CSV. */
 function leadsToRows(leads: CmaLead[]) {
@@ -69,8 +59,8 @@ function download(leads: CmaLead[], kind: 'xlsx' | 'csv') {
 }
 
 export default function CmaLeadsPanel() {
-  const [code, setCode] = useState(readCode)
-  const [codeInput, setCodeInput] = useState('')
+  // v49: unlocked by the admin login (the database checks the admin's JWT); no separate access code.
+  const code = ''
   const [leads, setLeads] = useState<CmaLead[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -158,59 +148,20 @@ export default function CmaLeadsPanel() {
   }
 
   useEffect(() => {
-    if (code) void load(code)
+    void load(code)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code])
+  }, [])
 
-  async function submitCode(e: FormEvent) {
-    e.preventDefault()
-    const c = codeInput.trim().toUpperCase()
-    if (!c) return
-    if (await load(c)) {
-      try {
-        localStorage.setItem(CODE_KEY, c)
-      } catch {
-        /* private mode: keep for this session only */
-      }
-      setCode(c)
-      setCodeInput('')
-    }
-  }
-
-  function forget() {
-    try {
-      localStorage.removeItem(CODE_KEY)
-    } catch {
-      /* ignore */
-    }
-    setCode('')
-    setLeads(null)
-  }
-
-  if (!code || (!leads && error)) {
+  if (!leads && error) {
     return (
       <section className="card" style={{ maxWidth: 520 }}>
-        <form className="body" style={{ display: 'grid', gap: '.75rem' }} onSubmit={submitCode}>
+        <div className="body" style={{ display: 'grid', gap: '.75rem' }}>
           <h2 style={{ margin: 0 }}>CMA Leads</h2>
-          <p className="meta" style={{ margin: 0 }}>
-            Enter the leads access code (format XXXXX-XXXXX-XXXXX-XXXXX-XXXXX). It is not stored in the website
-            code; this browser remembers it after the first time.
-          </p>
-          <label>
-            Access code
-            <input
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value)}
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
-            />
-          </label>
-          {error ? <div style={{ color: '#b91c1c', fontSize: '.92rem' }}>{error}</div> : null}
-          <button className="btn" type="submit" disabled={loading}>
-            {loading ? 'Checking…' : 'Show leads'}
+          <div style={{ color: '#b91c1c', fontSize: '.92rem' }}>{error}</div>
+          <button className="btn" type="button" onClick={() => void load(code)} disabled={loading}>
+            {loading ? 'Loading…' : 'Try again'}
           </button>
-        </form>
+        </div>
       </section>
     )
   }
@@ -236,9 +187,6 @@ export default function CmaLeadsPanel() {
             </button>
             <button type="button" className="btn ghost" onClick={() => void load(code)} disabled={loading}>
               {loading ? 'Loading…' : 'Refresh'}
-            </button>
-            <button type="button" className="btn ghost" onClick={forget} title="Remove the saved access code from this browser">
-              Forget code
             </button>
             <button type="button" className="btn danger" onClick={() => setConfirmAll(true)} disabled={!list.length}>
               Delete all leads

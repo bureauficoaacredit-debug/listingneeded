@@ -15,7 +15,7 @@ Self-serve home listings for **rent or sale**. Owners pay a listing fee, the lis
 ## Run locally
 
 ```bash
-cp .env.example .env   # fill in Supabase + VITE_ADMIN_PASSWORD
+cp .env.example .env   # fill in Supabase
 npm install
 npm run dev
 ```
@@ -29,7 +29,7 @@ npm run preview
 
 ## Admin (delete test listings)
 
-1. Set **`VITE_ADMIN_PASSWORD`** in Vercel (Project → Settings → Environment Variables) and redeploy. Same var in local `.env` for `npm run dev`.
+1. Admin login (v49) is Supabase Auth: one admin user (bureauficoaacredit@gmail.com, listed in `private.admins`). Sign in at `/#/admin` with email + password; “Forgot password?” sends Supabase’s reset email (lands on `/#/reset-password`).
 2. Open `/#/admin` (or the muted **Admin** link in the footer), unlock with the password.
 3. One-time SQL in the Supabase SQL editor so hard delete works with the anon key (otherwise admin falls back to soft-delete `live=false, paid=false`):
 
@@ -38,7 +38,7 @@ drop policy if exists "allow delete listings" on public.listings;
 create policy "allow delete listings" on public.listings for delete using (true);
 ```
 
-> Note: `VITE_ADMIN_PASSWORD` is visible in the client bundle — fine for early private use. Move admin to server-side auth later (e.g. with Stripe).
+> Admin writes are enforced in the database (RLS + `public.is_admin()`), not by a password in the client bundle.
 
 ## Production next steps
 

@@ -35,8 +35,9 @@ import MlsSyncPanel from '../components/MlsSyncPanel'
 import { ConfirmDeleteAll } from '../components/AdminModal'
 import { ListingEditModal, PartnerEditModal } from '../components/AdminEditors'
 import MlsExpiryPanel from '../components/MlsExpiryPanel'
+import AdminLogin, { checkIsAdmin } from '../components/AdminLogin'
+import { signOut, useSession } from '../lib/auth'
 
-const SESSION_KEY = 'listingneeded_admin_ok'
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
 
 function visibleCount(rows: unknown[], limit: number): number {
@@ -51,23 +52,6 @@ function trashDaysLeft(deletedAt: string | null | undefined): number {
 
 function uid() {
   return `ln_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
-}
-
-function isUnlocked(): boolean {
-  try {
-    return sessionStorage.getItem(SESSION_KEY) === '1'
-  } catch {
-    return false
-  }
-}
-
-function setUnlocked(value: boolean) {
-  try {
-    if (value) sessionStorage.setItem(SESSION_KEY, '1')
-    else sessionStorage.removeItem(SESSION_KEY)
-  } catch {
-    /* ignore */
-  }
 }
 
 function formatPrice(l: Listing): string {
@@ -178,10 +162,9 @@ const emptyAddForm = (): AddForm => ({
 })
 
 export default function Admin() {
-  const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD as string | undefined
-  const [unlocked, setUnlockedState] = useState(false)
-  const [password, setPassword] = useState('')
-  const [gateError, setGateError] = useState('')
+  const session = useSession()
+  const [verified, setVerified] = useState<string | null>(null) // email of the session that passed the admin check
+  const unlocked = !!session && verified === session.email
   const [listings, setListings] = useState<Listing[]>([])
   const [links, setLinks] = useState<PartnerLink[]>([])
   const [loading, setLoading] = useState(false)
@@ -264,9 +247,19 @@ export default function Admin() {
   const visibleListings = filteredListings.slice(0, listingLimit)
   const listingFiltersActive = listingQuery.trim() !== '' || listingFilter !== 'all'
 
+  // v49: a stored session is re-checked against the database (is_admin) before the admin UI opens.
   useEffect(() => {
-    setUnlockedState(isUnlocked())
-  }, [])
+    if (!session || verified === session.email) return
+    let cancelled = false
+    void checkIsAdmin().then((ok) => {
+      if (cancelled) return
+      if (ok) setVerified(session.email)
+      else void signOut()
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [session, verified])
 
   useEffect(() => {
     if (!unlocked) return
@@ -317,25 +310,9 @@ export default function Admin() {
     }
   }, [unlocked])
 
-  function handleUnlock(e: FormEvent) {
-    e.preventDefault()
-    setGateError('')
-    if (!adminPassword) {
-      setGateError('Set VITE_ADMIN_PASSWORD in the environment, then rebuild/redeploy.')
-      return
-    }
-    if (password !== adminPassword) {
-      setGateError('Wrong password.')
-      return
-    }
-    setUnlocked(true)
-    setUnlockedState(true)
-    setPassword('')
-  }
-
   function handleLock() {
-    setUnlocked(false)
-    setUnlockedState(false)
+    void signOut()
+    setVerified(null)
     setListings([])
     setLinks([])
     setStatus('')
@@ -934,43 +911,15 @@ export default function Admin() {
     }
   }
 
-  if (!adminPassword) {
-    return (
-      <div className="card">
-        <div className="body">
-          <h1 style={{ margin: '0 0 .5rem' }}>Admin</h1>
-          <p className="meta" style={{ margin: 0 }}>
-            Set <code>VITE_ADMIN_PASSWORD</code> in the environment, then rebuild/redeploy.
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   if (!unlocked) {
-    return (
-      <div className="card" style={{ maxWidth: 420 }}>
-        <div className="body">
-          <h1 style={{ margin: '0 0 .35rem' }}>Admin</h1>
-          <p className="meta">Password unlocks this tab for the session.</p>
-          <form className="form" style={{ boxShadow: 'none', border: 'none', padding: 0 }} onSubmit={handleUnlock}>
-            <label>
-              Password
-              <input
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
-            {gateError ? <div style={{ color: '#b91c1c', fontSize: '0.92rem' }}>{gateError}</div> : null}
-            <button type="submit" className="btn">
-              Unlock
-            </button>
-          </form>
+    if (session && verified !== session.email) {
+      return (
+        <div className="card" style={{ maxWidth: 420 }}>
+          <div className="body meta">Checking admin access…</div>
         </div>
-      </div>
-    )
+      )
+    }
+    return <AdminLogin notice={searchParams.get('pw') === 'changed' ? 'Password changed. You are signed in.' : undefined} />
   }
 
   return (
@@ -983,9 +932,12 @@ export default function Admin() {
             bulk publish. Owner defaults to {MLS_OWNER.name} · {MLS_OWNER.phone}.
           </p>
         </div>
-        <button type="button" className="btn secondary" onClick={handleLock}>
-          Lock
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap' }}>
+          <span className="meta">Signed in as {session?.email}</span>
+          <button type="button" className="btn secondary" onClick={handleLock}>
+            Log out
+          </button>
+        </div>
       </div>
 
       {status ? <div className="success">{status}</div> : null}

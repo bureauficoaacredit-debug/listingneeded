@@ -115,8 +115,8 @@ export async function requestCma(body: Record<string, unknown>): Promise<CmaResp
 }
 
 /**
- * Admin lead functions (Postgres SECURITY DEFINER RPCs). Every call carries the leads access code;
- * the database checks its SHA-256 against the hash stored in the private schema before doing anything.
+ * Admin lead functions (Postgres SECURITY DEFINER RPCs). v49: the database requires the logged-in admin's JWT
+ * (sent by supabaseFetch); the p_token argument is kept only for the function signature.
  * The table itself has no public read / update / delete policy.
  */
 async function leadsRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
@@ -128,7 +128,7 @@ async function leadsRpc<T>(fn: string, args: Record<string, unknown>): Promise<T
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const msg = (data && (data.message as string)) || `Request failed (${res.status})`
-    throw new Error(/Invalid leads access code/i.test(msg) ? 'Wrong access code.' : msg)
+    throw new Error(/admin login required|Invalid leads access code/i.test(msg) ? 'Admin login required — sign in again.' : msg)
   }
   return data as T
 }

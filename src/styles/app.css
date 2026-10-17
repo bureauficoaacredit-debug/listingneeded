@@ -1085,3 +1085,8 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
   .hero-title-sep { width: 2.75rem; height: 3px; }
   .hero-centered .lead { font-size: 0.98rem; }
 }
+
+/* v49 admin login */
+.link-btn { background: none; border: 0; padding: 0; font: inherit; font-size: 0.88rem; font-weight: 600; color: var(--brand); cursor: pointer; justify-self: start; text-decoration: underline; text-underline-offset: 2px; }
+.link-btn:hover { color: var(--brand-dark); }
+.admin-login { margin: 0 auto; }

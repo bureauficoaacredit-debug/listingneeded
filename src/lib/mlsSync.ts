@@ -1,4 +1,10 @@
+import { getAccessToken } from './auth'
 import { supabaseFetch } from './supabase'
+
+/** v49: API calls from the admin carry the admin's JWT (or an explicit sync token when given). */
+async function bearer(code: string): Promise<string> {
+  return code || (await getAccessToken()) || ''
+}
 
 /**
  * v40 admin helpers for the automatic MLS import. Everything goes through token-gated SECURITY DEFINER RPCs
@@ -69,7 +75,7 @@ async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const msg = (data && (data.message as string)) || `Request failed (${res.status})`
-    throw new Error(/Invalid sync access code/i.test(msg) ? 'Wrong access code.' : msg)
+    throw new Error(/Invalid sync access code/i.test(msg) ? 'Admin login required — sign in again.' : msg)
   }
   return data as T
 }
@@ -88,7 +94,7 @@ export const deleteAllImportLog = (code: string) => rpc<number>('mls_import_log_
 export async function runMlsSync(code: string, dry: boolean, id?: string): Promise<SyncRunResult> {
   const res = await fetch(`/api/mls-sync${dry ? '?dry=1' : ''}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${code}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await bearer(code)}` },
     body: JSON.stringify({ dry, source: 'admin', ...(id ? { id } : {}) }),
   })
   const data = (await res.json().catch(() => ({}))) as SyncRunResult
@@ -114,7 +120,7 @@ export const deleteAllSyncLinks = (code: string) => rpc<number>('mls_sync_link_d
 export async function addSyncLink(code: string, link: string, label: string): Promise<void> {
   const res = await fetch('/api/mls-sync', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${code}` },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${await bearer(code)}` },
     body: JSON.stringify({ action: 'link-save', link, ...(label.trim() ? { label: label.trim() } : {}) }),
   })
   const data = (await res.json().catch(() => ({}))) as { error?: string }

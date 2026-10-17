@@ -163,17 +163,19 @@ export function toSyncHomes(listings) {
 }
 
 /** Supabase RPC with the anon key only (every function checks the sync token itself). */
-export async function rpc(fn, args) {
+/** v49: `userJwt` = the logged-in admin's access token (the database checks is_admin()); otherwise anon + sync token. */
+export async function rpc(fn, args, userJwt = null) {
   const url = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '')
   const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
   if (!url || !key) throw Object.assign(new Error('Supabase URL/anon key not configured on the server'), { status: 500 })
   const headers = { apikey: key, 'Content-Type': 'application/json', Accept: 'application/json' }
-  if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`
+  if (userJwt) headers.Authorization = `Bearer ${userJwt}`
+  else if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`
   const res = await fetch(`${url}/rest/v1/rpc/${fn}`, { method: 'POST', headers, body: JSON.stringify(args), signal: AbortSignal.timeout(25000) })
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const msg = (data && data.message) || `Supabase RPC ${fn} failed (${res.status})`
-    throw Object.assign(new Error(msg), { status: /Invalid sync access code/i.test(msg) ? 401 : 502 })
+    throw Object.assign(new Error(msg), { status: /Invalid sync access code|JWT|admin login/i.test(msg) ? 401 : 502 })
   }
   return data
 }

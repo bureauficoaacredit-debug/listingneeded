@@ -13,21 +13,12 @@ import {
   listSyncLinks,
   maskSyncLink,
   updateSyncLink,
-  SYNC_CODE_KEY,
   updateImportLog,
   type ImportLogRow,
   type SyncRunResult,
   type SyncLink,
   type SyncSettings,
 } from '../lib/mlsSync'
-
-function readCode(): string {
-  try {
-    return localStorage.getItem(SYNC_CODE_KEY) || ''
-  } catch {
-    return ''
-  }
-}
 
 function fmt(ts: string | null | undefined) {
   if (!ts) return '—'
@@ -40,8 +31,8 @@ function fmt(ts: string | null | undefined) {
  * On/off switch, saved link (secret, token-gated), Run now (dry run / real), and the import log with Edit / Delete / Delete all.
  */
 export default function MlsSyncPanel({ onImported }: { onImported: () => void | Promise<void> }) {
-  const [code, setCode] = useState(readCode)
-  const [codeInput, setCodeInput] = useState('')
+  // v49: the admin login unlocks this panel (the database checks the admin's JWT); no access code.
+  const code = ''
   const [settings, setSettings] = useState<SyncSettings | null>(null)
   const [log, setLog] = useState<ImportLogRow[]>([])
   const [linkInput, setLinkInput] = useState('')
@@ -75,34 +66,8 @@ export default function MlsSyncPanel({ onImported }: { onImported: () => void | 
   }, [])
 
   useEffect(() => {
-    if (code) void load(code)
-  }, [code, load])
-
-  async function submitCode(e: FormEvent) {
-    e.preventDefault()
-    const c = codeInput.trim().toUpperCase()
-    if (!c) return
-    if (await load(c)) {
-      try {
-        localStorage.setItem(SYNC_CODE_KEY, c)
-      } catch {
-        /* session only */
-      }
-      setCode(c)
-      setCodeInput('')
-    }
-  }
-
-  function forget() {
-    try {
-      localStorage.removeItem(SYNC_CODE_KEY)
-    } catch {
-      /* ignore */
-    }
-    setCode('')
-    setSettings(null)
-    setLog([])
-  }
+    void load(code)
+  }, [load])
 
   async function run<T>(name: string, fn: () => Promise<T>): Promise<T | undefined> {
     setBusy(name)
@@ -209,29 +174,17 @@ export default function MlsSyncPanel({ onImported }: { onImported: () => void | 
       setMsg(`Deleted ${n} log entr${n === 1 ? 'y' : 'ies'}. Listings were not touched.`)
     })
 
-  if (!code || !settings) {
+  if (!settings) {
     return (
       <section className="card" id="mls-sync">
         <div className="body" style={{ display: 'grid', gap: '.75rem' }}>
           <h2 style={{ margin: 0 }}>Automatic MLS import</h2>
-          <p className="meta" style={{ margin: 0 }}>
-            Imports your saved SMART MLS links automatically. Enter the sync access code (or the CMA leads access code) once; this browser remembers it.
-          </p>
-          <form onSubmit={submitCode} style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap' }}>
-            <input
-              value={codeInput}
-              onChange={(e) => setCodeInput(e.target.value)}
-              placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
-              aria-label="Sync access code"
-              autoComplete="off"
-              spellCheck={false}
-              style={{ minWidth: '18rem' }}
-            />
-            <button className="btn" type="submit">
-              Unlock
+          {err ? <div className="error">{err}</div> : <p className="meta" style={{ margin: 0 }}>Loading…</p>}
+          {err ? (
+            <button type="button" className="btn secondary" onClick={() => void load(code)} style={{ justifySelf: 'start' }}>
+              Try again
             </button>
-          </form>
-          {err ? <div className="error">{err}</div> : null}
+          ) : null}
         </div>
       </section>
     )
@@ -256,9 +209,6 @@ export default function MlsSyncPanel({ onImported }: { onImported: () => void | 
               Adds new homes and refreshes price / status / photos of existing ones by MLS number. Never duplicates, never removes homes. New homes expire per the MLS auto-expire setting.
             </p>
           </div>
-          <button type="button" className="btn ghost" onClick={forget} title="Remove the saved access code from this browser">
-            Forget code
-          </button>
         </div>
 
         {msg ? <div className="success">{msg}</div> : null}

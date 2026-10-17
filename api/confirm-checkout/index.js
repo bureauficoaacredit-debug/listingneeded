@@ -63,35 +63,21 @@ export default async function handler(req, res) {
       headers.Authorization = `Bearer ${supabaseKey}`
     }
 
-    // v39: paid DIY listings stay live N days (admin setting app_settings.paid_term, default 90) from payment.
-    let termDays = 90
-    try {
-      const sRes = await fetch(`${supabaseUrl}/rest/v1/app_settings?key=eq.paid_term&select=value`, { headers })
-      const sRows = sRes.ok ? await sRes.json() : []
-      const d = Math.round(Number(sRows?.[0]?.value?.days))
-      if (Number.isFinite(d) && d >= 1 && d <= 3650) termDays = d
-    } catch {
-      /* default 90 */
-    }
-    const ymd = (dt) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(dt)
-    const activeUntil = ymd(new Date(Date.now() + termDays * 86_400_000))
-
-    const patchRes = await fetch(
-      `${supabaseUrl}/rest/v1/listings?id=eq.${encodeURIComponent(listingId)}`,
-      {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ paid: true, live: true, active_until: activeUntil }),
-      },
-    )
+    // v39/v49: paid DIY listings stay live N days (admin setting paid_term) from payment. v49: done by the
+    // mark_listing_paid database function (the open UPDATE policy on listings is gone).
+    const patchRes = await fetch(`${supabaseUrl}/rest/v1/rpc/mark_listing_paid`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ p_id: listingId, p_renew: false }),
+    })
 
     const text = await patchRes.text()
     if (!patchRes.ok) {
       return res.status(patchRes.status).json({ error: text || 'Failed to activate listing' })
     }
 
-    const rows = JSON.parse(text || '[]')
-    return res.status(200).json({ ok: true, listing: rows[0] || null })
+    const row = JSON.parse(text || 'null')
+    return res.status(200).json({ ok: true, listing: row || null })
   } catch (err) {
     return res.status(500).json({
       error: err instanceof Error ? err.message : 'Confirm failed',

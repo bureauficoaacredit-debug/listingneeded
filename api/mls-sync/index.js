@@ -1,7 +1,7 @@
 /**
  * POST /api/mls-sync   (v40 automatic MLS import; v48 several saved links, Listing Needed only)
  *
- * Auth: `Authorization: Bearer <sync token>` (or body.token), checked by the database (SHA-256 vs private.admin_secrets).
+ * Auth: `Authorization: Bearer <sync token>` (or body.token), or (v49) the logged-in admin's Supabase JWT, checked by the database (SHA-256 vs private.admin_secrets).
  * This function only holds the public anon key.
  *
  * Body (JSON, all optional):
@@ -63,30 +63,34 @@ export default async function handler(req, res) {
     const rawSource = body.source || q.get('source')
     const source = ['scheduled', 'auto-hourly', 'admin', 'api'].includes(rawSource) ? rawSource : 'scheduled'
     const id = body.id ? String(body.id) : null
-    ctx = { token, source, dry }
+    // v49: the admin UI sends the logged-in admin's Supabase JWT instead of a sync token.
+    const userJwt = /^eyJ[\w-]*\.[\w-]+\.[\w-]+$/.test(token) ? token : null
+    const pTok = userJwt ? null : token
+    const call = (fn, args) => rpc(fn, args, userJwt)
+    ctx = { pTok, call, source, dry }
 
     // 1. global switch (also validates the token)
-    let settings = await rpc('mls_sync_get_settings', { p_token: token })
+    let settings = await call('mls_sync_get_settings', { p_token: pTok })
     if (!id && typeof body.enabled === 'boolean' && body.enabled !== settings.enabled) {
-      settings = await rpc('mls_sync_set_settings', { p_token: token, p_enabled: body.enabled, p_link: null })
+      settings = await call('mls_sync_set_settings', { p_token: pTok, p_enabled: body.enabled, p_link: null })
     }
 
     // 2. link management
     if (action === 'link-delete') {
       if (!id) throw fail('id required', 400)
-      const n = await rpc('mls_sync_link_delete', { p_token: token, p_id: id })
+      const n = await call('mls_sync_link_delete', { p_token: pTok, p_id: id })
       return send(res, 200, { ok: true, deleted: n })
     }
     if (action === 'link-delete-all') {
-      const n = await rpc('mls_sync_link_delete_all', { p_token: token, p_confirm: String(body.confirm || '') })
+      const n = await call('mls_sync_link_delete_all', { p_token: pTok, p_confirm: String(body.confirm || '') })
       return send(res, 200, { ok: true, deleted: n })
     }
     let added = null
     if (body.link != null && String(body.link).trim()) {
       const n = normalizeAnyLink(body.link)
       if (n.error) throw fail(n.error, 400)
-      added = await rpc('mls_sync_link_save', {
-        p_token: token,
+      added = await call('mls_sync_link_save', {
+        p_token: pTok,
         p_id: action === 'link-save' ? id : null,
         p_label: body.label != null ? String(body.label) : action === 'link-save' && id ? null : n.label,
         p_url: n.url,
@@ -95,8 +99,8 @@ export default async function handler(req, res) {
       })
     }
     if (action === 'link-save' && id && !added) {
-      added = await rpc('mls_sync_link_save', {
-        p_token: token,
+      added = await call('mls_sync_link_save', {
+        p_token: pTok,
         p_id: id,
         p_label: body.label != null ? String(body.label) : null,
         p_url: null,
@@ -105,7 +109,7 @@ export default async function handler(req, res) {
       })
     }
 
-    const rows = await rpc('mls_sync_links_list', { p_token: token })
+    const rows = await call('mls_sync_links_list', { p_token: pTok })
     const links = (rows || []).map(publicLink)
     const base = { enabled: settings.enabled, links, linkSaved: links.length > 0 }
 
@@ -133,8 +137,8 @@ export default async function handler(req, res) {
         const { listings, totalCount } = await fetchLinkListings(l)
         if (!listings.length) throw new Error('The MLS link returned 0 homes.')
         const { homes, skipped, totalRows } = toSyncHomes(listings)
-        const r = await rpc('mls_sync_apply', {
-          p_token: token,
+        const r = await call('mls_sync_apply', {
+          p_token: pTok,
           p_homes: homes,
           p_dry: dry,
           p_source: source,
@@ -143,8 +147,8 @@ export default async function handler(req, res) {
         })
         const summary = `${r.new} new, ${r.updated} updated`
         if (!dry) {
-          await rpc('mls_sync_link_set_result', {
-            p_token: token,
+          await call('mls_sync_link_set_result', {
+            p_token: pTok,
             p_id: l.id,
             p_result: { ok: true, homes: totalRows, new: r.new, updated: r.updated, unchanged: r.unchanged, summary, logId: r.logId },
           })
@@ -156,8 +160,8 @@ export default async function handler(req, res) {
         tot.errors += 1
         perLink.push({ id: l.id, label: l.label, ok: false, error: message })
         try {
-          await rpc('mls_sync_log_error', { p_token: token, p_source: source, p_dry: dry, p_message: message, p_link_hint: hint })
-          if (!dry) await rpc('mls_sync_link_set_result', { p_token: token, p_id: l.id, p_result: { ok: false, error: message } })
+          await call('mls_sync_log_error', { p_token: pTok, p_source: source, p_dry: dry, p_message: message, p_link_hint: hint })
+          if (!dry) await call('mls_sync_link_set_result', { p_token: pTok, p_id: l.id, p_result: { ok: false, error: message } })
         } catch {
           /* best-effort */
         }
@@ -179,8 +183,8 @@ export default async function handler(req, res) {
   } catch (err) {
     if (ctx && Number(err?.status) !== 401 && Number(err?.status) !== 400) {
       try {
-        await rpc('mls_sync_log_error', {
-          p_token: ctx.token,
+        await ctx.call('mls_sync_log_error', {
+          p_token: ctx.pTok,
           p_source: ctx.source,
           p_dry: ctx.dry,
           p_message: String(err instanceof Error ? err.message : err).slice(0, 500),

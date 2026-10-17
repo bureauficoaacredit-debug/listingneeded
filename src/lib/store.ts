@@ -303,32 +303,16 @@ async function upsertListing(listing: Listing): Promise<Listing> {
  * With `renew`, the new term is added on top of the current end date when it is still in the future.
  */
 export async function markPaidAndLive(id: string, opts?: { renew?: boolean }): Promise<Listing | null> {
-  const { days } = await getPaidTerm(true)
-  let base = todayYmd()
-  if (opts?.renew) {
-    const cur = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}&select=active_until`, {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-    })
-    if (cur.ok) {
-      const rows = (await cur.json()) as { active_until: string | null }[]
-      const end = rows[0]?.active_until?.slice(0, 10)
-      if (end && /^\d{4}-\d{2}-\d{2}$/.test(end) && end > base) base = end
-    }
-  }
-  const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Prefer: 'return=representation',
-    },
-    body: JSON.stringify({ paid: true, live: true, active_until: addDaysYmd(base, days) }),
+  // v49: a database function does this (paid + live + end date = today + paid term, renew adds to a future end date);
+  // the public site can no longer PATCH listings directly.
+  const res = await supabaseFetch('/rest/v1/rpc/mark_listing_paid', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ p_id: id, p_renew: !!opts?.renew }),
   })
   await throwIfNotOk(res)
-  const data = (await res.json()) as ListingRow[]
-  if (!data.length) return null
-  return rowToListing(data[0])
+  const row = (await res.json()) as ListingRow | null
+  return row ? rowToListing(row) : null
 }
 
 export async function updateListingPhotos(id: string, photoUrls: string[]): Promise<void> {

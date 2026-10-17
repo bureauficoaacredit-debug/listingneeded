@@ -52,6 +52,12 @@ export function buildSupabaseHeaders(
   return headers
 }
 
+/** v49: when the admin is logged in, requests carry their JWT (RLS/RPC checks use auth.uid()). */
+let tokenProvider: (() => Promise<string | null>) | null = null
+export function setAccessTokenProvider(fn: () => Promise<string | null>) {
+  tokenProvider = fn
+}
+
 /**
  * Fetch against Supabase (path is absolute from project root, e.g. /rest/v1/listings).
  * Throws Error with response text on non-OK so the UI can show real errors.
@@ -69,6 +75,11 @@ export async function supabaseFetch(
     incoming.forEach((value, key) => {
       extra[key] = value
     })
+  }
+
+  if (tokenProvider && !extra.authorization && !extra.Authorization) {
+    const token = await tokenProvider().catch(() => null)
+    if (token) extra.authorization = `Bearer ${token}`
   }
 
   const headers = buildSupabaseHeaders(anonKey, extra)

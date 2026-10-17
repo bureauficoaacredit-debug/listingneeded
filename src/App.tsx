@@ -6,6 +6,7 @@ import List from './pages/List'
 import ListingDetail from './pages/ListingDetail'
 import Admin from './pages/Admin'
 import Cma from './pages/Cma'
+import ResetPassword from './pages/ResetPassword'
 
 function ListedBanner() {
   const { search } = useLocation()
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="cma" element={<Cma />} />
         <Route path="check-landlord" element={<Navigate to="/" replace />} />
         <Route path="admin" element={<Admin />} />
+        <Route path="reset-password" element={<ResetPassword />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
