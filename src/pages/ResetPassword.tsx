@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { clearRecovery, setNewPassword, takeRecovery } from '../lib/auth'
+import { clearRecovery, recoveryFromPastedLink, setNewPassword, takeRecovery, type Recovery } from '../lib/auth'
 
 /** v49: landing page of Supabase's password-reset email. */
 export default function ResetPassword() {
-  const [rec] = useState(takeRecovery)
+  const [rec, setRec] = useState<Recovery | null>(takeRecovery)
+  const [pasted, setPasted] = useState('')
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
   const [busy, setBusy] = useState(false)
@@ -27,6 +28,19 @@ export default function ResetPassword() {
     }
   }
 
+  async function submitPasted(e: FormEvent) {
+    e.preventDefault()
+    setError('')
+    setBusy(true)
+    try {
+      setRec(await recoveryFromPastedLink(pasted))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not use that link')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const invalid = !rec || rec.error || !rec.access_token
   return (
     <div className="card" style={{ maxWidth: 440 }}>
@@ -34,12 +48,23 @@ export default function ResetPassword() {
         <h1 style={{ margin: '0 0 .35rem' }}>Set a new password</h1>
         {invalid ? (
           <>
-            <p className="error" style={{ marginTop: '.5rem' }}>
-              {rec?.error || 'Open this page from the reset link in your email.'} Links work once and expire after an hour.
+            {rec?.error ? <p className="error" style={{ marginTop: '.5rem' }}>{rec.error} Links work once and expire after an hour.</p> : null}
+            <p className="meta">
+              Copy the <strong>Reset password</strong> link from the email (right-click or long-press it → Copy link) and paste it here.
             </p>
-            <Link className="btn" to="/admin" onClick={clearRecovery}>
-              Back to admin sign in
-            </Link>
+            <form className="form" style={{ boxShadow: 'none', border: 'none', padding: 0 }} onSubmit={submitPasted}>
+              <label>
+                Reset link from the email
+                <input value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="https://…supabase.co/auth/v1/verify?token=…" autoComplete="off" spellCheck={false} required />
+              </label>
+              {error ? <div style={{ color: '#b91c1c', fontSize: '0.92rem' }}>{error}</div> : null}
+              <button type="submit" className="btn" disabled={busy}>
+                {busy ? 'Checking…' : 'Continue'}
+              </button>
+              <Link className="link-btn" to="/admin" onClick={clearRecovery}>
+                Back to admin sign in
+              </Link>
+            </form>
           </>
         ) : (
           <form className="form" style={{ boxShadow: 'none', border: 'none', padding: 0 }} onSubmit={submit}>

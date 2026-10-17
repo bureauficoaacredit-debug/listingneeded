@@ -175,7 +175,7 @@ export async function rpc(fn, args, userJwt = null) {
   const data = await res.json().catch(() => null)
   if (!res.ok) {
     const msg = (data && data.message) || `Supabase RPC ${fn} failed (${res.status})`
-    throw Object.assign(new Error(msg), { status: /Invalid sync access code|JWT|admin login/i.test(msg) ? 401 : 502 })
+    throw Object.assign(new Error(msg), { status: /Invalid sync access code|JWT|admin login|wrong key type|No suitable key/i.test(msg) ? 401 : 502 })
   }
   return data
 }

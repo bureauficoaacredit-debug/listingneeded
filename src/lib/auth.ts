@@ -165,6 +165,32 @@ export function clearRecovery() {
   }
 }
 
+/**
+ * Fallback while the Supabase Site URL still points elsewhere: paste the "Reset password" link from the email
+ * (…/auth/v1/verify?token=…&type=recovery…). Its token is exchanged here for a recovery session.
+ */
+export async function recoveryFromPastedLink(link: string): Promise<Recovery> {
+  let token = ''
+  try {
+    const u = new URL(link.trim())
+    if (!/\.supabase\.co$/i.test(u.hostname) || u.searchParams.get('type') !== 'recovery') throw new Error('x')
+    token = u.searchParams.get('token') || ''
+  } catch {
+    throw new Error('Paste the full “Reset password” link from the email (it starts with https://…supabase.co/auth/v1/verify).')
+  }
+  if (!token) throw new Error('That link has no reset token.')
+  const d = (await authFetch('/verify', { method: 'POST', body: JSON.stringify({ type: 'recovery', token_hash: token }) }).catch(() => {
+    throw new Error('This reset link was already used or has expired. Request a new one.')
+  })) as TokenResponse
+  const rec: Recovery = { access_token: d.access_token, refresh_token: d.refresh_token, expires_in: String(d.expires_in || 3600) }
+  try {
+    sessionStorage.setItem(RECOVERY_KEY, JSON.stringify(rec))
+  } catch {
+    /* ignore */
+  }
+  return rec
+}
+
 /** Set a new password with the recovery session from the email link; then you're logged in. */
 export async function setNewPassword(rec: Recovery, password: string): Promise<void> {
   if (!rec.access_token) throw new Error('The reset link is invalid or has expired. Request a new one.')

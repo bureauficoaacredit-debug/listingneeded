@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { ADMIN_EMAIL, requestPasswordReset, signIn, signOut } from '../lib/auth'
 import { supabaseFetch } from '../lib/supabase'
 
@@ -46,7 +47,7 @@ export default function AdminLogin({ notice }: { notice?: string }) {
     setBusy(true)
     try {
       await requestPasswordReset(email || ADMIN_EMAIL)
-      setSent(`If ${email || ADMIN_EMAIL} is the admin email, a reset link is on its way. Check the inbox (and spam).`)
+      setSent(`If ${email || ADMIN_EMAIL} is the admin email, a reset link is on its way (check spam too).`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send the reset email')
     } finally {
@@ -96,7 +97,12 @@ export default function AdminLogin({ notice }: { notice?: string }) {
                 <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </label>
               {error ? <div style={{ color: '#b91c1c', fontSize: '0.92rem' }}>{error}</div> : null}
-              {sent ? <div className="success">{sent}</div> : null}
+              {sent ? (
+                <div className="success">
+                  {sent} Then copy the email’s <strong>Reset password</strong> link and paste it on the{' '}
+                  <Link to="/reset-password">reset page</Link>.
+                </div>
+              ) : null}
               <button type="submit" className="btn" disabled={busy}>
                 {busy ? 'Sending…' : 'Send reset link'}
               </button>
