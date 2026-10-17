@@ -1180,3 +1180,9 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .showing-status.confirmed { background: #e3edf8; color: #0B3A6E; }
 .showing-status.done { background: #e8f3ea; color: #1f6b36; }
 @media (max-width: 520px) { .showing-row { grid-template-columns: 1fr; } }
+/* v55 ShowingTime agents row: MLS # + copy */
+.showing-agents-row { position: relative; display: flex; justify-content: center; align-items: center; gap: 0.35rem 0.75rem; flex-wrap: wrap; }
+.showing-mls { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+.showing-copy { border: 1px solid var(--line); background: #fff; color: #0B3A6E; font: inherit; font-size: 0.74rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 999px; cursor: pointer; }
+.showing-copy:hover { border-color: #0B3A6E; }
+.showing-toast { position: absolute; bottom: calc(100% + 0.4rem); left: 50%; transform: translateX(-50%); background: #0B3A6E; color: #fff; font-size: 0.78rem; padding: 0.35rem 0.7rem; border-radius: 6px; white-space: nowrap; box-shadow: 0 6px 18px rgba(0,0,0,.2); }
