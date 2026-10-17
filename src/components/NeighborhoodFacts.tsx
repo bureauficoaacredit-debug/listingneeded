@@ -70,12 +70,12 @@ export default function NeighborhoodFacts({ listing }: { listing: Listing }) {
   if (!facts) return <section ref={ref} className="nbhd nbhd-pending" aria-hidden="true" />
 
   const c = facts.census
-  const stats: { label: string; value: string; sub?: string }[] = []
+  const stats: { label: string; value: string; bar?: number }[] = []
   if (c?.medianIncome != null) stats.push({ label: 'Median household income', value: money(c.medianIncome, c.incomeTopCoded) })
   if (c?.medianValue != null) stats.push({ label: 'Median home value', value: money(c.medianValue, c.valueTopCoded) })
   if (c?.medianRent != null) stats.push({ label: 'Median gross rent', value: `${money(c.medianRent, c.rentTopCoded)}/mo` })
   if (c?.ownerPct != null && c?.renterPct != null)
-    stats.push({ label: 'Homes owner / renter occupied', value: `${Math.round(c.ownerPct)}% / ${Math.round(c.renterPct)}%` })
+    stats.push({ label: 'Homes owner / renter occupied', value: `${Math.round(c.ownerPct)}% / ${Math.round(c.renterPct)}%`, bar: c.ownerPct })
 
   return (
     <section ref={ref} className="nbhd" aria-label="Neighborhood facts">
@@ -85,14 +85,16 @@ export default function NeighborhoodFacts({ listing }: { listing: Listing }) {
       </div>
       {stats.length ? (
         <>
-          <div className="nbhd-ownbar" aria-hidden="true" hidden={c?.ownerPct == null}>
-            <span style={{ width: `${c?.ownerPct ?? 0}%` }} />
-          </div>
           <dl className="nbhd-grid">
             {stats.map((s) => (
               <div key={s.label} className="nbhd-stat">
                 <dt>{s.label}</dt>
                 <dd>{s.value}</dd>
+                {s.bar != null ? (
+                  <div className="nbhd-ownbar" aria-hidden="true">
+                    <span style={{ width: `${s.bar}%` }} />
+                  </div>
+                ) : null}
               </div>
             ))}
           </dl>
