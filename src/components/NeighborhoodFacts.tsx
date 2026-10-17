@@ -15,7 +15,7 @@ type Census = {
 type School = { name: string; grades: string; city: string; miles: number }
 type Facts = { found: boolean; zip: string; census: Census | null; schools: School[]; schoolsDistanceFrom: 'home' | 'zip' | null }
 
-const money = (n: number, top: boolean) => `$${n.toLocaleString()}${top ? '+' : ''}`
+const money = (n: number, top: boolean) => (top ? `$${(n - 1).toLocaleString()}+` : `$${n.toLocaleString()}`)
 
 /**
  * v52 "Neighborhood facts" (under the map): ZIP-level Census ACS 5-year numbers + nearest public schools (NCES).
