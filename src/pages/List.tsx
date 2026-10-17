@@ -225,7 +225,7 @@ export default function List() {
       {isFree ? (
         <div className="fee-box free-box">
           <strong>Free listing — no payment</strong>
-          <div>Thanks for scanning! Submit the form and your listing goes live right away for <strong>{termDays} days</strong>.</div>
+          <div>Thanks for scanning! Submit the form and your listing goes live right away for <span style={{ fontWeight: 700 }}>{termDays} days</span>.</div>
         </div>
       ) : (
       <div className="fee-box">

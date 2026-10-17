@@ -1092,7 +1092,9 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .admin-login { margin: 0 auto; }
 
 /* v50 QR codes */
-.qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+.qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 1rem; min-width: 0; }
+.qr-public { min-width: 0; max-width: 100%; }
+.qr-public .qr-img { max-width: 100%; height: auto; }
 .qr-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; display: grid; gap: .6rem; justify-items: start; background: #fff; }
 .qr-card.off { background: #f6f7f9; }
 .qr-card.off .qr-img { opacity: .45; filter: grayscale(1); }
