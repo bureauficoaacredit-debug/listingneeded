@@ -1241,7 +1241,11 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .list-option::after { content: "›"; margin-left: auto; font-size: 1.35rem; line-height: 1; color: var(--brand); }
 .list-option-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; color: var(--brand); background: #fff; border: 1px solid #dfe6ee; }
 .list-option-qr { display: block; width: 44px; height: 44px; flex: none; background: #fff; border: 1px solid #dfe6ee; }
-.path-seek .path-actions { margin-top: auto; }
+/* left card: label on top, heading + the two buttons grouped in the middle */
+.path-seek { grid-template-rows: auto 1fr auto auto 1fr; align-content: stretch; }
+.path-seek > h2 { grid-row: 3; }
+.path-seek > .path-actions { grid-row: 4; margin-top: 0.6rem; }
+@media (max-width: 640px) { .path-seek { grid-template-rows: auto auto auto; } .path-seek > h2 { grid-row: 2; } .path-seek > .path-actions { grid-row: 3; } }
 
 /* v60 List form photo picker: Take a photo (camera) + Choose from photos */
 .photo-pick { display: grid; gap: 0.5rem; padding: 0.75rem; border: 1px dashed #c9d6e3; }
