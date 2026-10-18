@@ -1,14 +1,19 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getQrCodes, type QrKind } from '../lib/store'
 
+// v61: the scanner (and its jsQR fallback) only downloads when someone taps the QR option
+const QrScannerModal = lazy(() => import('./QrScannerModal'))
+const isPhone = () => typeof window !== 'undefined' && !!window.matchMedia?.('(hover: none) and (pointer: coarse)').matches
+
 /**
- * v60: three ways to list from the homepage card. Option 1 (QR) respects the v50 admin switch
+ * v60: three ways to list from the homepage card. The QR option (last) respects the v50 admin switch
  * "Show QR codes on website" (hidden when Off) and uses the PAID QR flow unless the FREE QR is On.
  */
 export default function HomeListOptions() {
   const [kind, setKind] = useState<QrKind | null>(null)
   const [img, setImg] = useState('')
+  const [scan, setScan] = useState(false)
   useEffect(() => {
     let live = true
     void getQrCodes().then(async (c) => {
@@ -27,14 +32,6 @@ export default function HomeListOptions() {
   const qrTo = kind === 'free' ? '/list?plan=free&src=qr' : '/list?src=qr-paid'
   return (
     <ol className="list-options">
-      {kind ? (
-        <li>
-          <Link className="list-option" to={qrTo}>
-            {img ? <img className="list-option-qr" src={img} alt="QR code" width={44} height={44} /> : <span className="list-option-qr" />}
-            <span>Scan the QR code on your For Sale sign</span>
-          </Link>
-        </li>
-      ) : null}
       <li>
         <Link className="list-option" to="/list?photo=1">
           <span className="list-option-icon" aria-hidden="true">
@@ -51,6 +48,27 @@ export default function HomeListOptions() {
           <span>Start manually</span>
         </Link>
       </li>
+      {kind ? (
+        <li>
+          {isPhone() ? (
+            // phones: you can't scan your own screen, so the main action opens the in-page camera scanner
+            <button type="button" className="list-option" onClick={() => setScan(true)}>
+              {img ? <img className="list-option-qr" src={img} alt="" width={44} height={44} /> : <span className="list-option-qr" />}
+              <span>Scan the QR code on your For Sale sign</span>
+            </button>
+          ) : (
+            <Link className="list-option" to={qrTo}>
+              {img ? <img className="list-option-qr" src={img} alt="QR code" width={44} height={44} /> : <span className="list-option-qr" />}
+              <span>Scan the QR code on your For Sale sign</span>
+            </Link>
+          )}
+          {scan ? (
+            <Suspense fallback={<div className="qrs"><div className="qrs-bottom"><p className="qrs-hint">Opening camera…</p></div></div>}>
+              <QrScannerModal onClose={() => setScan(false)} />
+            </Suspense>
+          ) : null}
+        </li>
+      ) : null}
     </ol>
   )
 }

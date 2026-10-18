@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { listingFeeUsd, type Listing, type ListingType } from '../lib/types'
 import { createFreeQrListing, getPaidTerm, getQrCodes, insertListing, markPaidAndLive, uploadListingPhotos, type QrCodesSetting } from '../lib/store'
 import { rememberMyListing } from '../lib/myListings'
@@ -16,6 +16,8 @@ function uid() {
 
 export default function List() {
   const navigate = useNavigate()
+  // v61: a non-Listing-Needed QR scanned on the homepage lands on the paid form; its link stays available (never auto-opened)
+  const scannedLink = ((useLocation().state as { scannedLink?: string } | null)?.scannedLink || '').trim()
   const [searchParams] = useSearchParams()
   const canceled = searchParams.get('canceled') === '1'
   const paidReturn = searchParams.get('paid') === '1'
@@ -211,12 +213,12 @@ export default function List() {
     return (
       <div className="card qr-inactive" style={{ maxWidth: 560 }}>
         <div className="body">
-          <h2 style={{ margin: '0 0 .4rem' }}>This QR code isn’t active right now</h2>
+          <h2 style={{ margin: '0 0 .4rem' }}>{qrMode === 'free' ? 'This free promo has ended' : 'This QR code isn’t active right now'}</h2>
           <p className="meta">
             {qrMode === 'free' ? 'The free listing offer from this flyer or sign is not running at the moment.' : 'This QR code is paused at the moment.'}{' '}
             You can still list your home the regular way.
           </p>
-          <Link className="btn" to="/list">List your home</Link>
+          <Link className="btn" to="/list">{qrMode === 'free' ? 'List it the paid way ($99 rent / $800 sale)' : 'List your home'}</Link>
           <p className="meta" style={{ marginTop: '1rem' }}>Questions? Marcel Najar · <a href="tel:2038183242">203-818-3242</a></p>
         </div>
       </div>
@@ -226,6 +228,12 @@ export default function List() {
   return (
     <form className="form" onSubmit={onSubmit}>
       <h2>{isFree ? 'List your home — free' : 'List your home'}</h2>
+      {scannedLink && /^https?:\/\//i.test(scannedLink) ? (
+        <p className="note scanned-link">
+          The QR code you scanned isn’t a Listing Needed code, so here’s the regular listing form.{' '}
+          <a href={scannedLink} target="_blank" rel="noopener noreferrer">Open scanned link</a>
+        </p>
+      ) : null}
       <p className="note">
         {isFree ? 'Fully automated self-serve listing: fill in the form and your listing goes live.' : 'Fully automated self-serve listing: pay on Stripe, return here, and your listing goes live.'}{' '}
         Want a Realtor® instead? Call 203-818-3242 for a consultation.
