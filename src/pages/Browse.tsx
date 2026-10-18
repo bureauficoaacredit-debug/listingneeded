@@ -119,6 +119,31 @@ function filterSummary(parts: {
   return bits.length ? bits.join(' · ') : 'All listings'
 }
 
+// v65: outbound links to RentCafe's rental search + a call line (links only: no RentCafe data is loaded or copied)
+const RENTCAFE_DEFAULTS = [
+  { label: 'More Fairfield rentals on RentCafe', href: 'https://www.rentcafe.com/apartments-for-rent/06825-ct/' },
+  { label: 'More Stamford rentals on RentCafe', href: 'https://www.rentcafe.com/apartments-for-rent/stamford-ct/' },
+]
+function RentCafeLinks({ zip, town, top }: { zip: string; town: string; top?: boolean }) {
+  const links = zip
+    ? [{ label: `More ${town ? `${town} ` : ''}${zip} rentals on RentCafe`, href: `https://www.rentcafe.com/apartments-for-rent/${zip}-ct/` }]
+    : RENTCAFE_DEFAULTS
+  return (
+    <div className={`rentcafe-block${top ? ' top' : ''}`}>
+      <p className="rentcafe-link">
+        {links.map((l) => (
+          <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer">
+            {l.label} <span aria-hidden="true">↗</span>
+          </a>
+        ))}
+      </p>
+      <p className="rentcafe-call">
+        Questions about a rental? Call <a href="tel:2038183242">203-818-3242</a>
+      </p>
+    </div>
+  )
+}
+
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filter = parseFilter(searchParams.get('type'))
@@ -235,6 +260,21 @@ export default function Browse() {
 
     return rows
   }, [listings, filter, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
+
+  // v65: a full 5-digit CT ZIP in the filter (or the city/keyword box) gives one ZIP-specific RentCafe link (town = most
+  // common city among our own listings with that ZIP); no ZIP = the two default links (Fairfield, Stamford)
+  const rentCafe = useMemo(() => {
+    const zip = [zipQ, keywordQ, cityQ].map((q) => q.trim()).find((q) => /^06\d{3}$/.test(q)) || ''
+    if (!zip) return { zip, town: '' }
+    const counts = new Map<string, number>()
+    for (const l of listings) {
+      if ((l.zip || '').slice(0, 5) !== zip || !l.city) continue
+      const c = l.city.trim().toLowerCase().replace(/\b\w/g, (ch) => ch.toUpperCase())
+      counts.set(c, (counts.get(c) ?? 0) + 1)
+    }
+    const town = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || ''
+    return { zip, town }
+  }, [zipQ, keywordQ, cityQ, listings])
 
   // v59: render the results in pages of 48 cards (more load as you scroll), not all ~2,250 at once
   const [shownCount, setShownCount] = useState(BROWSE_PAGE)
@@ -764,6 +804,7 @@ export default function Browse() {
       )}
 
       <div ref={resultsRef} className="browse-results">
+        {filter === 'rent' ? <RentCafeLinks zip={rentCafe.zip} town={rentCafe.town} top /> : null}
         {filtered.length === 0 ? (
           <div className="card">
             <div className="body">
@@ -819,6 +860,7 @@ export default function Browse() {
             </button>
           </div>
         ) : null}
+        <RentCafeLinks zip={rentCafe.zip} town={rentCafe.town} />
       </div>
     </div>
   )

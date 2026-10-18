@@ -1361,3 +1361,12 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 .blog-publish-toggle { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; }
 .blog-publish-toggle input { width: 1.1rem; height: 1.1rem; accent-color: var(--brand); }
 .blog-editor .row { align-items: start; }
+
+/* v65 RentCafe outbound link on Search */
+.rentcafe-block { max-width: 34rem; margin: 1.5rem auto 0; }
+.rentcafe-block.top { margin: 0 auto 1rem; }
+.rentcafe-call { margin: 0.4rem 0 0; text-align: center; font-size: 0.84rem; color: var(--muted); }
+.rentcafe-call a { color: var(--brand); font-weight: 700; white-space: nowrap; }
+.rentcafe-link { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem 1.1rem; font-size: 0.84rem; }
+.rentcafe-link a { color: var(--muted); font-weight: 500; text-decoration: underline; text-decoration-color: #d9c6ea; text-underline-offset: 3px; }
+.rentcafe-link a:hover { color: var(--brand); text-decoration-color: currentColor; }
