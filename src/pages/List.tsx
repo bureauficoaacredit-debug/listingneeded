@@ -33,6 +33,16 @@ export default function List() {
   const qrCfg = qrMode && qr ? qr[qrMode] : null
   const qrActive = !!qrCfg && qrCfg.enabled && !qrCfg.hidden
   const isFree = qrMode === 'free' && qrActive
+  // v60: "Take a picture of your house" from the homepage opens /#/list?photo=1 → jump to the photo step
+  const photoMode = searchParams.get('photo') === '1'
+  const [cameraFiles, setCameraFiles] = useState<File[]>([])
+  const [galleryCount, setGalleryCount] = useState(0)
+  const photoBoxRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!photoMode) return
+    const t = window.setTimeout(() => photoBoxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250)
+    return () => window.clearTimeout(t)
+  }, [photoMode])
 
   useEffect(() => {
     void getPaidTerm().then((t) => setTermDays(t.days))
@@ -121,7 +131,9 @@ export default function List() {
       const fd = new FormData(e.currentTarget)
       const selectedType = fd.get('type') as ListingType
       const photosEl = e.currentTarget.elements.namedItem('photos') as HTMLInputElement | null
-      const photoFiles = photosEl?.files ? Array.from(photosEl.files).slice(0, 6).filter((f) => f.size > 0) : []
+      const galleryFiles = photosEl?.files ? Array.from(photosEl.files) : []
+      // v60: camera shots ("Take a photo") first, then any picked from the photo library — up to 6 total
+      const photoFiles = [...cameraFiles, ...galleryFiles].filter((f) => f.size > 0).slice(0, 6)
 
       const id = uid()
       const draft: Listing = {
@@ -281,9 +293,47 @@ export default function List() {
       <label>Description
         <textarea name="description" rows={4} placeholder="What should renters or buyers know?" />
       </label>
-      <label>Photos (up to 6)
-        <input name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
-      </label>
+      <div ref={photoBoxRef} id="photos" className={`photo-pick${photoMode ? ' photo-pick-focus' : ''}`}>
+        <span className="photo-pick-title">Photos (up to 6)</span>
+        <div className="photo-pick-btns">
+          <label className="btn photo-pick-btn">
+            Take a photo
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="visually-hidden-input"
+              onChange={(e) => {
+                const f = Array.from(e.currentTarget.files || [])
+                if (f.length) setCameraFiles((prev) => [...prev, ...f].slice(0, 6))
+                e.currentTarget.value = ''
+              }}
+            />
+          </label>
+          <label className="btn secondary photo-pick-btn">
+            Choose from photos
+            <input
+              name="photos"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="visually-hidden-input"
+              onChange={(e) => setGalleryCount(e.currentTarget.files?.length || 0)}
+            />
+          </label>
+        </div>
+        <span className="note photo-pick-count">
+          {cameraFiles.length + galleryCount
+            ? `${Math.min(6, cameraFiles.length + galleryCount)} photo${cameraFiles.length + galleryCount === 1 ? '' : 's'} ready`
+            : 'Snap your house with the camera or pick photos you already have.'}
+          {cameraFiles.length ? (
+            <>
+              {' '}
+              <button type="button" className="linklike" onClick={() => setCameraFiles([])}>Clear camera photos</button>
+            </>
+          ) : null}
+        </span>
+      </div>
 
       <h3 style={{ margin: '0.5rem 0 0' }}>Your contact (shown on your live listing)</h3>
       <div className="row">

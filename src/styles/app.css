@@ -1189,3 +1189,65 @@ a.eyebrow-link:hover, a.eyebrow-link:focus-visible { background: rgba(255,255,25
 .showing-cta { margin: 0.25rem 0 1rem; }
 .showing-cta .showing-btn { margin: 0; }
 .showing-sub { margin: 0.4rem 0 0; text-align: center; font-size: 0.85rem; color: var(--muted); }
+
+/* v59 search: show more */
+.browse-more { display: flex; justify-content: center; padding: 1.25rem 0 0.5rem; }
+
+/* v60 hero: "Fully automated. List it yourself." (v47 Inter type, stronger) */
+.hero h1.hero-title-v60 {
+  margin: 0.15rem 0 0; width: min(100%, 56rem);
+  font-family: "Inter", "Montserrat", system-ui, sans-serif; font-weight: 800;
+  font-size: clamp(2.2rem, 5.6vw, 4rem); line-height: 1.03; letter-spacing: -0.04em;
+  text-transform: none; text-wrap: balance; color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 20, 45, 0.25);
+}
+.hero-title-v60 > span { white-space: nowrap; }
+.hero-title-accent { position: relative; display: inline-block; }
+.hero-title-accent::after {
+  content: ""; position: absolute; left: 0.04em; right: 0.04em; bottom: -0.08em; height: 0.09em;
+  border-radius: 2px; background: linear-gradient(90deg, #c8232c, #ff6b6b);
+}
+.hero-centered .lead.hero-sub-v60 { max-width: 38rem; font-size: clamp(1rem, 1.6vw, 1.18rem); line-height: 1.5; opacity: 0.96; text-wrap: balance; margin-top: 0.2rem; }
+.hero-price-v60 { white-space: nowrap; font-weight: 800; }
+@media (max-width: 640px) {
+  .hero h1.hero-title-v60 { font-size: clamp(2rem, 10vw, 2.6rem); }
+  .hero-title-v60 > span { display: block; width: fit-content; margin-inline: auto; }
+  .hero-title-v60 > span + span { margin-top: 0.12em; }
+}
+
+/* v60 List Your Home card: QR line (only when admin "Show QR codes on website" is On) */
+.home-qr { display: flex; align-items: center; justify-content: center; gap: 0.9rem; text-align: left; max-width: 26rem; }
+.home-qr-text p { margin: 0; }
+.home-qr-text p + p { margin-top: 0.3rem; }
+.home-qr-line { color: inherit; text-decoration: none; font-weight: 600; }
+.home-qr-line:hover { color: var(--brand); }
+.home-qr-or { color: var(--muted); }
+.home-qr-link { display: grid; justify-items: center; gap: 0.2rem; text-decoration: none; flex: none; }
+.home-qr-img { display: block; width: 96px; height: 96px; border: 1px solid #dfe6ee; background: #fff; }
+.home-qr-tap { display: none; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--brand); }
+@media (hover: none), (max-width: 640px) {
+  .home-qr-tap { display: block; }
+  .home-qr-line { text-decoration: underline; text-underline-offset: 2px; }
+}
+
+/* v60 List Your Home: three options */
+.list-options { list-style: none; margin: 0.15rem auto 0; padding: 0; display: grid; gap: 0.55rem; width: min(100%, 24rem); }
+.list-option {
+  display: flex; align-items: center; gap: 0.8rem; min-height: 3.25rem; padding: 0.55rem 0.9rem;
+  border: 1px solid #d5dfea; background: #f7fafd; color: var(--brand-dark, #0b2a4a); text-align: left;
+  font-weight: 600; text-decoration: none; transition: border-color .15s, background .15s;
+}
+.list-option:hover, .list-option:focus-visible { border-color: var(--brand); background: #eef4fa; }
+.list-option::after { content: "›"; margin-left: auto; font-size: 1.35rem; line-height: 1; color: var(--brand); }
+.list-option-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: none; color: var(--brand); background: #fff; border: 1px solid #dfe6ee; }
+.list-option-qr { display: block; width: 44px; height: 44px; flex: none; background: #fff; border: 1px solid #dfe6ee; }
+.path-seek .path-actions { margin-top: auto; }
+
+/* v60 List form photo picker: Take a photo (camera) + Choose from photos */
+.photo-pick { display: grid; gap: 0.5rem; padding: 0.75rem; border: 1px dashed #c9d6e3; }
+.photo-pick-focus { border: 2px solid var(--brand); background: #f3f8fd; }
+.photo-pick-title { font-weight: 600; }
+.photo-pick-btns { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.photo-pick-btn { position: relative; cursor: pointer; }
+.visually-hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.linklike { background: none; border: 0; padding: 0; color: var(--brand); text-decoration: underline; cursor: pointer; font: inherit; }

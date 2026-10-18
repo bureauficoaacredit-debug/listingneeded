@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import HomeZipLookup from '../components/HomeZipLookup'
 import PartnerResources from '../components/PartnerResources'
 import QrPublicSection from '../components/QrPublicSection'
+import HomeListOptions from '../components/HomeListOptions'
 import { LISTING_FEE_RENT_USD, LISTING_FEE_SALE_USD } from '../lib/types'
 
 export default function Home() {
@@ -9,14 +10,12 @@ export default function Home() {
     <div className="home">
       <section className="hero hero-centered">
         <Link className="eyebrow eyebrow-soft eyebrow-link" to="/cma">What’s my home worth?</Link>
-        <h1 className="hero-title-pair">
-          <span>Fully automated</span>
-          <span className="hero-title-sep" aria-hidden="true" />
-          <span>DIY listing</span>
+        <h1 className="hero-title-v60">
+          <span>Fully automated.</span> <span className="hero-title-accent">List it yourself.</span>
         </h1>
-        <p className="lead">
-          Browse live homes and reach owners directly — or list yours in minutes. Pay a flat fee
-          online, go live automatically, and stay in control. No agent in the middle.
+        <p className="lead hero-sub-v60">
+          Post your home in minutes. No agent, no hassle.{' '}
+          <strong className="hero-price-v60">${LISTING_FEE_RENT_USD} rent / ${LISTING_FEE_SALE_USD.toLocaleString()} sale.</strong>
         </p>
         <nav className="hero-pivot" aria-label="List or search">
           <Link className="hero-pivot-btn" to="/list">List</Link>
@@ -27,52 +26,26 @@ export default function Home() {
 
       <section className="split">
         <article className="path-card path-seek">
-          <p className="path-kicker">Looking for a home</p>
+          <p className="path-kicker">Home search</p>
           <h2>Buy or rent</h2>
-          <p>
-            Open the board, pick For rent or For sale, and message the owner by phone or email.
-          </p>
           <div className="path-actions">
-            <Link className="btn" to="/browse?type=rent">For rent</Link>
-            <Link className="btn secondary" to="/browse?type=sale">For sale</Link>
+            <Link className="btn" to="/browse?type=rent">For Rent</Link>
+            <Link className="btn secondary" to="/browse?type=sale">For Sale</Link>
           </div>
         </article>
         <article className="path-card path-own">
           <p className="path-kicker">Listing a home</p>
-          <h2>Sell or rent out</h2>
-          <p>
-            Add photos and price, pay the flat fee, and your listing publishes automatically.
-          </p>
+          <h2>List Your Home</h2>
+          <HomeListOptions />
           <ul className="fee-pills">
             <li><strong>${LISTING_FEE_RENT_USD}</strong> rent</li>
             <li><strong>${LISTING_FEE_SALE_USD}</strong> sale</li>
           </ul>
-          <Link className="btn" to="/list">Start my listing</Link>
         </article>
       </section>
 
       <HomeZipLookup />
 
-      <section className="how">
-        <h2 className="section-title">How automation works</h2>
-        <div className="grid how-grid three">
-          <div className="card step">
-            <span className="step-num">01</span>
-            <h3>Enter the home</h3>
-            <p className="meta">Address, price, photos, and your contact info.</p>
-          </div>
-          <div className="card step">
-            <span className="step-num">02</span>
-            <h3>Pay the flat fee</h3>
-            <p className="meta">${LISTING_FEE_RENT_USD} to rent or ${LISTING_FEE_SALE_USD} to sell. No commission from us.</p>
-          </div>
-          <div className="card step">
-            <span className="step-num">03</span>
-            <h3>Go live</h3>
-            <p className="meta">Listing publishes automatically. Buyers and renters reach you directly.</p>
-          </div>
-        </div>
-      </section>
 
       <QrPublicSection />
 
