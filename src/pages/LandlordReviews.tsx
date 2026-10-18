@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { canonicalTown, ctTowns } from '../lib/ctAcs'
 import { fetchApprovedReviews, fmtMonthYear, personalInfoHints, submitReview, type LandlordReview } from '../lib/landlordReviews'
@@ -50,6 +50,7 @@ export default function LandlordReviews() {
             </select>
           </label>
         </div>
+        <p className="meta lr-note">New posts appear after review.</p>
         {shown.length ? (
           <p className="meta lr-summary">
             {shown.length} experience{shown.length === 1 ? '' : 's'} · average <Stars n={Math.round(avg)} /> {avg.toFixed(1)} · {again} of {shown.length} would rent again
@@ -84,11 +85,22 @@ function ShareForm() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
+  const sending = useRef(false)
+  const doneRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (done) doneRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [done])
+  function another() {
+    setF((x) => ({ ...x, rating: 0, again: '', body: '', honest: false, website: '' }))
+    setError('')
+    setDone(false)
+  }
   const hints = personalInfoHints(`${f.body} ${f.name}`)
   const len = f.body.trim().length
 
   async function send(e: FormEvent) {
     e.preventDefault()
+    if (sending.current) return // v70.1: no double posts
     setError('')
     const town = canonicalTown(f.town)
     if (!town) return setError('Please pick a Connecticut town from the list.')
@@ -96,6 +108,7 @@ function ShareForm() {
     if (!f.again) return setError('Please answer “Would you rent again?”')
     if (len < 20 || len > 1000) return setError('Please write between 20 and 1,000 characters.')
     if (!f.honest) return setError('Please confirm this is your own honest experience as a former tenant.')
+    sending.current = true
     setBusy(true)
     try {
       await submitReview({
@@ -106,17 +119,18 @@ function ShareForm() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send')
     } finally {
+      sending.current = false
       setBusy(false)
     }
   }
 
   if (done)
     return (
-      <section id="share" className="card lr-form-card">
-        <div className="body">
-          <h2>Thank you!</h2>
-          <p>We got your experience. It will appear here after a quick review, usually within a day or two.</p>
-        </div>
+      <section id="share" ref={doneRef} className="lr-success" role="status" aria-live="polite">
+        <p className="lr-success-icon" aria-hidden="true">✅</p>
+        <h2>Thanks! Your post was received.</h2>
+        <p>It will appear here after a quick review (usually within 24 hours).</p>
+        <button type="button" className="btn secondary" onClick={another}>Post another</button>
       </section>
     )
 
@@ -164,7 +178,7 @@ function ShareForm() {
           <input type="checkbox" checked={f.honest} onChange={(e) => setF({ ...f, honest: e.target.checked })} /> This is my own honest experience as a former tenant.
         </label>
         {error ? <div className="showing-error" role="alert">{error}</div> : null}
-        <button type="submit" className="btn" disabled={busy}>{busy ? 'Sending…' : 'Submit for review'}</button>
+        <button type="submit" className="btn" disabled={busy} aria-busy={busy}>{busy ? 'Sending…' : 'Submit for review'}</button>
       </form>
     </section>
   )
