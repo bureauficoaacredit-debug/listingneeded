@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { Modal } from './AdminModal'
 import { updateListing, updatePartnerLink } from '../lib/store'
-import type { Listing, ListingType, PartnerCategory, PartnerLink } from '../lib/types'
-import { PARTNER_CATEGORY_LABELS } from '../lib/types'
+import type { HoaFrequency, Listing, ListingType, PartnerCategory, PartnerLink } from '../lib/types'
+import { HOA_FREQUENCIES, PARTNER_CATEGORY_LABELS } from '../lib/types'
 
 /** Admin: edit every field of one listing (MLS or DIY). */
 export function ListingEditModal({
@@ -25,6 +25,10 @@ export function ListingEditModal({
     baths: String(listing.baths ?? ''),
     sqft: String(listing.sqft ?? ''),
     yearBuilt: String(listing.yearBuilt ?? ''),
+    taxesAnnual: String(listing.taxesAnnual ?? ''),
+    taxYear: String(listing.taxYear ?? ''),
+    hoaFee: String(listing.hoaFee ?? ''),
+    hoaFrequency: (listing.hoaFrequency ?? 'month') as HoaFrequency,
     pets: listing.pets,
     description: listing.description ?? '',
     ownerName: listing.ownerName ?? '',
@@ -58,6 +62,11 @@ export function ListingEditModal({
         baths: Number(f.baths) || 0,
         sqft: Number(f.sqft) || null,
         yearBuilt: Number(f.yearBuilt) || null,
+        // v67: empty box = remove (row hidden on the home page)
+        taxesAnnual: Number(f.taxesAnnual) > 0 ? Number(f.taxesAnnual) : null,
+        taxYear: Number(f.taxesAnnual) > 0 && Number(f.taxYear) >= 1990 && Number(f.taxYear) <= 2100 ? Number(f.taxYear) : null,
+        hoaFee: Number(f.hoaFee) > 0 ? Number(f.hoaFee) : null,
+        hoaFrequency: Number(f.hoaFee) > 0 ? f.hoaFrequency : null,
         pets: f.pets,
         description: f.description,
         ownerName: f.ownerName.trim(),
@@ -105,6 +114,26 @@ export function ListingEditModal({
           <label>
             Year built
             <input type="number" value={f.yearBuilt} onChange={set('yearBuilt')} />
+          </label>
+        </div>
+        <div className="row">
+          <label>
+            Annual taxes ($)
+            <input type="number" step="any" value={f.taxesAnnual} onChange={set('taxesAnnual')} placeholder="empty = hide" />
+          </label>
+          <label>
+            Tax year
+            <input type="number" value={f.taxYear} onChange={set('taxYear')} />
+          </label>
+          <label>
+            HOA / common charges ($)
+            <input type="number" step="any" value={f.hoaFee} onChange={set('hoaFee')} placeholder="empty = hide" />
+          </label>
+          <label>
+            HOA paid
+            <select value={f.hoaFrequency} onChange={set('hoaFrequency')}>
+              {HOA_FREQUENCIES.map((x) => <option key={x.value} value={x.value}>{x.label}</option>)}
+            </select>
           </label>
         </div>
         <label>

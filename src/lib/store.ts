@@ -25,6 +25,10 @@ type ListingRow = {
   active_until?: string | null
   sqft?: number | null
   year_built?: number | null
+  taxes_annual?: number | null
+  tax_year?: number | null
+  hoa_fee?: number | null
+  hoa_frequency?: string | null
   deleted_at?: string | null
   mls_status?: string | null
   source?: string | null
@@ -54,6 +58,10 @@ function rowToListing(row: ListingRow): Listing {
     activeUntil: row.active_until ?? null,
     sqft: row.sqft != null ? Number(row.sqft) : null,
     yearBuilt: row.year_built != null ? Number(row.year_built) : null,
+    taxesAnnual: row.taxes_annual != null ? Number(row.taxes_annual) : null,
+    taxYear: row.tax_year != null ? Number(row.tax_year) : null,
+    hoaFee: row.hoa_fee != null ? Number(row.hoa_fee) : null,
+    hoaFrequency: (row.hoa_frequency as Listing['hoaFrequency']) ?? null,
     deletedAt: row.deleted_at ?? null,
     mlsStatus: row.mls_status ?? null,
     source: row.source ?? null,
@@ -86,6 +94,8 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     // only sent when known so MLS upserts never blank out a value
     ...(listing.sqft != null ? { sqft: listing.sqft } : {}),
     ...(listing.yearBuilt != null ? { year_built: listing.yearBuilt } : {}),
+    ...(listing.taxesAnnual != null ? { taxes_annual: listing.taxesAnnual, tax_year: listing.taxYear ?? null } : {}),
+    ...(listing.hoaFee != null ? { hoa_fee: listing.hoaFee, hoa_frequency: listing.hoaFrequency ?? null } : {}),
     ...(listing.mlsStatus ? { mls_status: listing.mlsStatus } : {}),
     ...(listing.source ? { source: listing.source } : {}),
   }
@@ -465,6 +475,10 @@ export type ListingPatch = Partial<{
   is_mls: boolean
   sqft: number | null
   yearBuilt: number | null
+  taxesAnnual: number | null
+  taxYear: number | null
+  hoaFee: number | null
+  hoaFrequency: Listing['hoaFrequency']
 }>
 
 /** Admin: patch listing fields (live toggle, active_until, etc.). */
@@ -489,6 +503,10 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
   if (patch.is_mls != null) body.is_mls = patch.is_mls
   if (patch.sqft !== undefined) body.sqft = patch.sqft
   if (patch.yearBuilt !== undefined) body.year_built = patch.yearBuilt
+  if (patch.taxesAnnual !== undefined) body.taxes_annual = patch.taxesAnnual
+  if (patch.taxYear !== undefined) body.tax_year = patch.taxYear
+  if (patch.hoaFee !== undefined) body.hoa_fee = patch.hoaFee
+  if (patch.hoaFrequency !== undefined) body.hoa_frequency = patch.hoaFrequency
 
   const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',

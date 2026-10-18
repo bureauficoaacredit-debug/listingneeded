@@ -17,6 +17,7 @@
  * refresh price/status/photos of existing ones by MLS number, never duplicate, never remove or un-trash.
  */
 import { fetchLinkListings, normalizeAnyLink, rpc, toSyncHomes } from '../_lib/mlsSync.js'
+import { fetchTaxHoa } from '../_lib/mlsDetails.js'
 
 export const config = { api: { bodyParser: { sizeLimit: '1mb' } }, maxDuration: 60 }
 
@@ -128,13 +129,16 @@ export default async function handler(req, res) {
     }
 
     const perLink = []
+    const detailItems = []
     const tot = { new: 0, updated: 0, unchanged: 0, errors: 0, total: 0 }
     for (const l of targets) {
       const pl = publicLink(l)
       const hint = `${l.label || pl.kind} · ${pl.hint}`.slice(0, 120)
       try {
         if (Date.now() - t0 > 48000) throw new Error('Skipped this run (time limit); it will run next hour.')
-        const { listings, totalCount } = await fetchLinkListings(l)
+        const { listings, totalCount, detailCtx } = await fetchLinkListings(l)
+        // v67: remember each home's portal id so its details (taxes / HOA) can be fetched after the import
+        if (detailCtx) for (const x of listings) if (x && x.Id && x.ListingId) detailItems.push({ id: `mls_${x.ListingId}`, rawId: x.Id, ctx: detailCtx })
         if (!listings.length) throw new Error('The MLS link returned 0 homes.')
         const { homes, skipped, totalRows } = toSyncHomes(listings)
         const r = await call('mls_sync_apply', {
@@ -167,6 +171,21 @@ export default async function handler(req, res) {
         }
       }
     }
+    // v67: taxes + HOA from each home's MLS details page: new homes first, then anything not refreshed in 7 days,
+    // as many as fit in this run (about 150 per hour), never blocking the import itself
+    let details = null
+    if (!dry && detailItems.length && Date.now() - t0 < 40000) {
+      try {
+        const byId = new Map(detailItems.map((d) => [d.id, d]))
+        const todo = await call('mls_sync_details_todo', { p_token: pTok, p_ids: [...byId.keys()], p_limit: 300 })
+        const items = (todo || []).map((id) => byId.get(id)).filter(Boolean)
+        const rows = await fetchTaxHoa(items, { concurrency: 6, deadline: t0 + 50000 })
+        const saved = rows.length ? await call('mls_sync_apply_details', { p_token: pTok, p_rows: rows }) : 0
+        details = { due: items.length, fetched: rows.length, saved }
+      } catch (err) {
+        details = { error: String(err instanceof Error ? err.message : err).slice(0, 200) }
+      }
+    }
     const allFailed = perLink.every((p) => !p.ok)
     return send(res, allFailed ? 502 : 200, {
       ok: !allFailed,
@@ -174,6 +193,7 @@ export default async function handler(req, res) {
       ...tot,
       summary: `${tot.new} new, ${tot.updated} updated`,
       perLink,
+      details,
       ...(allFailed ? { error: perLink.map((p) => `${p.label}: ${p.error}`).join(' | ') } : {}),
       source,
       ms: Date.now() - t0,

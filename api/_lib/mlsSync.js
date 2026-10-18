@@ -68,7 +68,7 @@ export function normalizeAnyLink(raw) {
 export async function fetchLinkListings(link) {
   if (link.kind === 'portal') {
     const token = await openPortalLink(link.url)
-    return fetchPortalListings(token)
+    return { ...(await fetchPortalListings(token)), detailCtx: { token } }
   }
   const s = extractSharedLinkUuid(link.url)
   if (s.error) throw new Error(s.error)
@@ -86,7 +86,7 @@ export async function fetchLinkListings(link) {
   const j = await res.json().catch(() => null)
   const listings = Array.isArray(j) ? j : j && Array.isArray(j.Listings) ? j.Listings : null
   if (!listings) throw new Error('SMART MLS API returned an unexpected response for the shared link.')
-  return { listings, totalCount: listings.length }
+  return { listings, totalCount: listings.length, detailCtx: { uuid: s.uuid } }
 }
 
 /** Open the portal link, return the client token from the redirect. */

@@ -8,7 +8,7 @@ import type { Listing } from '../lib/types'
 import { getListing, getPaidTerm } from '../lib/store'
 import { isMyListing } from '../lib/myListings'
 import { paymentLinkForListing } from '../lib/checkout'
-import { isActiveUntilOk, mlsStatusBadge } from '../lib/types'
+import { formatHoa, formatTaxes, isActiveUntilOk, mlsStatusBadge } from '../lib/types'
 
 function fmtEnd(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
@@ -160,6 +160,23 @@ export default function ListingDetail() {
           {listing.sqft ? ` · ${listing.sqft.toLocaleString()} sq ft` : ''}
           {listing.yearBuilt ? ` · built ${listing.yearBuilt}` : ''} · Pets: {listing.pets}
         </p>
+        {formatTaxes(listing) || formatHoa(listing) ? (
+          // v67: annual taxes + HOA / common charges (each row hidden when unknown; amounts only from the MLS or the owner)
+          <dl className="cost-facts">
+            {formatTaxes(listing) ? (
+              <div>
+                <dt>Annual taxes</dt>
+                <dd>{formatTaxes(listing)}</dd>
+              </div>
+            ) : null}
+            {formatHoa(listing) ? (
+              <div>
+                <dt>HOA / common charges</dt>
+                <dd>{formatHoa(listing)}</dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
         <p>{listing.description || 'No description provided.'}</p>
         <ScheduleShowing listing={listing} />
         <div className="contact-card">

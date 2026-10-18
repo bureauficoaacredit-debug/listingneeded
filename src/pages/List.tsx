@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { listingFeeUsd, type Listing, type ListingType } from '../lib/types'
+import { HOA_FREQUENCIES, listingFeeUsd, type Listing, type ListingType } from '../lib/types'
+
+/** v67: optional money field -> positive number or null */
+const n67 = (v: FormDataEntryValue | null) => {
+  const n = Number(String(v ?? '').replace(/[$,\s]/g, ''))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
 import { createFreeQrListing, getPaidTerm, getQrCodes, insertListing, markPaidAndLive, uploadListingPhotos, type QrCodesSetting } from '../lib/store'
 import { rememberMyListing } from '../lib/myListings'
 import { paymentLinkForListing } from '../lib/checkout'
@@ -149,6 +155,11 @@ export default function List() {
         baths: Number(fd.get('baths') || 0),
         sqft: Number(fd.get('sqft') || 0) || null,
         yearBuilt: Number(fd.get('yearBuilt') || 0) || null,
+        // v67: optional annual taxes + HOA / common charges (left empty = not shown)
+        taxesAnnual: n67(fd.get('taxesAnnual')),
+        taxYear: n67(fd.get('taxesAnnual')) ? Number(fd.get('taxYear') || 0) || null : null,
+        hoaFee: n67(fd.get('hoaFee')),
+        hoaFrequency: n67(fd.get('hoaFee')) ? ((String(fd.get('hoaFrequency') || 'month') as Listing['hoaFrequency']) ?? 'month') : null,
         price: Number(fd.get('price') || 0),
         pets: fd.get('pets') as Listing['pets'],
         description: String(fd.get('description') || '').trim(),
@@ -288,6 +299,16 @@ export default function List() {
         <label>Baths<input name="baths" type="number" min={0} step={0.5} required value={facts.baths} onChange={setFact('baths')} /></label>
         <label>Sq ft<input name="sqft" type="number" min={0} step={1} placeholder="optional" value={facts.sqft} onChange={setFact('sqft')} /></label>
         <label>Year built<input name="yearBuilt" type="number" min={1600} max={2100} step={1} placeholder="optional" value={facts.yearBuilt} onChange={setFact('yearBuilt')} /></label>
+      </div>
+      <div className="row">
+        <label>Annual taxes ($)<input name="taxesAnnual" type="number" min={0} step="any" inputMode="decimal" placeholder="optional" /></label>
+        <label>Tax year<input name="taxYear" type="number" min={1990} max={2100} step={1} placeholder="optional" /></label>
+        <label>HOA / common charges ($)<input name="hoaFee" type="number" min={0} step="any" inputMode="decimal" placeholder="optional" /></label>
+        <label>HOA paid
+          <select name="hoaFrequency" defaultValue="month">
+            {HOA_FREQUENCIES.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+        </label>
       </div>
       <div className="row">
         <label>Pets

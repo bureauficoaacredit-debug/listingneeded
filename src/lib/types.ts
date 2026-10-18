@@ -29,6 +29,11 @@ export type Listing = {
   /** Optional living area (sq ft) and year built — autofilled from public records on the list form. */
   sqft?: number | null
   yearBuilt?: number | null
+  /** v67: annual property taxes (+ tax year) and HOA / common charges (amount + how often); null = unknown (row hidden). */
+  taxesAnnual?: number | null
+  taxYear?: number | null
+  hoaFee?: number | null
+  hoaFrequency?: HoaFrequency | null
   /** v38: set when moved to the admin Trash (undo window 7 days, then purged). */
   deletedAt?: string | null
   /** v40: MLS status from the feed (e.g. 'Active', 'Under Contract - Continue to Show'); null for DIY. */
@@ -95,4 +100,26 @@ export function mlsStatusBadge(status: string | null | undefined): string | null
   if (/pending/i.test(s)) return 'Pending'
   if (/contingent/i.test(s)) return 'Contingent'
   return s.length > 24 ? s.slice(0, 24) : s
+}
+
+// v67: taxes / HOA display helpers
+export type HoaFrequency = 'month' | 'quarter' | 'half-year' | 'year' | 'week'
+export const HOA_FREQUENCIES: { value: HoaFrequency; label: string; short: string }[] = [
+  { value: 'month', label: 'Monthly', short: 'mo' },
+  { value: 'quarter', label: 'Quarterly', short: 'quarter' },
+  { value: 'half-year', label: 'Every 6 months', short: '6 mo' },
+  { value: 'year', label: 'Yearly', short: 'yr' },
+  { value: 'week', label: 'Weekly', short: 'wk' },
+]
+const usd = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`
+/** "$8,250/yr (2025)" or null when unknown. */
+export function formatTaxes(l: Pick<Listing, 'taxesAnnual' | 'taxYear'>, withYear = true) {
+  if (l.taxesAnnual == null || !(l.taxesAnnual > 0)) return null
+  return `${usd(l.taxesAnnual)}/yr${withYear && l.taxYear ? ` (${l.taxYear} taxes)` : ''}`
+}
+/** "$350/mo" or "$1,200/quarter" (no frequency known: just the amount); null when unknown. */
+export function formatHoa(l: Pick<Listing, 'hoaFee' | 'hoaFrequency'>) {
+  if (l.hoaFee == null || !(l.hoaFee > 0)) return null
+  const f = HOA_FREQUENCIES.find((x) => x.value === l.hoaFrequency)
+  return `${usd(l.hoaFee)}${f ? `/${f.short}` : ''}`
 }

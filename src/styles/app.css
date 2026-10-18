@@ -1370,3 +1370,9 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 .rentcafe-link { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem 1.1rem; font-size: 0.84rem; }
 .rentcafe-link a { color: var(--muted); font-weight: 500; text-decoration: underline; text-decoration-color: #d9c6ea; text-underline-offset: 3px; }
 .rentcafe-link a:hover { color: var(--brand); text-decoration-color: currentColor; }
+
+/* v67: annual taxes + HOA / common charges on the home page */
+.cost-facts { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; margin: 0 0 1rem; }
+.cost-facts > div { flex: 1 1 11rem; border: 1px solid var(--line); background: #fff; padding: 0.55rem 0.8rem; }
+.cost-facts dt { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cost-facts dd { margin: 0.15rem 0 0; font-size: 1.05rem; font-weight: 700; color: var(--ink, #1f2430); }
