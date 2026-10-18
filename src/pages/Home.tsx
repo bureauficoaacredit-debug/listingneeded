@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { prefetchLiveListings } from '../lib/store'
 import HomeZipLookup from '../components/HomeZipLookup'
 import PartnerResources from '../components/PartnerResources'
 import QrPublicSection from '../components/QrPublicSection'
@@ -6,6 +8,16 @@ import HomeListOptions from '../components/HomeListOptions'
 import { LISTING_FEE_RENT_USD, LISTING_FEE_SALE_USD } from '../lib/types'
 
 export default function Home() {
+  // v62: warm the Search feed once the homepage is idle, so clicking Search / For Rent / For Sale opens instantly
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (h: number) => void }
+    if (w.requestIdleCallback) {
+      const h = w.requestIdleCallback(() => prefetchLiveListings(), { timeout: 2500 })
+      return () => w.cancelIdleCallback?.(h)
+    }
+    const t = window.setTimeout(prefetchLiveListings, 1200)
+    return () => window.clearTimeout(t)
+  }, [])
   return (
     <div className="home">
       <section className="hero hero-centered">

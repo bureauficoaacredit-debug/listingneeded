@@ -157,23 +157,27 @@ const SEARCH_COLUMNS =
 
 /** Public Search feed: paid + live, not trashed, and active_until not past (filtered in the query AND client-side). */
 export async function liveListings(): Promise<Listing[]> {
-  // PostgREST caps one response at 1000 rows — page so every live listing shows up on Search.
+  // PostgREST caps one response at 1000 rows. v62: ask for the first 3 pages AT ONCE (not one after another),
+  // then keep going only if the last page was full.
   const PAGE = 1000
-  const all: ListingRow[] = []
-  for (let offset = 0; offset < 50000; offset += PAGE) {
-    const res = await supabaseFetch(
-      `/rest/v1/listings?live=eq.true&paid=eq.true&deleted_at=is.null` +
-        `&or=(active_until.is.null,active_until.gte.${todayYmd()})` +
-        `&order=created_at.desc,id.asc&limit=${PAGE}&offset=${offset}` +
-        // v59: only what the Search cards / filters use; first photo only (computed column cover_photo)
-        `&select=${SEARCH_COLUMNS}`,
-      { method: 'GET', headers: { Accept: 'application/json' } },
-    )
+  const url = (offset: number) =>
+    `/rest/v1/listings?live=eq.true&paid=eq.true&deleted_at=is.null` +
+    `&or=(active_until.is.null,active_until.gte.${todayYmd()})` +
+    `&order=created_at.desc,id.asc&limit=${PAGE}&offset=${offset}` +
+    // v59: only what the Search cards / filters use; first photo only (computed column cover_photo)
+    `&select=${SEARCH_COLUMNS}`
+  const page = async (offset: number) => {
+    const res = await supabaseFetch(url(offset), { method: 'GET', headers: { Accept: 'application/json' } })
     await throwIfNotOk(res)
-    const data = (await res.json()) as ListingRow[]
-    all.push(...data)
-    if (data.length < PAGE) break
+    return (await res.json()) as ListingRow[]
   }
+  const pages = await Promise.all([0, PAGE, 2 * PAGE].map(page))
+  let offset = 3 * PAGE
+  while (pages[pages.length - 1].length === PAGE && offset < 50000) {
+    pages.push(await page(offset))
+    offset += PAGE
+  }
+  const all: ListingRow[] = pages.flat()
   return all
     .map((r) => {
       const row = r as ListingRow & { cover_photo?: string | null; mls_ref?: string | null }
@@ -184,6 +188,54 @@ export async function liveListings(): Promise<Listing[]> {
       })
     })
     .filter((l) => !l.deletedAt && isActiveUntilOk(l.activeUntil))
+}
+
+// ---------------------------------------------------------------- v62 Search cache (opens instantly)
+const LIVE_CACHE_KEY = 'ln_live_listings_v62'
+const LIVE_CACHE_MAX_AGE = 15 * 60 * 1000 // show cached results up to 15 min old (always refreshed in the background)
+let liveMem: { at: number; rows: Listing[] } | null = null
+let liveInflight: Promise<Listing[]> | null = null
+
+/** Cached Search results (memory, then this tab's sessionStorage), or null. */
+export function cachedLiveListings(): { at: number; rows: Listing[] } | null {
+  if (liveMem && Date.now() - liveMem.at < LIVE_CACHE_MAX_AGE) return liveMem
+  try {
+    const c = JSON.parse(sessionStorage.getItem(LIVE_CACHE_KEY) || 'null') as { at: number; rows: Listing[] } | null
+    if (c && Array.isArray(c.rows) && Date.now() - c.at < LIVE_CACHE_MAX_AGE) {
+      c.rows = c.rows.filter((l) => !l.deletedAt && isActiveUntilOk(l.activeUntil))
+      liveMem = c
+      return c
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
+}
+
+/** One shared request for the Search feed (prefetch + page mount never fetch twice); result is cached. */
+export function loadLiveListings(): Promise<Listing[]> {
+  if (!liveInflight) {
+    liveInflight = liveListings()
+      .then((rows) => {
+        liveMem = { at: Date.now(), rows }
+        try {
+          sessionStorage.setItem(LIVE_CACHE_KEY, JSON.stringify(liveMem))
+        } catch {
+          /* storage full / private mode: memory only */
+        }
+        return rows
+      })
+      .finally(() => {
+        liveInflight = null
+      })
+  }
+  return liveInflight
+}
+
+/** Warm the Search feed (homepage idle, or hover/touch on a Search link). No-op if fresh (<60 s) or already loading. */
+export function prefetchLiveListings() {
+  if (liveInflight || (liveMem && Date.now() - liveMem.at < 60_000)) return
+  void loadLiveListings().catch(() => {})
 }
 
 export async function getListing(id: string): Promise<Listing | null> {

@@ -4,12 +4,27 @@ import Home from './pages/Home'
 import Browse from './pages/Browse'
 import React, { lazy, Suspense } from 'react'
 // v59: Home + Search stay in the main bundle; heavier pages (admin, list form, detail, CMA…) load on demand
-const List = lazy(() => import('./pages/List'))
-const ListingDetail = lazy(() => import('./pages/ListingDetail'))
-const Admin = lazy(() => import('./pages/Admin'))
-const Cma = lazy(() => import('./pages/Cma'))
-const ResetPassword = lazy(() => import('./pages/ResetPassword'))
-const QrPrint = lazy(() => import('./pages/QrPrint'))
+// v62: if a page chunk is gone (tab opened before a new deploy), reload once to get the new build instead of a blank page
+const lazyPageImport = <T,>(load: () => Promise<T>) => () =>
+  load()
+    .then((m) => {
+      sessionStorage.removeItem('ln_chunk_reload')
+      return m
+    })
+    .catch((err) => {
+    if (!sessionStorage.getItem('ln_chunk_reload')) {
+      sessionStorage.setItem('ln_chunk_reload', '1')
+      window.location.reload()
+      return new Promise<T>(() => {})
+    }
+    throw err
+  })
+const List = lazy(lazyPageImport(() => import('./pages/List')))
+const ListingDetail = lazy(lazyPageImport(() => import('./pages/ListingDetail')))
+const Admin = lazy(lazyPageImport(() => import('./pages/Admin')))
+const Cma = lazy(lazyPageImport(() => import('./pages/Cma')))
+const ResetPassword = lazy(lazyPageImport(() => import('./pages/ResetPassword')))
+const QrPrint = lazy(lazyPageImport(() => import('./pages/QrPrint')))
 
 const lazyPage = (el: React.ReactNode) => (
   <Suspense fallback={<div className="page-loading" style={{ padding: '3rem 1rem', textAlign: 'center' }}>Loading…</div>}>{el}</Suspense>

@@ -1283,3 +1283,11 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 .qrs label.qrs-photo { background: #fff; color: #0b2a4a; border-color: #fff; }
 .qrs .qrs-hint { color: #fff; opacity: 0.95; }
 .scanned-link a { font-weight: 700; }
+
+/* v62 Search skeleton (shown only on the very first load in a tab) */
+.skel-card { overflow: hidden; }
+.skel { background: linear-gradient(90deg, #e9eef4 0%, #f5f8fb 50%, #e9eef4 100%); background-size: 200% 100%; animation: skel 1.2s ease-in-out infinite; }
+.skel-thumb { aspect-ratio: 4 / 3; width: 100%; }
+.skel-line { height: 0.8rem; margin: 0.55rem 0; border-radius: 3px; }
+.skel-line.w60 { width: 60%; } .skel-line.w90 { width: 90%; } .skel-line.w40 { width: 40%; }
+@keyframes skel { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }

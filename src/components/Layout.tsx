@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
+import { prefetchLiveListings } from '../lib/store'
 import '../styles/app.css'
 
 /** v32 wordmark: transparent PNG traced from Marcel's logo (white on the blue header), 1x/2x/3x. */
@@ -63,6 +65,21 @@ function PhoneIcon() {
 }
 
 export default function Layout() {
+  // v62: start loading the Search feed the moment a finger/mouse touches any Search link (header, hero, For Rent/Sale)
+  useEffect(() => {
+    const onIntent = (e: Event) => {
+      const a = (e.target as Element | null)?.closest?.('a[href^="#/browse"]')
+      if (a) prefetchLiveListings()
+    }
+    document.addEventListener('pointerover', onIntent, { passive: true })
+    document.addEventListener('touchstart', onIntent, { passive: true })
+    document.addEventListener('focusin', onIntent)
+    return () => {
+      document.removeEventListener('pointerover', onIntent)
+      document.removeEventListener('touchstart', onIntent)
+      document.removeEventListener('focusin', onIntent)
+    }
+  }, [])
   return (
     <div className="shell">
       <header className="nav">

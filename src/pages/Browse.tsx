@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { mlsStatusBadge, type Listing, type ListingType } from '../lib/types'
-import { liveListings } from '../lib/store'
+import { cachedLiveListings, loadLiveListings } from '../lib/store'
 
 type Filter = 'all' | ListingType
 
@@ -122,8 +122,9 @@ function filterSummary(parts: {
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filter = parseFilter(searchParams.get('type'))
-  const [listings, setListings] = useState<Listing[]>([])
-  const [loading, setLoading] = useState(true)
+  // v62: show cached results instantly (this tab, <15 min), then refresh quietly in the background
+  const [listings, setListings] = useState<Listing[]>(() => cachedLiveListings()?.rows ?? [])
+  const [loading, setLoading] = useState(() => !cachedLiveListings())
   const [error, setError] = useState('')
   const resultsRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
@@ -177,12 +178,18 @@ export default function Browse() {
 
   useEffect(() => {
     let cancelled = false
+    const c = cachedLiveListings()
+    if (c && Date.now() - c.at < 60_000) {
+      setLoading(false) // just prefetched: nothing to refresh
+      return
+    }
     ;(async () => {
       try {
-        const rows = await liveListings()
+        const rows = await loadLiveListings()
         if (!cancelled) setListings(rows)
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Failed to load listings')
+        // keep showing cached results if the background refresh fails
+        if (!cancelled && !cachedLiveListings()) setError(err instanceof Error ? err.message : 'Failed to load listings')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -232,9 +239,10 @@ export default function Browse() {
   // v59: render the results in pages of 48 cards (more load as you scroll), not all ~2,250 at once
   const [shownCount, setShownCount] = useState(BROWSE_PAGE)
   const moreRef = useRef<HTMLDivElement>(null)
+  // v62: reset to the first 48 only when the user changes the search (not when a background refresh lands)
   useEffect(() => {
     setShownCount(BROWSE_PAGE)
-  }, [filtered])
+  }, [filter, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
   useEffect(() => {
     const el = moreRef.current
     if (!el || typeof IntersectionObserver === 'undefined') return
@@ -367,10 +375,23 @@ export default function Browse() {
     filter === 'rent' ? 'Homes for rent' : filter === 'sale' ? 'Homes for sale' : 'Search homes'
 
   if (loading) {
+    // v62: never a blank page: title + skeleton cards right away while the feed loads
     return (
-      <div className="card">
-        <div className="body">Loading listings…</div>
-      </div>
+      <section className="browse-skeleton" aria-busy="true" aria-label="Loading homes">
+        <h2 className="section-title" style={{ margin: '0 0 1rem' }}>{title}</h2>
+        <div className="grid">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="card skel-card" aria-hidden="true">
+              <div className="skel skel-thumb" />
+              <div className="body">
+                <div className="skel skel-line w60" />
+                <div className="skel skel-line w90" />
+                <div className="skel skel-line w40" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     )
   }
 
