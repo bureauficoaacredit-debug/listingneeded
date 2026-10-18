@@ -1489,3 +1489,6 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 .avg-rent-line { margin: 0; font-size: 0.88rem; }
 .avg-rent-links { margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-weight: 700; font-size: 0.88rem; }
 @media (prefers-reduced-motion: reduce) { .avg-rent-caret { transition: none; } }
+
+/* v69b: few-listings badge */
+.avg-rent-panel .avg-rent-few{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fff3cd;color:#7a5600;font-size:.75em;font-weight:600;vertical-align:middle}
