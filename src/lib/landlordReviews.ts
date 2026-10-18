@@ -5,6 +5,7 @@ export type ReviewStatus = 'pending' | 'approved' | 'rejected'
 export type LandlordReview = {
   id: string
   created_at: string
+  state: string | null
   town: string
   rating: number
   would_rent_again: boolean
@@ -19,6 +20,7 @@ export type AdminLandlordReview = LandlordReview & {
   landlord_review_private: { email: string | null } | null
 }
 export type ReviewInput = {
+  state: string
   town: string
   rating: number
   would_rent_again: boolean
@@ -34,7 +36,7 @@ async function errorText(res: Response, fallback: string) {
   return String(d.message || d.error_description || d.error || fallback)
 }
 
-const PUBLIC_COLS = 'id,created_at,town,rating,would_rent_again,body,display_name'
+const PUBLIC_COLS = 'id,created_at,state,town,rating,would_rent_again,body,display_name'
 
 export async function fetchApprovedReviews(): Promise<LandlordReview[]> {
   const res = await supabaseFetch(`/rest/v1/landlord_reviews?select=${PUBLIC_COLS}&status=eq.approved&order=created_at.desc&limit=1000`)
@@ -66,7 +68,7 @@ export async function pendingReviewCount(): Promise<number> {
   return Number(res.headers.get('content-range')?.split('/')[1] ?? 0) || 0
 }
 
-export type ReviewEdit = Partial<Pick<AdminLandlordReview, 'town' | 'rating' | 'would_rent_again' | 'body' | 'display_name' | 'status' | 'reviewed_at'>>
+export type ReviewEdit = Partial<Pick<AdminLandlordReview, 'state' | 'town' | 'rating' | 'would_rent_again' | 'body' | 'display_name' | 'status' | 'reviewed_at'>>
 
 export async function updateReview(id: string, patch: ReviewEdit): Promise<AdminLandlordReview> {
   const res = await supabaseFetch(`/rest/v1/landlord_reviews?id=eq.${encodeURIComponent(id)}&select=*,landlord_review_private(email)`, {

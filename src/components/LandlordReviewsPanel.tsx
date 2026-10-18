@@ -10,6 +10,7 @@ import {
   type ReviewStatus,
 } from '../lib/landlordReviews'
 import { ConfirmDeleteAll, Modal } from './AdminModal'
+import { US_STATES, townState } from '../lib/usStates'
 
 const STATUSES: ReviewStatus[] = ['pending', 'approved', 'rejected']
 const cap = (s: string) => s[0].toUpperCase() + s.slice(1)
@@ -46,7 +47,7 @@ export default function LandlordReviewsPanel({ onCount }: { onCount?: (pending: 
     }
   }
   async function remove(r: AdminLandlordReview) {
-    if (!window.confirm(`Delete this ${r.town} experience?`)) return
+    if (!window.confirm(`Delete this ${townState(r)} experience?`)) return
     try {
       await deleteReview(r.id)
       setRows((x) => x?.filter((y) => y.id !== r.id) ?? null)
@@ -101,7 +102,7 @@ export default function LandlordReviewsPanel({ onCount }: { onCount?: (pending: 
             <article key={r.id} className="lr-admin-item">
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '.75rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
                 <span>
-                  <strong>{r.town}</strong> <span className="lr-stars">{'★'.repeat(r.rating)}<span className="lr-stars-off">{'★'.repeat(5 - r.rating)}</span></span>{' '}
+                  <strong>{townState(r)}</strong> <span className="lr-stars">{'★'.repeat(r.rating)}<span className="lr-stars-off">{'★'.repeat(5 - r.rating)}</span></span>{' '}
                   <span className={`lr-again ${r.would_rent_again ? 'yes' : 'no'}`}>Would rent again: {r.would_rent_again ? 'Yes' : 'No'}</span>
                 </span>
                 <span style={{ display: 'flex', gap: '.35rem', alignItems: 'center' }}>
@@ -138,7 +139,7 @@ export default function LandlordReviewsPanel({ onCount }: { onCount?: (pending: 
 }
 
 function EditReview({ row, onClose, onSaved }: { row: AdminLandlordReview; onClose: () => void; onSaved: (r: AdminLandlordReview) => void }) {
-  const [f, setF] = useState<ReviewEdit>({ town: row.town, rating: row.rating, would_rent_again: row.would_rent_again, body: row.body, display_name: row.display_name, status: row.status })
+  const [f, setF] = useState<ReviewEdit>({ state: row.state || 'CT', town: row.town, rating: row.rating, would_rent_again: row.would_rent_again, body: row.body, display_name: row.display_name, status: row.status })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   async function save(e: FormEvent) {
@@ -159,7 +160,14 @@ function EditReview({ row, onClose, onSaved }: { row: AdminLandlordReview; onClo
     <Modal title="Edit landlord review" onClose={onClose}>
       <form className="modal-body showing-form" onSubmit={save}>
         <div className="showing-row">
-          <label>Town<input value={f.town ?? ''} maxLength={60} onChange={(e) => setF({ ...f, town: e.target.value })} /></label>
+          <label>Town / city<input value={f.town ?? ''} maxLength={60} onChange={(e) => setF({ ...f, town: e.target.value })} /></label>
+          <label>State
+            <select value={f.state ?? 'CT'} onChange={(e) => setF({ ...f, state: e.target.value })}>
+              {US_STATES.map(([c, n]) => <option key={c} value={c}>{n} ({c})</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="showing-row">
           <label>Status
             <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value as ReviewStatus })}>
               {STATUSES.map((s) => <option key={s} value={s}>{cap(s)}</option>)}

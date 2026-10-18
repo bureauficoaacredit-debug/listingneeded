@@ -3,8 +3,9 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { canonicalTown, ctTowns } from '../lib/ctAcs'
 import { fetchApprovedReviews, fmtMonthYear, personalInfoHints, submitReview, type LandlordReview } from '../lib/landlordReviews'
 import { useSeo } from '../lib/seo'
+import { US_STATES, stateName, townState } from '../lib/usStates'
 
-/** v70: "Reporting your landlord": approved tenant experiences (filter by town) + a simple share form. */
+/** v70: "Reporting your landlord": approved tenant experiences (filter by state, then town) + a simple share form. v70.2: any US town. */
 const Stars = ({ n, label = true }: { n: number; label?: boolean }) => (
   <span className="lr-stars" aria-label={label ? `${n} out of 5 stars` : undefined}>
     {'★'.repeat(n)}
@@ -14,18 +15,22 @@ const Stars = ({ n, label = true }: { n: number; label?: boolean }) => (
 
 export default function LandlordReviews() {
   useSeo(
-    'Reporting your landlord: tenant experiences in Connecticut | Listing Needed',
-    'Former tenants share what renting in their Connecticut town was like: star rating, would they rent again, and what went well or wrong.',
+    'Reporting your landlord: tenant experiences | Listing Needed',
+    'Former tenants share what renting in their town was like, in Connecticut and anywhere in the US: star rating, would they rent again, and what went well or wrong.',
   )
   const [rows, setRows] = useState<LandlordReview[] | null>(null)
   const [error, setError] = useState('')
   const [sp, setSp] = useSearchParams()
-  const town = sp.get('town') ?? ''
+  const state = sp.get('state') ?? ''
+  const town = state ? sp.get('town') ?? '' : ''
   useEffect(() => {
     fetchApprovedReviews().then(setRows).catch((e) => { setError(e instanceof Error ? e.message : 'Could not load'); setRows([]) })
   }, [])
-  const towns = useMemo(() => [...new Set((rows ?? []).map((r) => r.town))].sort(), [rows])
-  const shown = (rows ?? []).filter((r) => !town || r.town === town)
+  const st = (r: LandlordReview) => r.state || 'CT'
+  const states = useMemo(() => [...new Set((rows ?? []).map(st))].sort((a, b) => stateName(a).localeCompare(stateName(b))), [rows])
+  const towns = useMemo(() => [...new Set((rows ?? []).filter((r) => st(r) === state).map((r) => r.town))].sort(), [rows, state])
+  const shown = (rows ?? []).filter((r) => (!state || st(r) === state) && (!town || r.town === town))
+  const place = town ? `${town}, ${state}` : state ? stateName(state) : ''
   const avg = shown.length ? shown.reduce((a, r) => a + r.rating, 0) / shown.length : 0
   const again = shown.filter((r) => r.would_rent_again).length
 
@@ -35,20 +40,29 @@ export default function LandlordReviews() {
       <header className="blog-head">
         <p className="blog-kicker">Tenant experiences</p>
         <h1>Reporting your landlord</h1>
-        <p className="meta">Former tenants share what renting was like in their Connecticut town: the good and the bad. Every post is read before it goes up.</p>
+        <p className="meta">Former tenants share what renting was like in their town, in Connecticut or anywhere in the US: the good and the bad. Every post is read before it goes up.</p>
         <a className="btn" href="#share" onClick={(e) => { e.preventDefault(); document.getElementById('share')?.scrollIntoView({ behavior: 'smooth' }) }}>Share your experience</a>
       </header>
 
       <section className="lr-list" aria-labelledby="lr-list-h">
         <div className="lr-bar">
-          <h2 id="lr-list-h">{town ? `Experiences in ${town}` : 'Latest experiences'}</h2>
-          <label className="lr-filter">
-            Town
-            <select value={town} onChange={(e) => setSp(e.target.value ? { town: e.target.value } : {}, { replace: true })}>
-              <option value="">All towns</option>
-              {towns.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </label>
+          <h2 id="lr-list-h">{place ? `Experiences in ${place}` : 'Latest experiences'}</h2>
+          <div className="lr-filters">
+            <label className="lr-filter">
+              State
+              <select value={state} onChange={(e) => setSp(e.target.value ? { state: e.target.value } : {}, { replace: true })}>
+                <option value="">All states</option>
+                {states.map((c) => <option key={c} value={c}>{stateName(c)}</option>)}
+              </select>
+            </label>
+            <label className="lr-filter">
+              Town
+              <select value={town} disabled={!state} onChange={(e) => setSp(e.target.value ? { state, town: e.target.value } : { state }, { replace: true })}>
+                <option value="">{state ? 'All towns' : 'Pick a state first'}</option>
+                {towns.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </label>
+          </div>
         </div>
         <p className="meta lr-note">New posts appear after review.</p>
         {shown.length ? (
@@ -58,12 +72,12 @@ export default function LandlordReviews() {
         ) : null}
         {error ? <p className="showing-error">{error}</p> : null}
         {rows == null ? <p className="meta">Loading…</p> : null}
-        {rows && !shown.length && !error ? <p className="meta">No experiences posted{town ? ` for ${town}` : ''} yet. Be the first to share yours below.</p> : null}
+        {rows && !shown.length && !error ? <p className="meta">No experiences posted{place ? ` for ${place}` : ''} yet. Be the first to share yours below.</p> : null}
         <div className="lr-grid">
           {shown.map((r) => (
             <article key={r.id} className="lr-card">
               <div className="lr-card-top">
-                <strong className="lr-town">{r.town}</strong>
+                <strong className="lr-town">{townState(r)}</strong>
                 <Stars n={r.rating} />
               </div>
               <p className={`lr-again ${r.would_rent_again ? 'yes' : 'no'}`}>Would rent again: {r.would_rent_again ? 'Yes' : 'No'}</p>
@@ -81,7 +95,7 @@ export default function LandlordReviews() {
 
 function ShareForm() {
   const allTowns = useMemo(() => ctTowns().map((t) => t.town), [])
-  const [f, setF] = useState({ town: '', rating: 0, again: '' as '' | 'yes' | 'no', body: '', name: '', email: '', honest: false, website: '' })
+  const [f, setF] = useState({ state: 'CT', town: '', rating: 0, again: '' as '' | 'yes' | 'no', body: '', name: '', email: '', honest: false, website: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
@@ -102,8 +116,9 @@ function ShareForm() {
     e.preventDefault()
     if (sending.current) return // v70.1: no double posts
     setError('')
-    const town = canonicalTown(f.town)
-    if (!town) return setError('Please pick a Connecticut town from the list.')
+    const typed = f.town.trim().replace(/\s+/g, ' ')
+    const town = (f.state === 'CT' && canonicalTown(typed)) || typed
+    if (town.length < 2 || town.length > 60 || !/^\p{L}[\p{L} .'-]*$/u.test(town)) return setError('Please enter the town or city (letters only).')
     if (!f.rating) return setError('Please choose a star rating.')
     if (!f.again) return setError('Please answer “Would you rent again?”')
     if (len < 20 || len > 1000) return setError('Please write between 20 and 1,000 characters.')
@@ -112,7 +127,7 @@ function ShareForm() {
     setBusy(true)
     try {
       await submitReview({
-        town, rating: f.rating, would_rent_again: f.again === 'yes', body: f.body.trim(),
+        state: f.state, town, rating: f.rating, would_rent_again: f.again === 'yes', body: f.body.trim(),
         display_name: f.name.trim() || undefined, email: f.email.trim() || undefined, honest: f.honest, website: f.website,
       })
       setDone(true)
@@ -146,11 +161,19 @@ function ShareForm() {
             <li>Posts are reviewed before they appear; we may shorten or decline them.</li>
           </ul>
         </div>
-        <label>
-          Town (Connecticut)
-          <input list="lr-towns" value={f.town} onChange={(e) => setF({ ...f, town: e.target.value })} placeholder="Start typing, e.g. Stamford" autoComplete="off" maxLength={60} required />
-          <datalist id="lr-towns">{allTowns.map((t) => <option key={t} value={t} />)}</datalist>
-        </label>
+        <div className="showing-row lr-place">
+          <label>
+            State
+            <select value={f.state} onChange={(e) => setF({ ...f, state: e.target.value })}>
+              {US_STATES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+            </select>
+          </label>
+          <label>
+            Town or city
+            <input list={f.state === 'CT' ? 'lr-towns' : undefined} value={f.town} onChange={(e) => setF({ ...f, town: e.target.value })} placeholder={f.state === 'CT' ? 'Start typing, e.g. Stamford' : 'e.g. Springfield'} autoComplete="off" maxLength={60} required />
+          </label>
+        </div>
+        {f.state === 'CT' ? <datalist id="lr-towns">{allTowns.map((t) => <option key={t} value={t} />)}</datalist> : null}
         <fieldset className="lr-rating">
           <legend>Your rating</legend>
           {[1, 2, 3, 4, 5].map((n) => (

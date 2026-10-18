@@ -23,7 +23,7 @@ export default function Blog() {
         <span>
           <span className="blog-kicker">Tenant experiences</span>
           <strong>Reporting your landlord</strong>
-          <span className="meta">Read what former tenants say about renting in their CT town, or share your own: star rating, would you rent again, what went well or wrong.</span>
+          <span className="meta">Read what former tenants say about renting in their town, anywhere in the US, or share your own: star rating, would you rent again, what went well or wrong.</span>
         </span>
         <span className="blog-card-more">Read &amp; share →</span>
       </Link>

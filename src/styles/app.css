@@ -1547,3 +1547,7 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 .lr-success h2 { margin: 0; color: #1f6b36; font-size: clamp(1.35rem, 4.5vw, 1.7rem); }
 .lr-success p { margin: 0; font-size: 1.05rem; max-width: 30rem; }
 .lr-success .btn { margin-top: .4rem; }
+/* v70.2: state + town filters */
+.lr-filters { display: flex; gap: .6rem; flex-wrap: wrap; }
+.lr-filters .lr-filter select { min-width: 10rem; }
+@media (min-width: 521px) { .lr-place { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); } }
