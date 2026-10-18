@@ -34,7 +34,57 @@ function matchesKeyword(l: Listing, q: string) {
   if (!q) return true
   const hay = `${norm(l.address)} ${norm(l.city)} ${norm(l.zip)} ${norm(l.state)}`
   if (hay.includes(q)) return true
-  return matchesMlsNumber(l, q)
+  if (matchesMlsNumber(l, q)) return true
+  // v66: "Fairfield, CT", "fairfield ct", "Fairfield CT 06824", "Fairfeild": match word by word (commas and the state
+  // name are ignored; every remaining word must appear; a town name may have one small typo)
+  const words = searchWords(q)
+  const core = words.filter((w) => !STATE_WORDS.has(w))
+  if (!core.length) return words.length > 0 && isCt(l.state)
+  const flat = ` ${searchWords(hay).join(' ')} `
+  return core.every((w) => flat.includes(w) || townTypo(l.city, w))
+}
+
+// v66: word-by-word search helpers
+const STATE_WORDS = new Set(['ct', 'conn', 'connecticut', 'usa', 'us'])
+function searchWords(s: string) {
+  return s.toLowerCase().replace(/[.,;:#/()]+/g, ' ').split(/\s+/).filter(Boolean)
+}
+function isCt(state: string | null | undefined) {
+  return ['ct', 'conn', 'connecticut'].includes(norm(state))
+}
+/** City box: "Fairfield, CT" -> "fairfield" (state words dropped), then contains-match or a one-typo town match. */
+function matchesCity(city: string | null | undefined, q: string) {
+  const want = searchWords(q).filter((w) => !STATE_WORDS.has(w)).join(' ')
+  if (!want) return true
+  const have = searchWords(city ?? '').join(' ')
+  return have.includes(want) || (!want.includes(' ') && townTypo(city, want))
+}
+const typoCache = new Map<string, boolean>()
+/** True when the word is a town-name word with a small typo (1 edit/transposition; 2 for 9+ letters). */
+function townTypo(city: string | null | undefined, w: string) {
+  if (w.length < 5 || /\d/.test(w)) return false
+  const key = `${norm(city)}|${w}`
+  let hit = typoCache.get(key)
+  if (hit === undefined) {
+    const max = w.length >= 9 ? 2 : 1
+    hit = searchWords(city ?? '').some((cw) => Math.abs(cw.length - w.length) <= max && editDistance(cw, w) <= max)
+    if (typoCache.size > 5000) typoCache.clear()
+    typoCache.set(key, hit)
+  }
+  return hit
+}
+/** Optimal-string-alignment distance (insert, delete, substitute, swap neighbours). */
+function editDistance(a: string, b: string) {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array<number>(b.length).fill(0)])
+  for (let j = 1; j <= b.length; j++) d[0][j] = j
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const c = a[i - 1] === b[j - 1] ? 0 : 1
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c)
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1)
+    }
+  }
+  return d[a.length][b.length]
 }
 
 /**
@@ -252,7 +302,7 @@ export default function Browse() {
     if (keyword) rows = rows.filter((l) => matchesKeyword(l, keyword))
     // ZIP: only rows that have a zip containing the query (empty-zip MLS rows won't match ZIP — use city/street/keyword)
     if (zip) rows = rows.filter((l) => norm(l.zip).includes(zip))
-    if (city) rows = rows.filter((l) => norm(l.city).includes(city))
+    if (city) rows = rows.filter((l) => matchesCity(l.city, city))
     if (street) rows = rows.filter((l) => norm(l.address).includes(street))
     if (state) rows = rows.filter((l) => norm(l.state).includes(state))
     if (minPrice != null) rows = rows.filter((l) => l.price >= minPrice)
@@ -296,6 +346,25 @@ export default function Browse() {
     return () => io.disconnect()
   }, [shownCount, filtered.length])
 
+  // v66: if the address bar changes while Search is open (header Search icon, Back/Forward, a link to
+  // #/browse?q=...), re-read the filters from it instead of keeping stale ones
+  const lastWritten = useRef(searchParams.toString())
+  const paramsKey = searchParams.toString()
+  useEffect(() => {
+    if (paramsKey === lastWritten.current) return
+    lastWritten.current = paramsKey
+    const sp = new URLSearchParams(paramsKey)
+    const g = (k: string) => sp.get(k) ?? ''
+    const range = normalizePriceRange(g('min'), g('max'))
+    setKeywordDraft(g('q')); setKeywordQ(g('q'))
+    setZipDraft(g('zip')); setZipQ(g('zip'))
+    setCityDraft(g('city')); setCityQ(g('city'))
+    setStreetDraft(g('street')); setStreetQ(g('street'))
+    setStateDraft(g('state')); setStateQ(g('state'))
+    setMinDraft(g('min')); setMaxDraft(g('max'))
+    setMinPrice(range.min); setMaxPrice(range.max)
+  }, [paramsKey])
+
   function writeParams(next: {
     type?: Filter
     keyword?: string
@@ -323,6 +392,7 @@ export default function Browse() {
     if (state) params.set('state', state)
     if (min != null) params.set('min', String(min))
     if (max != null) params.set('max', String(max))
+    lastWritten.current = params.toString()
     setSearchParams(params, { replace: true })
   }
 
