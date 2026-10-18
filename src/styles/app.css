@@ -1376,3 +1376,12 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 .cost-facts > div { flex: 1 1 11rem; border: 1px solid var(--line); background: #fff; padding: 0.55rem 0.8rem; }
 .cost-facts dt { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 .cost-facts dd { margin: 0.15rem 0 0; font-size: 1.05rem; font-weight: 700; color: var(--ink, #1f2430); }
+
+/* v68: round radar icon beside the wordmark (slow CSS sweep; still when reduced motion is requested) */
+.brand-radar { flex: 0 0 auto; width: 2.1rem; height: 2.1rem; display: block; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25)); }
+.brand-radar-sweep { transform-box: view-box; transform-origin: 32px 32px; animation: brand-radar-sweep 4s linear infinite; }
+.brand-radar-blip { animation: brand-radar-blip 4s ease-in-out infinite; }
+@keyframes brand-radar-sweep { to { transform: rotate(360deg); } }
+@keyframes brand-radar-blip { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@media (max-width: 640px) { .brand-radar { width: 1.75rem; height: 1.75rem; } }
+@media (prefers-reduced-motion: reduce) { .brand-radar-sweep, .brand-radar-blip { animation: none; } }
