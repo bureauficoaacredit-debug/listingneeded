@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import BlogCta from '../components/BlogCta'
 import { cachedLiveListings, loadLiveListings } from '../lib/store'
 import type { Listing } from '../lib/types'
-import { ACS_RELEASE, townFacts, usd, zipFacts } from '../lib/ctAcs'
+import { ACS_RELEASE, townFacts, usd, zipFacts, listingInTown } from '../lib/ctAcs'
 import { RENT_BEDS, rentStats } from '../lib/rentStats'
 import { useSeo } from '../lib/seo'
 
@@ -34,7 +34,7 @@ export default function AverageRent() {
     const rent = (listings ?? []).filter((l) => l.type === 'rent' && l.price > 0)
     return {
       zipRows: rent.filter((l) => (l.zip || '').slice(0, 5) === zip),
-      townRows: town ? rent.filter((l) => (l.city || '').trim().toLowerCase() === town.toLowerCase() || (townCensus?.zips ?? []).includes((l.zip || '').slice(0, 5))) : [],
+      townRows: town ? rent.filter((l) => (townCensus ? listingInTown(l, townCensus) : (l.city || '').trim().toLowerCase() === town.toLowerCase())) : [],
     }
   }, [listings, zip, town, townCensus])
   const zs = stats(zipRows)
@@ -64,15 +64,15 @@ export default function AverageRent() {
 
       <div className="calc-cards">
         {zip ? <div className="calc-card">
-          <span>Median asking rent · ZIP {zip}</span>
-          <strong>{listings == null ? '…' : zs.n ? `${usd(zs.median)}/mo` : '—'}</strong>
-          <small>{listings == null ? 'Loading listings…' : `${zs.n} live rental${zs.n === 1 ? '' : 's'} on Listing Needed${zs.n ? ` · average ${usd(zs.avg)}` : ''}`}</small>
+          <span>Average asking rent · ZIP {zip}{zs.n > 0 && zs.n < 3 ? ' · few listings' : ''}</span>
+          <strong>{listings == null ? '…' : zs.n ? `${usd(zs.avg)}/mo` : '—'}</strong>
+          <small>{listings == null ? 'Loading listings…' : zs.n ? `median ${usd(zs.median)} · from ${zs.n} rental${zs.n === 1 ? '' : 's'} on Listing Needed` : `No ZIP ${zip} rentals listed right now`}</small>
         </div> : null}
         {town ? (
           <div className="calc-card">
-            <span>Median asking rent · {town}</span>
-            <strong>{listings == null ? '…' : ts.n ? `${usd(ts.median)}/mo` : '—'}</strong>
-            <small>{listings == null ? '' : `${ts.n} live rental${ts.n === 1 ? '' : 's'} in town${ts.n ? ` · ${usd(ts.min)}–${usd(ts.max)}` : ''}`}</small>
+            <span>Average asking rent · {town}{ts.n > 0 && ts.n < 3 ? ' · few listings' : ''}</span>
+            <strong>{listings == null ? '…' : ts.n ? `${usd(ts.avg)}/mo` : '—'}</strong>
+            <small>{listings == null ? '' : ts.n ? `median ${usd(ts.median)} · from ${ts.n} rental${ts.n === 1 ? '' : 's'} · ${usd(ts.min)}–${usd(ts.max)}` : `No ${town} rentals listed right now`}</small>
           </div>
         ) : null}
         <div className="calc-card muted">
@@ -85,12 +85,12 @@ export default function AverageRent() {
       <h2>By bedrooms {zip && zs.n >= 3 ? `(ZIP ${zip})` : town ? `(${town})` : ''}</h2>
       {listings == null ? <p className="meta">Loading…</p> : basis.length ? (
         <table className="calc-table">
-          <thead><tr><th>Size</th><th>Listings</th><th>Median rent</th><th>Average</th></tr></thead>
+          <thead><tr><th>Size</th><th>Listings</th><th>Average</th><th>Median</th></tr></thead>
           <tbody>
             {BEDS.map((b) => {
               const s = stats(basis.filter((l) => b.test(Math.round(l.beds))))
               return (
-                <tr key={b.label}><td>{b.label}</td><td>{s.n}</td><td>{s.n ? usd(s.median) : '—'}</td><td>{s.n ? usd(s.avg) : '—'}</td></tr>
+                <tr key={b.label}><td>{b.label}</td><td>{s.n}</td><td>{s.n ? usd(s.avg) : '—'}</td><td>{s.n ? usd(s.median) : '—'}</td></tr>
               )
             })}
           </tbody>

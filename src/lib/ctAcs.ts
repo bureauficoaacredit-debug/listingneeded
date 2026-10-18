@@ -42,8 +42,46 @@ export function ctTowns() {
   return (towns ??= buildTowns())
 }
 export function townFacts(name: string) {
-  const n = name.trim().toLowerCase()
-  return ctTowns().find((t) => t.town.toLowerCase() === n) ?? null
+  const c = canonicalTown(name)
+  return c ? ctTowns().find((t) => t.town === c) ?? null : null
+}
+
+/** v69: normalize a typed or listed town name ("bridgeprot", " TRUMBLE, CT") to a CT town; small typos count when unambiguous. */
+const normTown = (s: string) =>
+  s.toLowerCase().replace(/[.,;:#/()]+/g, ' ').split(/\s+/).filter((w) => w && !['ct', 'conn', 'connecticut', 'usa'].includes(w)).join(' ')
+function osa(a: string, b: string) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)])
+  for (let j = 1; j <= b.length; j++) d[0][j] = j
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++) {
+      const c = a[i - 1] === b[j - 1] ? 0 : 1
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c)
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1)
+    }
+  return d[a.length][b.length]
+}
+const canonCache = new Map<string, string | null>()
+export function canonicalTown(name: string | null | undefined): string | null {
+  const n = normTown(name ?? '')
+  if (!n) return null
+  if (canonCache.has(n)) return canonCache.get(n)!
+  let out: string | null = ctTowns().find((t) => t.town.toLowerCase() === n)?.town ?? null
+  if (!out && n.length >= 5) {
+    const max = n.length >= 7 ? 2 : 1
+    let best = max + 1
+    let hits: string[] = []
+    for (const t of ctTowns()) {
+      const dist = osa(n, t.town.toLowerCase())
+      if (dist < best) { best = dist; hits = [t.town] } else if (dist === best) hits.push(t.town)
+    }
+    if (best <= max && hits.length === 1) out = hits[0]
+  }
+  canonCache.set(n, out)
+  return out
+}
+/** v69: does a listing belong to this town? Its city (typos normalized) or one of the town's ZIPs. */
+export function listingInTown(l: { city?: string | null; zip?: string | null }, t: TownFacts) {
+  return canonicalTown(l.city) === t.town || t.zips.includes((l.zip || '').slice(0, 5))
 }
 
 export const usd = (n: number | null | undefined, digits = 0) =>
