@@ -152,6 +152,9 @@ export function addDaysYmd(ymd: string, days: number): string {
   return todayYmd(dt)
 }
 
+const SEARCH_COLUMNS =
+  'id,type,address,city,state,zip,beds,baths,price,pets,created_at,paid,live,is_mls,active_until,sqft,year_built,deleted_at,mls_status,source,cover_photo,mls_ref'
+
 /** Public Search feed: paid + live, not trashed, and active_until not past (filtered in the query AND client-side). */
 export async function liveListings(): Promise<Listing[]> {
   // PostgREST caps one response at 1000 rows — page so every live listing shows up on Search.
@@ -161,7 +164,9 @@ export async function liveListings(): Promise<Listing[]> {
     const res = await supabaseFetch(
       `/rest/v1/listings?live=eq.true&paid=eq.true&deleted_at=is.null` +
         `&or=(active_until.is.null,active_until.gte.${todayYmd()})` +
-        `&order=created_at.desc,id.asc&limit=${PAGE}&offset=${offset}`,
+        `&order=created_at.desc,id.asc&limit=${PAGE}&offset=${offset}` +
+        // v59: only what the Search cards / filters use; first photo only (computed column cover_photo)
+        `&select=${SEARCH_COLUMNS}`,
       { method: 'GET', headers: { Accept: 'application/json' } },
     )
     await throwIfNotOk(res)
@@ -169,7 +174,16 @@ export async function liveListings(): Promise<Listing[]> {
     all.push(...data)
     if (data.length < PAGE) break
   }
-  return all.map(rowToListing).filter((l) => !l.deletedAt && isActiveUntilOk(l.activeUntil))
+  return all
+    .map((r) => {
+      const row = r as ListingRow & { cover_photo?: string | null; mls_ref?: string | null }
+      return rowToListing({
+        ...row,
+        photo_urls: row.cover_photo ? [row.cover_photo] : [],
+        description: row.mls_ref ? `MLS # ${row.mls_ref}` : '',
+      })
+    })
+    .filter((l) => !l.deletedAt && isActiveUntilOk(l.activeUntil))
 }
 
 export async function getListing(id: string): Promise<Listing | null> {

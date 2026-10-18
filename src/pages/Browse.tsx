@@ -51,6 +51,8 @@ function matchesMlsNumber(l: Listing, q: string) {
   return !!num && num.includes(digits)
 }
 
+const BROWSE_PAGE = 48
+
 function hasLocationParams(params: URLSearchParams) {
   return Boolean(
     params.get('q')?.trim() ||
@@ -226,6 +228,25 @@ export default function Browse() {
 
     return rows
   }, [listings, filter, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
+
+  // v59: render the results in pages of 48 cards (more load as you scroll), not all ~2,250 at once
+  const [shownCount, setShownCount] = useState(BROWSE_PAGE)
+  const moreRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    setShownCount(BROWSE_PAGE)
+  }, [filtered])
+  useEffect(() => {
+    const el = moreRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setShownCount((n) => n + BROWSE_PAGE)
+      },
+      { rootMargin: '800px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [shownCount, filtered.length])
 
   function writeParams(next: {
     type?: Filter
@@ -747,10 +768,10 @@ export default function Browse() {
           </div>
         ) : (
           <div className="grid">
-            {filtered.map((l) => (
+            {filtered.slice(0, shownCount).map((l) => (
               <Link key={l.id} to={`/listing/${l.id}`} className="card" style={{ color: 'inherit' }}>
                 {l.photoDataUrls[0] ? (
-                  <img className="thumb" src={l.photoDataUrls[0]} alt="" />
+                  <img className="thumb" src={l.photoDataUrls[0]} alt="" loading="lazy" decoding="async" />
                 ) : (
                   <div className="thumb empty">No photo</div>
                 )}
@@ -770,6 +791,13 @@ export default function Browse() {
             ))}
           </div>
         )}
+        {filtered.length > shownCount ? (
+          <div ref={moreRef} className="browse-more">
+            <button type="button" className="btn secondary" onClick={() => setShownCount((n) => n + BROWSE_PAGE)}>
+              Show more ({(filtered.length - shownCount).toLocaleString()} more)
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   )
