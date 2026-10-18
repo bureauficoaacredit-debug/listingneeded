@@ -24,6 +24,8 @@ const ListingDetail = lazy(lazyPageImport(() => import('./pages/ListingDetail'))
 const Admin = lazy(lazyPageImport(() => import('./pages/Admin')))
 const Cma = lazy(lazyPageImport(() => import('./pages/Cma')))
 const ResetPassword = lazy(lazyPageImport(() => import('./pages/ResetPassword')))
+const Blog = lazy(lazyPageImport(() => import('./pages/Blog')))
+const BlogPost = lazy(lazyPageImport(() => import('./pages/BlogPost')))
 const QrPrint = lazy(lazyPageImport(() => import('./pages/QrPrint')))
 
 const lazyPage = (el: React.ReactNode) => (
@@ -52,6 +54,8 @@ export default function App() {
         <Route path="check-landlord" element={<Navigate to="/" replace />} />
         <Route path="admin" element={lazyPage(<Admin />)} />
         <Route path="reset-password" element={lazyPage(<ResetPassword />)} />
+        <Route path="blog" element={lazyPage(<Blog />)} />
+        <Route path="blog/:slug" element={lazyPage(<BlogPost />)} />
         <Route path="qr/:kind" element={lazyPage(<QrPrint />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

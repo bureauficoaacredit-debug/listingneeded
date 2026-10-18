@@ -38,6 +38,7 @@ import { ListingEditModal, PartnerEditModal } from '../components/AdminEditors'
 import MlsExpiryPanel from '../components/MlsExpiryPanel'
 import AdminLogin, { checkIsAdmin } from '../components/AdminLogin'
 import QrCodesPanel from '../components/QrCodesPanel'
+import BlogAdminPanel from '../components/BlogAdminPanel'
 import { signOut, useSession } from '../lib/auth'
 
 const CATEGORIES = Object.keys(PARTNER_CATEGORY_LABELS) as PartnerCategory[]
@@ -204,7 +205,7 @@ export default function Admin() {
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const tab = tabParam === 'leads' ? 'leads' : tabParam === 'showings' ? 'showings' : 'listings'
+  const tab = tabParam === 'leads' ? 'leads' : tabParam === 'showings' ? 'showings' : tabParam === 'blog' ? 'blog' : 'listings'
 
   const deferredQuery = useDeferredValue(listingQuery)
   const haystacks = useMemo(() => new Map(listings.map((l) => [l.id, searchHaystack(l)])), [listings])
@@ -980,10 +981,20 @@ export default function Admin() {
         >
           Showing requests
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'blog'}
+          className={`admin-tab${tab === 'blog' ? ' active' : ''}`}
+          onClick={() => setSearchParams({ tab: 'blog' })}
+        >
+          Blog
+        </button>
       </div>
 
       {tab === 'leads' ? <CmaLeadsPanel /> : null}
       {tab === 'showings' ? <ShowingRequestsPanel /> : null}
+      {tab === 'blog' ? <BlogAdminPanel /> : null}
       {tab === 'listings' ? (
       <>
       {/* Excel / PDF / paste → preview → publish */}

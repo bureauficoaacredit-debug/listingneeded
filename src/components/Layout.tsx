@@ -95,6 +95,9 @@ export default function Layout() {
           >
             <SearchIcon />
           </NavLink>
+          <NavLink to="/blog" className={({ isActive }) => `nav-blog${isActive ? ' active' : ''}`}>
+            Blog
+          </NavLink>
           <NavLink
             to="/list"
             className={({ isActive }) => `nav-list-btn${isActive ? ' active' : ''}`}
@@ -132,6 +135,10 @@ export default function Layout() {
             <div className="meta" style={{ marginTop: '.5rem' }}>
               <Link to="/cma" style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>
                 What’s my home worth?
+              </Link>{' '}
+              ·{' '}
+              <Link to="/blog" style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>
+                Blog
               </Link>{' '}
               ·{' '}
               <Link to="/admin" style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>
