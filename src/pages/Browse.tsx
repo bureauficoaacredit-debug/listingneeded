@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEv
 import { Link, useSearchParams } from 'react-router-dom'
 import { mlsStatusBadge, type Listing, type ListingType } from '../lib/types'
 import { cachedLiveListings, loadLiveListings } from '../lib/store'
+import AvgRentPanel from '../components/AvgRentPanel'
 
 type Filter = 'all' | ListingType
 
@@ -898,6 +899,7 @@ export default function Browse() {
       )}
 
       <div ref={resultsRef} className="browse-results">
+        <AvgRentPanel listings={listings} zipQ={zipQ} keywordQ={keywordQ} cityQ={cityQ} />
         {filter === 'rent' ? <RentCafeLinks zip={rentCafe.zip} town={rentCafe.town} top /> : null}
         {filtered.length === 0 ? (
           <div className="card">

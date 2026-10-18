@@ -1476,3 +1476,16 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
   .calc-form--2col { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 420px) { .calc-form--2col, .calc-row { grid-template-columns: 1fr; } }
+
+/* v69: average rent dropdown on Search */
+.avg-rent-panel { margin: 0 0 0.9rem; border: 1px solid #e2cdf2; background: #fff; border-left: 4px solid var(--brand); }
+.avg-rent-panel summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.7rem 0.9rem; font-size: 0.95rem; }
+.avg-rent-panel summary::-webkit-details-marker { display: none; }
+.avg-rent-panel summary strong { color: var(--brand-dark); font-size: 1.05rem; }
+.avg-rent-panel summary em { font-style: normal; color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.avg-rent-caret { color: var(--brand); transition: transform 0.15s; }
+.avg-rent-panel[open] .avg-rent-caret { transform: rotate(180deg); }
+.avg-rent-body { padding: 0 0.9rem 0.9rem; display: grid; gap: 0.55rem; }
+.avg-rent-line { margin: 0; font-size: 0.88rem; }
+.avg-rent-links { margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-weight: 700; font-size: 0.88rem; }
+@media (prefers-reduced-motion: reduce) { .avg-rent-caret { transition: none; } }

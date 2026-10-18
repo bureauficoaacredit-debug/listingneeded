@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { averageRentHref, getLastTown, subscribeLastTown } from '../lib/lastTown'
 import { Link, useLocation } from 'react-router-dom'
 
 /**
@@ -18,7 +19,7 @@ const MENU: Group[] = [
       { label: 'Homes for Sale', to: '/browse?type=sale' },
     ],
   },
-  { label: 'Average Rent in Fairfield', to: '/average-rent?zip=06825' },
+  { label: 'AVERAGE_RENT', to: '/average-rent?zip=06825' }, // v69: follows the last searched town
   { label: 'Blog', to: '/blog' },
   {
     label: 'Calculators',
@@ -37,6 +38,7 @@ export default function HeaderMenu() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
   const loc = useLocation()
+  const last = useSyncExternalStore(subscribeLastTown, getLastTown, getLastTown)
 
   // close on navigation
   useEffect(() => {
@@ -103,7 +105,11 @@ export default function HeaderMenu() {
               </li>
             ) : (
               <li key={g.label}>
-                <Link className="hmenu-item" to={g.to!}>{g.label}</Link>
+                {g.label === 'AVERAGE_RENT' ? (
+                  <Link className="hmenu-item" to={averageRentHref(last)}>Average Rent in {last.town}</Link>
+                ) : (
+                  <Link className="hmenu-item" to={g.to!}>{g.label}</Link>
+                )}
               </li>
             ),
           )}
