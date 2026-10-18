@@ -20,7 +20,14 @@ const MENU: Group[] = [
     ],
   },
   { label: 'AVERAGE_RENT', to: '/average-rent?zip=06825' }, // v69: follows the last searched town
-  { label: 'Blog', to: '/blog' },
+  {
+    label: 'Blog',
+    to: '/blog',
+    items: [
+      { label: 'All articles', to: '/blog' },
+      { label: 'Reporting your landlord', to: '/blog/landlord-reviews' },
+    ],
+  },
   {
     label: 'Calculators',
     items: [

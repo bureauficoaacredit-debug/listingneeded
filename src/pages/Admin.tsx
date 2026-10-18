@@ -32,6 +32,8 @@ import { importMlsSharedLink } from '../lib/importMlsLink'
 import { useSearchParams } from 'react-router-dom'
 import CmaLeadsPanel from '../components/CmaLeadsPanel'
 import ShowingRequestsPanel from '../components/ShowingRequestsPanel'
+import LandlordReviewsPanel from '../components/LandlordReviewsPanel'
+import { pendingReviewCount } from '../lib/landlordReviews'
 import MlsSyncPanel from '../components/MlsSyncPanel'
 import { ConfirmDeleteAll } from '../components/AdminModal'
 import { ListingEditModal, PartnerEditModal } from '../components/AdminEditors'
@@ -205,7 +207,12 @@ export default function Admin() {
   const [endDateDrafts, setEndDateDrafts] = useState<Record<string, string>>({})
   const [searchParams, setSearchParams] = useSearchParams()
   const tabParam = searchParams.get('tab')
-  const tab = tabParam === 'leads' ? 'leads' : tabParam === 'showings' ? 'showings' : tabParam === 'blog' ? 'blog' : 'listings'
+  const tab = tabParam === 'leads' ? 'leads' : tabParam === 'showings' ? 'showings' : tabParam === 'blog' ? 'blog' : tabParam === 'landlord' ? 'landlord' : 'listings'
+  // v70: pending landlord reviews badge
+  const [lrPending, setLrPending] = useState(0)
+  useEffect(() => {
+    if (verified) pendingReviewCount().then(setLrPending, () => {})
+  }, [verified])
 
   const deferredQuery = useDeferredValue(listingQuery)
   const haystacks = useMemo(() => new Map(listings.map((l) => [l.id, searchHaystack(l)])), [listings])
@@ -990,11 +997,21 @@ export default function Admin() {
         >
           Blog
         </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'landlord'}
+          className={`admin-tab${tab === 'landlord' ? ' active' : ''}`}
+          onClick={() => setSearchParams({ tab: 'landlord' })}
+        >
+          Landlord reviews{lrPending ? <span className="admin-tab-badge" aria-label={`${lrPending} pending`}>{lrPending}</span> : null}
+        </button>
       </div>
 
       {tab === 'leads' ? <CmaLeadsPanel /> : null}
       {tab === 'showings' ? <ShowingRequestsPanel /> : null}
       {tab === 'blog' ? <BlogAdminPanel /> : null}
+      {tab === 'landlord' ? <LandlordReviewsPanel onCount={setLrPending} /> : null}
       {tab === 'listings' ? (
       <>
       {/* Excel / PDF / paste → preview → publish */}

@@ -26,6 +26,7 @@ const Cma = lazy(lazyPageImport(() => import('./pages/Cma')))
 const ResetPassword = lazy(lazyPageImport(() => import('./pages/ResetPassword')))
 const Blog = lazy(lazyPageImport(() => import('./pages/Blog')))
 const BlogPost = lazy(lazyPageImport(() => import('./pages/BlogPost')))
+const LandlordReviews = lazy(lazyPageImport(() => import('./pages/LandlordReviews')))
 // v68: header-menu pages (lazy: no weight on Search)
 const AverageRent = lazy(lazyPageImport(() => import('./pages/AverageRent')))
 const RentCalculator = lazy(lazyPageImport(() => import('./pages/calculators/RentCalculator')))
@@ -60,6 +61,7 @@ export default function App() {
         <Route path="admin" element={lazyPage(<Admin />)} />
         <Route path="reset-password" element={lazyPage(<ResetPassword />)} />
         <Route path="blog" element={lazyPage(<Blog />)} />
+        <Route path="blog/landlord-reviews" element={lazyPage(<LandlordReviews />)} />
         <Route path="blog/:slug" element={lazyPage(<BlogPost />)} />
         <Route path="qr/:kind" element={lazyPage(<QrPrint />)} />
         <Route path="average-rent" element={lazyPage(<AverageRent />)} />

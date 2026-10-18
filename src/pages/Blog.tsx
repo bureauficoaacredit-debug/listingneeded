@@ -18,6 +18,15 @@ export default function Blog() {
         <h1>Renting, buying &amp; selling in Connecticut</h1>
         <p className="meta">Rental market highlights and practical tips for CT renters, buyers and DIY sellers.</p>
       </header>
+      <Link to="/blog/landlord-reviews" className="lr-promo">
+        <span className="lr-promo-icon" aria-hidden="true">★</span>
+        <span>
+          <span className="blog-kicker">Tenant experiences</span>
+          <strong>Reporting your landlord</strong>
+          <span className="meta">Read what former tenants say about renting in their CT town, or share your own: star rating, would you rent again, what went well or wrong.</span>
+        </span>
+        <span className="blog-card-more">Read &amp; share →</span>
+      </Link>
       {error ? <div className="card"><div className="body" style={{ color: '#b91c1c' }}>{error}</div></div> : null}
       {posts == null && !error ? (
         <div className="blog-grid" aria-busy="true">

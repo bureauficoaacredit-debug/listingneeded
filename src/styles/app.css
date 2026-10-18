@@ -1492,3 +1492,51 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 
 /* v69b: few-listings badge */
 .avg-rent-panel .avg-rent-few{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:999px;background:#fff3cd;color:#7a5600;font-size:.75em;font-weight:600;vertical-align:middle}
+
+/* v70: Reporting your landlord */
+.lr-promo { display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; padding: 1.1rem 1.25rem; background: linear-gradient(135deg, #faf5ff, #fff); border: 1px solid #d9b8ee; border-left: 5px solid var(--brand); color: var(--ink); text-decoration: none; box-shadow: var(--shadow-soft); }
+.lr-promo:hover { text-decoration: none; box-shadow: var(--shadow); }
+.lr-promo > span:nth-child(2) { display: grid; gap: .2rem; }
+.lr-promo strong { font-size: 1.2rem; }
+.lr-promo .meta { margin: 0; font-size: .9rem; }
+.lr-promo-icon { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: var(--brand); color: #ffd23f; font-size: 1.5rem; }
+@media (max-width: 640px) { .lr-promo { grid-template-columns: auto 1fr; } .lr-promo .blog-card-more { grid-column: 2; } }
+.lr { width: min(100%, 60rem); margin: 0 auto; }
+.lr .blog-head .btn { margin-top: .4rem; }
+.lr-bar { display: flex; justify-content: space-between; align-items: end; gap: 1rem; flex-wrap: wrap; }
+.lr-bar h2 { margin: 0; }
+.lr-filter { display: grid; gap: .2rem; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.lr-filter select { width: auto; min-width: 12rem; }
+.lr-summary { margin: .5rem 0 0; }
+.lr-grid { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); margin-top: .9rem; }
+.lr-card { background: var(--card); border: 1px solid var(--line); padding: 1rem 1.1rem; display: grid; gap: .45rem; align-content: start; box-shadow: var(--shadow-soft); }
+.lr-card-top { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; }
+.lr-town { font-size: 1.05rem; }
+.lr-stars { color: #f0a500; letter-spacing: .05em; white-space: nowrap; }
+.lr-stars-off { color: #d9d4e0; }
+.lr-again { margin: 0; font-size: .82rem; font-weight: 700; }
+.lr-again.yes { color: #1f6b36; }
+.lr-again.no { color: #a32626; }
+.lr-body { margin: 0; white-space: pre-wrap; line-height: 1.55; }
+.lr-meta { margin: 0; font-size: .78rem; color: var(--muted); }
+.lr-form-card { scroll-margin-top: 90px; }
+.lr-form h2 { margin: 0; }
+.lr-guidelines { background: #fff8e6; border: 1px solid #f1d58a; padding: .7rem .9rem; font-size: .88rem; }
+.lr-guidelines ul { margin: .3rem 0 0; padding-left: 1.1rem; }
+.lr-rating, .lr-yn { border: 0; padding: 0; margin: 0; display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+.lr-rating legend, .lr-yn legend { font-weight: 600; font-size: .9rem; margin-bottom: .3rem; width: 100%; }
+.lr-star { background: none; border: 0; font-size: 2rem; line-height: 1; padding: 0 .1rem; color: #d9d4e0; cursor: pointer; }
+.lr-star.on { color: #f0a500; }
+.lr-yn label { display: flex; gap: .35rem; align-items: center; margin-right: 1rem; font-weight: 500; }
+.lr-yn input, .lr-honest input { width: auto; }
+.lr-honest { display: flex !important; gap: .5rem; align-items: flex-start; font-weight: 500; }
+.lr-count { display: block; text-align: right; }
+.lr-count.bad { color: #b91c1c; }
+.lr-warn { margin: 0; padding: .55rem .75rem; background: #fff3cd; color: #7a5600; font-size: .86rem; }
+.lr-admin-item { border: 1px solid var(--line); padding: .75rem .9rem; display: grid; gap: .45rem; }
+.lr-status { font-size: .72rem; font-weight: 700; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: #eef; }
+.lr-status.pending { background: #fff3cd; color: #7a5600; }
+.lr-status.approved { background: #e3f4e8; color: #1f6b36; }
+.lr-status.rejected { background: #fde8e8; color: #a32626; }
+.lr-flag { font-size: .75rem; font-weight: 700; color: #a32626; }
+.admin-tab-badge { display: inline-block; margin-left: .4rem; min-width: 1.3em; padding: 0 .35em; border-radius: 999px; background: #d92d20; color: #fff; font-size: .72rem; line-height: 1.4; text-align: center; }
