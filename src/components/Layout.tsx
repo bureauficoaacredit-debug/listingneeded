@@ -2,30 +2,13 @@ import { useEffect } from 'react'
 import { Link, NavLink, Outlet } from 'react-router-dom'
 import { prefetchLiveListings } from '../lib/store'
 import '../styles/app.css'
+import HeaderMenu from './HeaderMenu'
 
-/** v68: round radar icon (same art as the favicon) beside the wordmark; the light wedge sweeps slowly (CSS only). */
-function RadarMark() {
+/** v68: round pinwheel "L" icon (same art as the favicon) beside the wordmark; the ring spins once on hover. */
+function RingMark() {
   return (
-    <svg className="brand-radar" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
-      <defs>
-        <linearGradient id="ln-radar-g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#4E1772" />
-          <stop offset=".55" stopColor="#8227BE" />
-          <stop offset="1" stopColor="#9B57C7" />
-        </linearGradient>
-        <linearGradient id="ln-radar-w" x1="0" y1="1" x2="1" y2="0">
-          <stop offset="0" stopColor="#fff" stopOpacity="0" />
-          <stop offset="1" stopColor="#fff" stopOpacity=".38" />
-        </linearGradient>
-      </defs>
-      <circle cx="32" cy="32" r="32" fill="url(#ln-radar-g)" />
-      <path className="brand-radar-sweep" d="M32 32 L32 2 A30 30 0 0 1 58 17 Z" fill="url(#ln-radar-w)" />
-      <g fill="none" stroke="#fff" strokeWidth="1.6">
-        <circle cx="32" cy="32" r="27.5" strokeOpacity=".22" />
-        <circle cx="32" cy="32" r="21" strokeOpacity=".32" />
-      </g>
-      <circle className="brand-radar-blip" cx="49.5" cy="15.5" r="2.4" fill="#fff" />
-      <path fill="#fff" fillRule="evenodd" d="M32 17.5 L47 31 H42.5 V45.5 H21.5 V31 H17 Z M29 45.5 V37.5 H35 V45.5 Z" />
+    <svg className="brand-ring" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+      <g className="ln-blades" stroke="#fff" strokeWidth="1.1" strokeLinejoin="round"><path fill="#8227BE" d="M26.70 17.43 Q27.94 7.72 43.76 2.89 A31.4 31.4 0 0 1 61.11 43.76 Q56.28 27.94 46.57 26.70 A15.5 15.5 0 0 0 26.70 17.43 Z"/><path fill="#EC4899" d="M46.57 26.70 Q56.28 27.94 61.11 43.76 A31.4 31.4 0 0 1 20.24 61.11 Q36.06 56.28 37.30 46.57 A15.5 15.5 0 0 0 46.57 26.70 Z"/><path fill="#FACC15" d="M37.30 46.57 Q36.06 56.28 20.24 61.11 A31.4 31.4 0 0 1 2.89 20.24 Q7.72 36.06 17.43 37.30 A15.5 15.5 0 0 0 37.30 46.57 Z"/><path fill="#EF4444" d="M17.43 37.30 Q7.72 36.06 2.89 20.24 A31.4 31.4 0 0 1 43.76 2.89 Q27.94 7.72 26.70 17.43 A15.5 15.5 0 0 0 17.43 37.30 Z"/></g><circle cx="32" cy="32" r="17" fill="#4E1772"/><path fill="#fff" d="M25 21.5h6.2v15h9.3v6H25Z"/>
     </svg>
   )
 }
@@ -110,10 +93,13 @@ export default function Layout() {
   return (
     <div className="shell">
       <header className="nav">
-        <Link to="/" className="brand" aria-label="Listing Needed home">
-          <RadarMark />
-          <BrandLogo />
-        </Link>
+        <div className="nav-left">
+          <HeaderMenu />
+          <Link to="/" className="brand" aria-label="Listing Needed home">
+            <RingMark />
+            <BrandLogo />
+          </Link>
+        </div>
         <nav className="nav-links" aria-label="Primary">
           <NavLink
             to="/browse"

@@ -177,6 +177,15 @@ export default function ListingDetail() {
             ) : null}
           </dl>
         ) : null}
+        {listing.type === 'sale' ? (
+          <p className="calc-detail-link">
+            <Link
+              to={`/calculators/rent-vs-buy?price=${listing.price}${listing.taxesAnnual ? `&taxes=${listing.taxesAnnual}` : ''}${listing.hoaFee && listing.hoaFrequency === 'month' ? `&hoa=${listing.hoaFee}` : ''}`}
+            >
+              Rent vs. buy for this home →
+            </Link>
+          </p>
+        ) : null}
         <p>{listing.description || 'No description provided.'}</p>
         <ScheduleShowing listing={listing} />
         <div className="contact-card">

@@ -197,6 +197,9 @@ function RentCafeLinks({ zip, town, top }: { zip: string; town: string; top?: bo
 export default function Browse() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filter = parseFilter(searchParams.get('type'))
+  // v68: property type from the header menu (Apartments / Condos / Houses for rent)
+  const ptypeRaw = searchParams.get('ptype')
+  const ptype = ptypeRaw === 'apartment' || ptypeRaw === 'condo' || ptypeRaw === 'house' ? ptypeRaw : null
   // v62: show cached results instantly (this tab, <15 min), then refresh quietly in the background
   const [listings, setListings] = useState<Listing[]>(() => cachedLiveListings()?.rows ?? [])
   const [loading, setLoading] = useState(() => !cachedLiveListings())
@@ -285,13 +288,14 @@ export default function Browse() {
   )
 
   const typeCount = useMemo(
-    () => listings.filter((l) => filter === 'all' || l.type === filter).length,
-    [listings, filter],
+    () => listings.filter((l) => (filter === 'all' || l.type === filter) && (!ptype || l.ptype === ptype)).length,
+    [listings, filter, ptype],
   )
 
   const filtered = useMemo(() => {
     let rows = listings
     if (filter !== 'all') rows = rows.filter((l) => l.type === filter)
+    if (ptype) rows = rows.filter((l) => l.ptype === ptype)
 
     const keyword = norm(keywordQ)
     const zip = norm(zipQ)
@@ -309,7 +313,7 @@ export default function Browse() {
     if (maxPrice != null) rows = rows.filter((l) => l.price <= maxPrice)
 
     return rows
-  }, [listings, filter, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
+  }, [listings, filter, ptype, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
 
   // v65: a full 5-digit CT ZIP in the filter (or the city/keyword box) gives one ZIP-specific RentCafe link (town = most
   // common city among our own listings with that ZIP); no ZIP = the two default links (Fairfield, Stamford)
@@ -378,6 +382,7 @@ export default function Browse() {
     const params = new URLSearchParams()
     const type = next.type ?? filter
     if (type !== 'all') params.set('type', type)
+    if (ptype && next.type === undefined) params.set('ptype', ptype) // kept while searching; switching tabs clears it
     const kw = (next.keyword ?? keywordQ).trim()
     const zip = (next.zip ?? zipQ).trim()
     const city = (next.city ?? cityQ).trim()
@@ -481,8 +486,10 @@ export default function Browse() {
       maxDraft.trim(),
   )
 
-  const title =
-    filter === 'rent' ? 'Homes for rent' : filter === 'sale' ? 'Homes for sale' : 'Search homes'
+  const ptypeLabel = ptype === 'apartment' ? 'Apartments' : ptype === 'condo' ? 'Condos' : ptype === 'house' ? 'Houses' : ''
+  const title = ptypeLabel
+    ? `${ptypeLabel} for ${filter === 'sale' ? 'sale' : filter === 'rent' ? 'rent' : 'rent or sale'}`
+    : filter === 'rent' ? 'Homes for rent' : filter === 'sale' ? 'Homes for sale' : 'Search homes'
 
   if (loading) {
     // v62: never a blank page: title + skeleton cards right away while the feed loads
@@ -519,6 +526,23 @@ export default function Browse() {
     <div className="browse-page">
       <div className="browse-heading">
         <h1>{title}</h1>
+        {ptype ? (
+          <p className="ptype-chip">
+            Showing {ptypeLabel.toLowerCase()} only
+            {ptype === 'apartment' ? ' (units in multi-family homes and apartments)' : ''} ·{' '}
+            <button
+              type="button"
+              className="link-btn"
+              onClick={() => {
+                const sp = new URLSearchParams(searchParams)
+                sp.delete('ptype')
+                setSearchParams(sp, { replace: true })
+              }}
+            >
+              Show all types
+            </button>
+          </p>
+        ) : null}
         <p className="meta">
           Filter by ZIP, city, street, state, or price — or type a keyword. MLS rows with a blank ZIP still
           match city / street / state.

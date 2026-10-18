@@ -29,6 +29,7 @@ type ListingRow = {
   tax_year?: number | null
   hoa_fee?: number | null
   hoa_frequency?: string | null
+  ptype?: string | null
   deleted_at?: string | null
   mls_status?: string | null
   source?: string | null
@@ -62,6 +63,7 @@ function rowToListing(row: ListingRow): Listing {
     taxYear: row.tax_year != null ? Number(row.tax_year) : null,
     hoaFee: row.hoa_fee != null ? Number(row.hoa_fee) : null,
     hoaFrequency: (row.hoa_frequency as Listing['hoaFrequency']) ?? null,
+    ptype: row.ptype ?? null,
     deletedAt: row.deleted_at ?? null,
     mlsStatus: row.mls_status ?? null,
     source: row.source ?? null,
@@ -163,7 +165,7 @@ export function addDaysYmd(ymd: string, days: number): string {
 }
 
 const SEARCH_COLUMNS =
-  'id,type,address,city,state,zip,beds,baths,price,pets,created_at,paid,live,is_mls,active_until,sqft,year_built,deleted_at,mls_status,source,cover_photo,mls_ref'
+  'id,type,address,city,state,zip,beds,baths,price,pets,created_at,paid,live,is_mls,active_until,sqft,year_built,deleted_at,mls_status,source,cover_photo,mls_ref,ptype'
 
 /** Public Search feed: paid + live, not trashed, and active_until not past (filtered in the query AND client-side). */
 export async function liveListings(): Promise<Listing[]> {

@@ -34,6 +34,8 @@ export type Listing = {
   taxYear?: number | null
   hoaFee?: number | null
   hoaFrequency?: HoaFrequency | null
+  /** v68: 'apartment' | 'condo' | 'house' (computed in the database from the MLS subtype / description) */
+  ptype?: string | null
   /** v38: set when moved to the admin Trash (undo window 7 days, then purged). */
   deletedAt?: string | null
   /** v40: MLS status from the feed (e.g. 'Active', 'Under Contract - Continue to Show'); null for DIY. */

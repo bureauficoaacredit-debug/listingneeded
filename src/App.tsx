@@ -26,6 +26,11 @@ const Cma = lazy(lazyPageImport(() => import('./pages/Cma')))
 const ResetPassword = lazy(lazyPageImport(() => import('./pages/ResetPassword')))
 const Blog = lazy(lazyPageImport(() => import('./pages/Blog')))
 const BlogPost = lazy(lazyPageImport(() => import('./pages/BlogPost')))
+// v68: header-menu pages (lazy: no weight on Search)
+const AverageRent = lazy(lazyPageImport(() => import('./pages/AverageRent')))
+const RentCalculator = lazy(lazyPageImport(() => import('./pages/calculators/RentCalculator')))
+const CostOfLiving = lazy(lazyPageImport(() => import('./pages/calculators/CostOfLiving')))
+const RentVsBuy = lazy(lazyPageImport(() => import('./pages/calculators/RentVsBuy')))
 const QrPrint = lazy(lazyPageImport(() => import('./pages/QrPrint')))
 
 const lazyPage = (el: React.ReactNode) => (
@@ -57,6 +62,10 @@ export default function App() {
         <Route path="blog" element={lazyPage(<Blog />)} />
         <Route path="blog/:slug" element={lazyPage(<BlogPost />)} />
         <Route path="qr/:kind" element={lazyPage(<QrPrint />)} />
+        <Route path="average-rent" element={lazyPage(<AverageRent />)} />
+        <Route path="calculators/rent" element={lazyPage(<RentCalculator />)} />
+        <Route path="calculators/cost-of-living" element={lazyPage(<CostOfLiving />)} />
+        <Route path="calculators/rent-vs-buy" element={lazyPage(<RentVsBuy />)} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
