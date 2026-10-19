@@ -1551,3 +1551,16 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 .lr-filters { display: flex; gap: .6rem; flex-wrap: wrap; }
 .lr-filters .lr-filter select { min-width: 10rem; }
 @media (min-width: 521px) { .lr-place { grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); } }
+/* v71: explore page (after opening Airbnb / RentCafe in a new tab) */
+.explore { display: grid; gap: 1.2rem; }
+.explore-hero { text-align: center; display: grid; gap: .5rem; justify-items: center; padding: 1.6rem 1.2rem; background: linear-gradient(135deg, #faf5ff, #fff); border: 1px solid #d9b8ee; border-top: 4px solid var(--brand); box-shadow: var(--shadow-soft); }
+.explore-hero .explore-icon { margin: 0; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--brand); color: #fff; font-size: 1.6rem; font-weight: 700; }
+.explore-hero h1 { margin: 0; font-size: clamp(1.35rem, 4.5vw, 1.9rem); line-height: 1.2; }
+.explore-hero > p { margin: 0; font-size: 1.05rem; }
+.explore-hero .explore-tip { font-size: .8rem; }
+.explore-actions { display: flex; gap: .6rem; flex-wrap: wrap; justify-content: center; margin-top: .3rem; }
+.explore-list h2 { margin: 0 0 .25rem; }
+.explore-list > .meta { margin: 0 0 .8rem; }
+.explore-more { text-align: center; margin: 1rem 0 0; }
+.explore-cta h2 { margin: 0 0 .3rem; }
+.explore-cta .explore-actions { justify-content: flex-start; }

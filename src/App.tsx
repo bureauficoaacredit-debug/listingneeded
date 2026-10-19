@@ -32,6 +32,8 @@ const AverageRent = lazy(lazyPageImport(() => import('./pages/AverageRent')))
 const RentCalculator = lazy(lazyPageImport(() => import('./pages/calculators/RentCalculator')))
 const CostOfLiving = lazy(lazyPageImport(() => import('./pages/calculators/CostOfLiving')))
 const RentVsBuy = lazy(lazyPageImport(() => import('./pages/calculators/RentVsBuy')))
+// v71: landing page after opening Airbnb / RentCafe in a new tab
+const Explore = lazy(lazyPageImport(() => import('./pages/Explore')))
 const QrPrint = lazy(lazyPageImport(() => import('./pages/QrPrint')))
 
 const lazyPage = (el: React.ReactNode) => (
@@ -64,6 +66,7 @@ export default function App() {
         <Route path="blog/landlord-reviews" element={lazyPage(<LandlordReviews />)} />
         <Route path="blog/:slug" element={lazyPage(<BlogPost />)} />
         <Route path="qr/:kind" element={lazyPage(<QrPrint />)} />
+        <Route path="explore" element={lazyPage(<Explore />)} />
         <Route path="average-rent" element={lazyPage(<AverageRent />)} />
         <Route path="calculators/rent" element={lazyPage(<RentCalculator />)} />
         <Route path="calculators/cost-of-living" element={lazyPage(<CostOfLiving />)} />
