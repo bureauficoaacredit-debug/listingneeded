@@ -36,6 +36,7 @@ type ListingRow = {
   min_nights?: number | null
   max_guests?: number | null
   also_on_other_sites?: boolean | null
+  external_listing_url?: string | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -73,6 +74,7 @@ function rowToListing(row: ListingRow): Listing {
     minNights: row.min_nights != null ? Number(row.min_nights) : null,
     maxGuests: row.max_guests != null ? Number(row.max_guests) : null,
     alsoOnOtherSites: row.also_on_other_sites ?? null,
+    externalListingUrl: row.external_listing_url ?? null,
   }
 }
 
@@ -109,6 +111,7 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     ...(listing.minNights != null ? { min_nights: listing.minNights } : {}),
     ...(listing.maxGuests != null ? { max_guests: listing.maxGuests } : {}),
     ...(listing.alsoOnOtherSites != null ? { also_on_other_sites: listing.alsoOnOtherSites } : {}),
+    ...(listing.externalListingUrl ? { external_listing_url: listing.externalListingUrl } : {}),
   }
 }
 
@@ -493,6 +496,7 @@ export type ListingPatch = Partial<{
   minNights: number | null
   maxGuests: number | null
   alsoOnOtherSites: boolean | null
+  externalListingUrl: string | null
 }>
 
 /** Admin: patch listing fields (live toggle, active_until, etc.). */
@@ -524,6 +528,7 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
   if (patch.minNights !== undefined) body.min_nights = patch.minNights
   if (patch.maxGuests !== undefined) body.max_guests = patch.maxGuests
   if (patch.alsoOnOtherSites !== undefined) body.also_on_other_sites = patch.alsoOnOtherSites
+  if (patch.externalListingUrl !== undefined) body.external_listing_url = patch.externalListingUrl
 
   const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',

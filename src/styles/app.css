@@ -1581,3 +1581,4 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 }
 .st-check { flex-wrap: wrap; }
 .st-check .meta { flex-basis: 100%; padding-left: 1.6rem; margin-top: -.2rem; }
+.st-ext { margin: .8rem 0 0; }

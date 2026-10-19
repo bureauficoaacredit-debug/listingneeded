@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Modal } from './AdminModal'
 import { updateListing, updatePartnerLink } from '../lib/store'
 import type { HoaFrequency, Listing, ListingType, PartnerCategory, PartnerLink } from '../lib/types'
-import { HOA_FREQUENCIES, PARTNER_CATEGORY_LABELS } from '../lib/types'
+import { HOA_FREQUENCIES, PARTNER_CATEGORY_LABELS, stayLinkSite } from '../lib/types'
 
 /** Admin: edit every field of one listing (MLS or DIY). */
 export function ListingEditModal({
@@ -33,6 +33,7 @@ export function ListingEditModal({
     minNights: String(listing.minNights ?? ''),
     maxGuests: String(listing.maxGuests ?? ''),
     alsoOnOtherSites: !!listing.alsoOnOtherSites,
+    externalListingUrl: listing.externalListingUrl ?? '',
     description: listing.description ?? '',
     ownerName: listing.ownerName ?? '',
     ownerPhone: listing.ownerPhone ?? '',
@@ -51,6 +52,7 @@ export function ListingEditModal({
     if (!f.address.trim() || !f.city.trim()) return setError('Address and city are required.')
     const price = Number(f.price)
     if (!Number.isFinite(price) || price < 0) return setError('Enter a valid price.')
+    if (f.type === 'short-term' && f.externalListingUrl.trim() && !stayLinkSite(f.externalListingUrl)) return setError('Airbnb / VRBO link must be https:// on airbnb.com or vrbo.com.')
     setSaving(true)
     setError('')
     try {
@@ -75,6 +77,7 @@ export function ListingEditModal({
         minNights: f.type === 'short-term' && Number(f.minNights) >= 1 ? Math.min(365, Math.round(Number(f.minNights))) : null,
         maxGuests: f.type === 'short-term' && Number(f.maxGuests) >= 1 ? Math.min(50, Math.round(Number(f.maxGuests))) : null,
         alsoOnOtherSites: f.type === 'short-term' ? f.alsoOnOtherSites : null,
+        externalListingUrl: f.type === 'short-term' && f.externalListingUrl.trim() ? f.externalListingUrl.trim() : null,
         description: f.description,
         ownerName: f.ownerName.trim(),
         ownerPhone: f.ownerPhone.trim(),
@@ -185,6 +188,12 @@ export function ListingEditModal({
               Host says also on Airbnb/VRBO (admin only)
             </label>
           </div>
+        ) : null}
+        {f.type === 'short-term' ? (
+          <label>
+            Host's Airbnb / VRBO link (shown as “View on …” button)
+            <input type="url" maxLength={500} value={f.externalListingUrl} onChange={set('externalListingUrl')} placeholder="https://www.airbnb.com/rooms/… (empty = none)" />
+          </label>
         ) : null}
         <label>
           Description

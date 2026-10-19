@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { HOA_FREQUENCIES, listingFeeUsd, type Listing, type ListingType } from '../lib/types'
+import { HOA_FREQUENCIES, listingFeeUsd, stayLinkSite, type Listing, type ListingType } from '../lib/types'
 
 /** v67: optional money field -> positive number or null */
 const n67 = (v: FormDataEntryValue | null) => {
@@ -177,11 +177,15 @@ export default function List() {
               minNights: Number(fd.get('minNights')) >= 1 ? Math.min(365, Math.round(Number(fd.get('minNights')))) : null,
               maxGuests: Number(fd.get('maxGuests')) >= 1 ? Math.min(50, Math.round(Number(fd.get('maxGuests')))) : null,
               alsoOnOtherSites: fd.get('alsoOnOtherSites') === 'on',
+              externalListingUrl: String(fd.get('externalListingUrl') || '').trim() || null,
             }
           : {}),
       }
       if (!draft.address || !draft.ownerPhone || !draft.ownerEmail || !draft.price) {
         throw new Error('Address, price, phone, and email are required.')
+      }
+      if (draft.externalListingUrl && !stayLinkSite(draft.externalListingUrl)) {
+        throw new Error('Your Airbnb / VRBO listing link must start with https:// and be on airbnb.com or vrbo.com.')
       }
 
       if (photoFiles.length) {
@@ -296,6 +300,10 @@ export default function List() {
               <input name="maxGuests" type="number" min={1} max={50} step={1} placeholder="4" />
             </label>
           </div>
+          <label>Your Airbnb / VRBO listing link <span className="meta">(optional)</span>
+            <input name="externalListingUrl" type="url" inputMode="url" maxLength={500} placeholder="https://www.airbnb.com/rooms/…" pattern="https://.*" />
+            <small className="meta">Shown on your listing as a “View on Airbnb” (or VRBO) button. Only airbnb.com or vrbo.com links.</small>
+          </label>
           <label className="st-check">
             <input name="alsoOnOtherSites" type="checkbox" /> Also on Airbnb / VRBO <span className="meta">(for our records only; no outside links are shown)</span>
           </label>

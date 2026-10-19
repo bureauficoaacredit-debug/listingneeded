@@ -8,7 +8,7 @@ import type { Listing } from '../lib/types'
 import { getListing, getPaidTerm } from '../lib/store'
 import { isMyListing } from '../lib/myListings'
 import { paymentLinkForListing } from '../lib/checkout'
-import { formatHoa, formatTaxes, isActiveUntilOk, mlsStatusBadge, priceText, typeLabel } from '../lib/types'
+import { formatHoa, formatTaxes, isActiveUntilOk, mlsStatusBadge, priceText, stayLinkSite, typeLabel } from '../lib/types'
 
 function fmtEnd(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
@@ -231,6 +231,14 @@ export default function ListingDetail() {
               {listing.ownerEmail}
             </a>
           </p>
+          {/* v73.1: host-provided Airbnb / VRBO link (the only outbound link allowed after v72) */}
+          {listing.type === 'short-term' && stayLinkSite(listing.externalListingUrl) ? (
+            <p className="st-ext">
+              <a className="btn secondary" href={listing.externalListingUrl!} target="_blank" rel="noopener noreferrer nofollow">
+                View on {stayLinkSite(listing.externalListingUrl)} <span aria-hidden="true">↗</span>
+              </a>
+            </p>
+          ) : null}
         </div>
         <ListingMap listing={listing} />
         <NeighborhoodFacts listing={listing} />

@@ -46,6 +46,15 @@ export type Listing = {
   minNights?: number | null
   maxGuests?: number | null
   alsoOnOtherSites?: boolean | null
+  /** v73.1: optional host-provided Airbnb / VRBO listing link (short-term only; the one allowed outbound link) */
+  externalListingUrl?: string | null
+}
+
+/** v73.1: https link on airbnb.com / airbnb.<tld> / vrbo.com (same rule as the database). Returns the site name or null. */
+export function stayLinkSite(url: string | null | undefined): 'Airbnb' | 'VRBO' | null {
+  const u = (url ?? '').trim()
+  if (!u || u.length > 500 || !/^https:\/\/([a-z0-9-]+\.)?(airbnb\.(com|[a-z]{2,3}(\.[a-z]{2})?)|vrbo\.com)(\/[^\s<>"]*)?$/i.test(u)) return null
+  return /vrbo\.com/i.test(u.split('/')[2] ?? '') ? 'VRBO' : 'Airbnb'
 }
 
 /** v73: badge text, e.g. "For rent" / "For sale" / "Short-term stay" */
