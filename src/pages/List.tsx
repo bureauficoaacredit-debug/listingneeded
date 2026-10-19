@@ -30,7 +30,8 @@ export default function List() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
-  const [listingType, setListingType] = useState<ListingType>('rent')
+  // v73: /#/list?type=short-term preselects "Short-term stay" (e.g. from Search's "Be the first host to list")
+  const [listingType, setListingType] = useState<ListingType>(() => (searchParams.get('type') === 'short-term' ? 'short-term' : searchParams.get('type') === 'sale' ? 'sale' : 'rent'))
   const [termDays, setTermDays] = useState(90)
   // v50 QR codes: ?plan=free&src=qr (free, only while the admin switch is on) or ?src=qr-paid (normal paid flow)
   const qrMode: 'free' | 'paid' | null = searchParams.get('plan') === 'free' ? 'free' : searchParams.get('src') === 'qr-paid' ? 'paid' : null
@@ -170,6 +171,14 @@ export default function List() {
         createdAt: new Date().toISOString(),
         paid: false,
         live: false,
+        // v73 short-term stay: price is per night; optional minimum nights / max guests; "also on Airbnb/VRBO" (admin only)
+        ...(selectedType === 'short-term'
+          ? {
+              minNights: Number(fd.get('minNights')) >= 1 ? Math.min(365, Math.round(Number(fd.get('minNights')))) : null,
+              maxGuests: Number(fd.get('maxGuests')) >= 1 ? Math.min(50, Math.round(Number(fd.get('maxGuests')))) : null,
+              alsoOnOtherSites: fd.get('alsoOnOtherSites') === 'on',
+            }
+          : {}),
       }
       if (!draft.address || !draft.ownerPhone || !draft.ownerEmail || !draft.price) {
         throw new Error('Address, price, phone, and email are required.')
@@ -261,7 +270,7 @@ export default function List() {
       ) : (
       <div className="fee-box">
         <strong>One-time fee: ${listingFeeUsd(listingType)}</strong>
-        <div>Rent $99 or sale $800. You’ll pay on Stripe’s secure page. Your listing stays live for <strong>{termDays} days</strong> from the payment date; you can renew it any time.</div>
+        <div>Rent or short-term stay $99, sale $800. You’ll pay on Stripe’s secure page. Your listing stays live for <strong>{termDays} days</strong> from the payment date; you can renew it any time.</div>
       </div>
       )}
 
@@ -270,12 +279,29 @@ export default function List() {
           <select name="type" value={listingType} onChange={(e) => setListingType(e.target.value as ListingType)} required>
             <option value="rent">{isFree ? 'For rent' : 'For rent — $99'}</option>
             <option value="sale">{isFree ? 'For sale' : 'For sale — $800'}</option>
+            {isFree ? null : <option value="short-term">Short-term stay — $99</option>}
           </select>
         </label>
-        <label>Ask / rent price ($)
-          <input name="price" type="number" min={1} step={1} required placeholder="2700" />
+        <label>{listingType === 'short-term' ? 'Nightly price ($/night)' : 'Ask / rent price ($)'}
+          <input name="price" type="number" min={1} step={1} required placeholder={listingType === 'short-term' ? '180' : '2700'} />
         </label>
       </div>
+      {listingType === 'short-term' ? (
+        <div className="st-fields">
+          <div className="row">
+            <label>Minimum nights <span className="meta">(optional)</span>
+              <input name="minNights" type="number" min={1} max={365} step={1} placeholder="2" />
+            </label>
+            <label>Max guests
+              <input name="maxGuests" type="number" min={1} max={50} step={1} placeholder="4" />
+            </label>
+          </div>
+          <label className="st-check">
+            <input name="alsoOnOtherSites" type="checkbox" /> Also on Airbnb / VRBO <span className="meta">(for our records only; no outside links are shown)</span>
+          </label>
+          <p className="meta st-note">Guests contact you directly by phone, text or email from your listing. Listing Needed doesn’t take bookings or payments for stays.</p>
+        </div>
+      ) : null}
 
       <label>Street address
         <input

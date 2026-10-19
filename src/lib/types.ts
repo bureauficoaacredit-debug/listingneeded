@@ -1,4 +1,4 @@
-export type ListingType = 'rent' | 'sale'
+export type ListingType = 'rent' | 'sale' | 'short-term'
 
 export type Listing = {
   id: string
@@ -42,11 +42,26 @@ export type Listing = {
   mlsStatus?: string | null
   /** v50: 'free-qr' (free QR listing) | 'qr-paid' (paid QR) | null */
   source?: string | null
+  /** v73 short-term stays: price is $ per night; optional minimum nights / max guests; host says also on Airbnb/VRBO (admin only) */
+  minNights?: number | null
+  maxGuests?: number | null
+  alsoOnOtherSites?: boolean | null
+}
+
+/** v73: badge text, e.g. "For rent" / "For sale" / "Short-term stay" */
+export function typeLabel(t: ListingType) {
+  return t === 'rent' ? 'For rent' : t === 'sale' ? 'For sale' : 'Short-term stay'
+}
+/** v73: "$2,500/mo" · "$450,000" · "$180/night" */
+export function priceText(l: Pick<Listing, 'type' | 'price'>) {
+  const n = `$${Number(l.price).toLocaleString()}`
+  return l.type === 'rent' ? `${n}/mo` : l.type === 'short-term' ? `${n}/night` : n
 }
 
 export const LISTING_FEE_RENT_USD = 99
 export const LISTING_FEE_SALE_USD = 800
 
+/** v73: short-term stays use the same $99 fee (and Stripe link) as rentals */
 export function listingFeeUsd(type: ListingType) {
   return type === 'sale' ? LISTING_FEE_SALE_USD : LISTING_FEE_RENT_USD
 }

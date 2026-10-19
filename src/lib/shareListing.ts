@@ -7,11 +7,11 @@ export function listingUrl(l: Listing): string {
 }
 
 export function priceText(l: Listing): string {
-  return l.type === 'rent' ? `$${l.price.toLocaleString()}/mo` : `$${l.price.toLocaleString()}`
+  return l.type === 'rent' ? `$${l.price.toLocaleString()}/mo` : l.type === 'short-term' ? `$${l.price.toLocaleString()}/night` : `$${l.price.toLocaleString()}`
 }
 
 export function shareText(l: Listing): string {
-  return `${l.type === 'rent' ? 'For rent' : 'For sale'}: ${l.address}, ${l.city}, ${l.state} — ${priceText(l)} · ${l.beds} bd / ${l.baths} ba`
+  return `${l.type === 'rent' ? 'For rent' : l.type === 'short-term' ? 'Short-term stay' : 'For sale'}: ${l.address}, ${l.city}, ${l.state} — ${priceText(l)} · ${l.beds} bd / ${l.baths} ba`
 }
 
 /** Load an image for canvas. Tries CORS first (canvas stays exportable); returns null if blocked. */
@@ -72,15 +72,15 @@ export async function buildShareCard(l: Listing): Promise<{ blob: Blob; photoInc
     ctx.fillStyle = 'rgba(255,255,255,.9)'
     ctx.font = '800 64px Arial, Helvetica, sans-serif'
     ctx.textAlign = 'center'
-    ctx.fillText(l.type === 'rent' ? 'FOR RENT' : 'FOR SALE', W / 2, PH / 2 + 20)
+    ctx.fillText(l.type === 'rent' ? 'FOR RENT' : l.type === 'short-term' ? 'SHORT STAY' : 'FOR SALE', W / 2, PH / 2 + 20)
   }
   // badge
-  ctx.fillStyle = l.type === 'rent' ? '#0B3A6E' : '#800020'
+  ctx.fillStyle = l.type === 'rent' ? '#0B3A6E' : l.type === 'short-term' ? '#0f766e' : '#800020'
   ctx.fillRect(0, 0, 250, 78)
   ctx.fillStyle = '#fff'
   ctx.font = '800 36px Arial, Helvetica, sans-serif'
   ctx.textAlign = 'center'
-  ctx.fillText(l.type === 'rent' ? 'FOR RENT' : 'FOR SALE', 125, 53)
+  ctx.fillText(l.type === 'rent' ? 'FOR RENT' : l.type === 'short-term' ? 'SHORT STAY' : 'FOR SALE', 125, 53)
 
   // details
   ctx.textAlign = 'left'

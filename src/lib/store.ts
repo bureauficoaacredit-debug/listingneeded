@@ -33,6 +33,9 @@ type ListingRow = {
   deleted_at?: string | null
   mls_status?: string | null
   source?: string | null
+  min_nights?: number | null
+  max_guests?: number | null
+  also_on_other_sites?: boolean | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -67,6 +70,9 @@ function rowToListing(row: ListingRow): Listing {
     deletedAt: row.deleted_at ?? null,
     mlsStatus: row.mls_status ?? null,
     source: row.source ?? null,
+    minNights: row.min_nights != null ? Number(row.min_nights) : null,
+    maxGuests: row.max_guests != null ? Number(row.max_guests) : null,
+    alsoOnOtherSites: row.also_on_other_sites ?? null,
   }
 }
 
@@ -100,6 +106,9 @@ function listingToRow(listing: Listing): Omit<ListingRow, 'created_at'> & { crea
     ...(listing.hoaFee != null ? { hoa_fee: listing.hoaFee, hoa_frequency: listing.hoaFrequency ?? null } : {}),
     ...(listing.mlsStatus ? { mls_status: listing.mlsStatus } : {}),
     ...(listing.source ? { source: listing.source } : {}),
+    ...(listing.minNights != null ? { min_nights: listing.minNights } : {}),
+    ...(listing.maxGuests != null ? { max_guests: listing.maxGuests } : {}),
+    ...(listing.alsoOnOtherSites != null ? { also_on_other_sites: listing.alsoOnOtherSites } : {}),
   }
 }
 
@@ -165,7 +174,7 @@ export function addDaysYmd(ymd: string, days: number): string {
 }
 
 const SEARCH_COLUMNS =
-  'id,type,address,city,state,zip,beds,baths,price,pets,created_at,paid,live,is_mls,active_until,sqft,year_built,deleted_at,mls_status,source,cover_photo,mls_ref,ptype'
+  'id,type,address,city,state,zip,beds,baths,price,pets,created_at,paid,live,is_mls,active_until,sqft,year_built,deleted_at,mls_status,source,cover_photo,mls_ref,ptype,min_nights,max_guests'
 
 /** Public Search feed: paid + live, not trashed, and active_until not past (filtered in the query AND client-side). */
 export async function liveListings(): Promise<Listing[]> {
@@ -481,6 +490,9 @@ export type ListingPatch = Partial<{
   taxYear: number | null
   hoaFee: number | null
   hoaFrequency: Listing['hoaFrequency']
+  minNights: number | null
+  maxGuests: number | null
+  alsoOnOtherSites: boolean | null
 }>
 
 /** Admin: patch listing fields (live toggle, active_until, etc.). */
@@ -509,6 +521,9 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
   if (patch.taxYear !== undefined) body.tax_year = patch.taxYear
   if (patch.hoaFee !== undefined) body.hoa_fee = patch.hoaFee
   if (patch.hoaFrequency !== undefined) body.hoa_frequency = patch.hoaFrequency
+  if (patch.minNights !== undefined) body.min_nights = patch.minNights
+  if (patch.maxGuests !== undefined) body.max_guests = patch.maxGuests
+  if (patch.alsoOnOtherSites !== undefined) body.also_on_other_sites = patch.alsoOnOtherSites
 
   const res = await supabaseFetch(`/rest/v1/listings?id=eq.${encodeURIComponent(id)}`, {
     method: 'PATCH',

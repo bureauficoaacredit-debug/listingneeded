@@ -1564,3 +1564,18 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 .explore-more { text-align: center; margin: 1rem 0 0; }
 .explore-cta h2 { margin: 0 0 .3rem; }
 .explore-cta .explore-actions { justify-content: flex-start; }
+/* v73: short-term stays */
+.badge.short-term { background: #e6f6f4; color: #0f766e; }
+.st-fields { display: grid; gap: .6rem; padding: .8rem .9rem; border: 1px dashed #9ad8cf; background: #f3fbfa; }
+.st-check { display: flex !important; flex-direction: row !important; gap: .5rem; align-items: center; font-weight: 500; }
+.st-check input { width: auto; }
+.st-note { margin: 0; font-size: .82rem; }
+.st-empty { display: grid; gap: .5rem; justify-items: center; text-align: center; padding: 1rem .5rem; }
+.st-empty strong { font-size: 1.1rem; }
+.st-contact { display: flex; gap: .5rem; flex-wrap: wrap; }
+@media (max-width: 560px) {
+  .filter-tabs { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
+  .filter-tab { padding: .65rem .4rem; text-align: center; }
+  .filter-tab.st { grid-column: 1 / -1; border-right: none; border-top: 1px solid var(--line); }
+  .filter-tab:nth-child(3) { border-right: none; }
+}

@@ -23,7 +23,7 @@ function useIsMobile() {
 }
 
 function parseFilter(raw: string | null): Filter {
-  if (raw === 'rent' || raw === 'sale') return raw
+  if (raw === 'rent' || raw === 'sale' || raw === 'short-term') return raw
   return 'all'
 }
 
@@ -463,7 +463,7 @@ export default function Browse() {
   const ptypeLabel = ptype === 'apartment' ? 'Apartments' : ptype === 'condo' ? 'Condos' : ptype === 'house' ? 'Houses' : ''
   const title = ptypeLabel
     ? `${ptypeLabel} for ${filter === 'sale' ? 'sale' : filter === 'rent' ? 'rent' : 'rent or sale'}`
-    : filter === 'rent' ? 'Homes for rent' : filter === 'sale' ? 'Homes for sale' : 'Search homes'
+    : filter === 'rent' ? 'Homes for rent' : filter === 'sale' ? 'Homes for sale' : filter === 'short-term' ? 'Short-term stays' : 'Search homes'
 
   if (loading) {
     // v62: never a blank page: title + skeleton cards right away while the feed loads
@@ -550,6 +550,15 @@ export default function Browse() {
           onClick={() => setFilter('sale')}
         >
           For sale
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className={`filter-tab st${filter === 'short-term' ? ' active' : ''}`}
+          aria-selected={filter === 'short-term'}
+          onClick={() => setFilter('short-term')}
+        >
+          Short-term stays
         </button>
       </div>
 
@@ -890,10 +899,18 @@ export default function Browse() {
                   </button>
                 </>
               ) : (
+                filter === 'short-term' ? (
+                  <div className="st-empty">
+                    <strong>No short-term stays listed yet.</strong>
+                    <span>Have a place for nightly or weekly guests? List it on Listing Needed; guests contact you directly.</span>
+                    <Link className="btn" to="/list?type=short-term">Be the first host to list</Link>
+                  </div>
+                ) : (
                 <>
                   No live {filter === 'all' ? 'listings' : filter === 'rent' ? 'rentals' : 'homes for sale'} yet.{' '}
                   <Link to="/list">Be the first to list</Link>.
                 </>
+                )
               )}
             </div>
           </div>

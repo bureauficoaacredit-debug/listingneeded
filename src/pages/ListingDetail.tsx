@@ -8,7 +8,7 @@ import type { Listing } from '../lib/types'
 import { getListing, getPaidTerm } from '../lib/store'
 import { isMyListing } from '../lib/myListings'
 import { paymentLinkForListing } from '../lib/checkout'
-import { formatHoa, formatTaxes, isActiveUntilOk, mlsStatusBadge } from '../lib/types'
+import { formatHoa, formatTaxes, isActiveUntilOk, mlsStatusBadge, priceText, typeLabel } from '../lib/types'
 
 function fmtEnd(ymd: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd)
@@ -140,7 +140,7 @@ export default function ListingDetail() {
       <div>
         <div className="detail-top">
           <div>
-            <span className={`badge ${listing.type}`}>{listing.type === 'rent' ? 'For rent' : 'For sale'}</span>
+            <span className={`badge ${listing.type}`}>{typeLabel(listing.type)}</span>
             {listing.is_mls ? <span className="badge mls">MLS listing</span> : null}
             {mlsStatusBadge(listing.mlsStatus) ? <span className="badge status" title={listing.mlsStatus ?? ''}>{mlsStatusBadge(listing.mlsStatus)}</span> : null}
           </div>
@@ -151,10 +151,29 @@ export default function ListingDetail() {
           {listing.city}, {listing.state} {listing.zip}
         </div>
         <div className="price">
-          {listing.type === 'rent'
-            ? `$${listing.price.toLocaleString()}/mo`
-            : `$${listing.price.toLocaleString()}`}
+          {priceText(listing)}
         </div>
+        {listing.type === 'short-term' ? (
+          // v73: short-term stay facts (each hidden when the host left it blank)
+          <dl className="cost-facts st-facts">
+            <div>
+              <dt>Nightly price</dt>
+              <dd>{priceText(listing)}</dd>
+            </div>
+            {listing.minNights ? (
+              <div>
+                <dt>Minimum stay</dt>
+                <dd>{listing.minNights} night{listing.minNights === 1 ? '' : 's'}</dd>
+              </div>
+            ) : null}
+            {listing.maxGuests ? (
+              <div>
+                <dt>Guests</dt>
+                <dd>Up to {listing.maxGuests}</dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
         <p className="meta">
           {listing.beds} beds · {listing.baths} baths
           {listing.sqft ? ` · ${listing.sqft.toLocaleString()} sq ft` : ''}
@@ -187,10 +206,20 @@ export default function ListingDetail() {
           </p>
         ) : null}
         <p>{listing.description || 'No description provided.'}</p>
-        <ScheduleShowing listing={listing} />
+        {listing.type === 'short-term' ? null : <ScheduleShowing listing={listing} />}
         <div className="contact-card">
-          <h3 style={{ marginTop: 0 }}>Contact the owner directly</h3>
-          <p className="meta">Listing Needed does not middleman this conversation.</p>
+          <h3 style={{ marginTop: 0 }}>{listing.type === 'short-term' ? 'Contact host' : 'Contact the owner directly'}</h3>
+          <p className="meta">
+            {listing.type === 'short-term'
+              ? 'Ask the host about dates and availability. Listing Needed doesn’t take bookings or payments for stays.'
+              : 'Listing Needed does not middleman this conversation.'}
+          </p>
+          {listing.type === 'short-term' ? (
+            <p className="st-contact">
+              <a className="btn" href={`tel:${listing.ownerPhone}`}>Call host</a>{' '}
+              <a className="btn secondary" href={`sms:${listing.ownerPhone.replace(/[^\d+]/g, '')}`}>Text host</a>
+            </p>
+          ) : null}
           <p>
             <strong>{listing.ownerName}</strong>
           </p>

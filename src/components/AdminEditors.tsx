@@ -30,6 +30,9 @@ export function ListingEditModal({
     hoaFee: String(listing.hoaFee ?? ''),
     hoaFrequency: (listing.hoaFrequency ?? 'month') as HoaFrequency,
     pets: listing.pets,
+    minNights: String(listing.minNights ?? ''),
+    maxGuests: String(listing.maxGuests ?? ''),
+    alsoOnOtherSites: !!listing.alsoOnOtherSites,
     description: listing.description ?? '',
     ownerName: listing.ownerName ?? '',
     ownerPhone: listing.ownerPhone ?? '',
@@ -68,6 +71,10 @@ export function ListingEditModal({
         hoaFee: Number(f.hoaFee) > 0 ? Number(f.hoaFee) : null,
         hoaFrequency: Number(f.hoaFee) > 0 ? f.hoaFrequency : null,
         pets: f.pets,
+        // v73 short-term fields (blank = not set)
+        minNights: f.type === 'short-term' && Number(f.minNights) >= 1 ? Math.min(365, Math.round(Number(f.minNights))) : null,
+        maxGuests: f.type === 'short-term' && Number(f.maxGuests) >= 1 ? Math.min(50, Math.round(Number(f.maxGuests))) : null,
+        alsoOnOtherSites: f.type === 'short-term' ? f.alsoOnOtherSites : null,
         description: f.description,
         ownerName: f.ownerName.trim(),
         ownerPhone: f.ownerPhone.trim(),
@@ -93,10 +100,11 @@ export function ListingEditModal({
             <select value={f.type} onChange={(e) => setF((p) => ({ ...p, type: e.target.value as ListingType }))}>
               <option value="sale">sale</option>
               <option value="rent">rent</option>
+              <option value="short-term">short-term stay</option>
             </select>
           </label>
           <label>
-            Price
+            {f.type === 'short-term' ? 'Price per night ($)' : 'Price'}
             <input type="number" value={f.price} onChange={set('price')} />
           </label>
           <label>
@@ -162,6 +170,22 @@ export function ListingEditModal({
             </select>
           </label>
         </div>
+        {f.type === 'short-term' ? (
+          <div className="row">
+            <label>
+              Min nights
+              <input type="number" min={1} max={365} value={f.minNights} onChange={set('minNights')} placeholder="optional" />
+            </label>
+            <label>
+              Max guests
+              <input type="number" min={1} max={50} value={f.maxGuests} onChange={set('maxGuests')} placeholder="optional" />
+            </label>
+            <label style={{ flexDirection: 'row', alignItems: 'center', gap: '.4rem' }}>
+              <input type="checkbox" style={{ width: 'auto' }} checked={f.alsoOnOtherSites} onChange={(e) => setF((p) => ({ ...p, alsoOnOtherSites: e.target.checked }))} />
+              Host says also on Airbnb/VRBO (admin only)
+            </label>
+          </div>
+        ) : null}
         <label>
           Description
           <textarea rows={4} value={f.description} onChange={set('description')} />

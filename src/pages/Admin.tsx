@@ -61,7 +61,7 @@ function uid() {
 
 function formatPrice(l: Listing): string {
   const n = l.price.toLocaleString()
-  return l.type === 'rent' ? `$${n}/mo` : `$${n}`
+  return l.type === 'rent' ? `$${n}/mo` : l.type === 'short-term' ? `$${n}/night` : `$${n}`
 }
 
 function formatDate(iso: string): string {
@@ -84,11 +84,12 @@ function statusLabel(l: Listing): string {
   return 'inactive'
 }
 
-type ListingFilter = 'all' | 'mls' | 'diy' | 'live' | 'inactive' | 'ending' | 'trash'
+type ListingFilter = 'all' | 'mls' | 'diy' | 'short-term' | 'live' | 'inactive' | 'ending' | 'trash'
 const LISTING_FILTERS: { key: ListingFilter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'mls', label: 'MLS' },
   { key: 'diy', label: 'DIY' },
+  { key: 'short-term', label: 'Short-term' },
   { key: 'live', label: 'Live' },
   { key: 'inactive', label: 'Inactive' },
   { key: 'ending', label: 'Ending ≤ 7 days' },
@@ -114,7 +115,7 @@ function searchHaystack(l: Listing): string {
   const mlsNo = l.id.replace(/^mls_/i, '')
   return [
     l.address, l.city, l.state, l.zip, l.id, mlsNo, l.ownerName, l.ownerPhone,
-    l.ownerPhone.replace(/\D/g, ''), l.ownerEmail, l.type, l.type === 'sale' ? 'for sale' : 'for rent',
+    l.ownerPhone.replace(/\D/g, ''), l.ownerEmail, l.type, l.type === 'sale' ? 'for sale' : l.type === 'short-term' ? 'short-term stay nightly' : 'for rent',
   ].join(' \u0001 ').toLowerCase()
 }
 
@@ -225,6 +226,7 @@ export default function Admin() {
         if (l.deletedAt) return false
         if (listingFilter === 'mls' && !l.is_mls) return false
         if (listingFilter === 'diy' && l.is_mls) return false
+        if (listingFilter === 'short-term' && l.type !== 'short-term') return false
         if (listingFilter === 'live' && !isLiveNow(l)) return false
         if (listingFilter === 'inactive' && isLiveNow(l)) return false
         if (listingFilter === 'ending' && !endsWithin7Days(l)) return false
@@ -237,7 +239,7 @@ export default function Admin() {
     return out
   }, [listings, haystacks, deferredQuery, listingFilter])
   const filterCounts = useMemo(() => {
-    const c: Record<ListingFilter, number> = { all: 0, mls: 0, diy: 0, live: 0, inactive: 0, ending: 0, trash: 0 }
+    const c: Record<ListingFilter, number> = { all: 0, mls: 0, diy: 0, 'short-term': 0, live: 0, inactive: 0, ending: 0, trash: 0 }
     for (const l of listings) {
       if (l.deletedAt) {
         c.trash++
@@ -246,6 +248,7 @@ export default function Admin() {
       c.all++
       if (l.is_mls) c.mls++
       else c.diy++
+      if (l.type === 'short-term') c['short-term']++
       if (isLiveNow(l)) c.live++
       else c.inactive++
       if (endsWithin7Days(l)) c.ending++
@@ -1154,6 +1157,7 @@ export default function Admin() {
                           >
                             <option value="sale">sale</option>
                             <option value="rent">rent</option>
+                            <option value="short-term">short-term</option>
                           </select>
                         </td>
                         <td>
@@ -1283,6 +1287,7 @@ export default function Admin() {
                 >
                   <option value="sale">For sale</option>
                   <option value="rent">For rent</option>
+                  <option value="short-term">Short-term stay</option>
                 </select>
               </label>
               <label>

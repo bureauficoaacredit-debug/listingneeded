@@ -43,6 +43,7 @@ export default function Home() {
           <div className="path-actions">
             <Link className="btn" to="/browse?type=rent">For Rent</Link>
             <Link className="btn secondary" to="/browse?type=sale">For Sale</Link>
+            <Link className="btn secondary" to="/browse?type=short-term">Short-term stays</Link>
           </div>
         </article>
         <article className="path-card path-own">

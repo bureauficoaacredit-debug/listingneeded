@@ -16,6 +16,7 @@ const MENU: Group[] = [
       { label: 'Apartments for Rent', to: '/browse?type=rent&ptype=apartment' },
       { label: 'Condos for Rent', to: '/browse?type=rent&ptype=condo' },
       { label: 'Houses for Rent', to: '/browse?type=rent&ptype=house' },
+      { label: 'Short-term Stays', to: '/browse?type=short-term' },
       { label: 'Homes for Sale', to: '/browse?type=sale' },
     ],
   },

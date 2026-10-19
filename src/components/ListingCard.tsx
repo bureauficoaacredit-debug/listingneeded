@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { mlsStatusBadge, type Listing } from '../lib/types'
+import { mlsStatusBadge, priceText, typeLabel, type Listing } from '../lib/types'
 
 /** Search result card (shared component). */
 export default function ListingCard({ l }: { l: Listing }) {
@@ -11,13 +11,13 @@ export default function ListingCard({ l }: { l: Listing }) {
         <div className="thumb empty">No photo</div>
       )}
       <div className="body">
-        <span className={`badge ${l.type}`}>{l.type === 'rent' ? 'For rent' : 'For sale'}</span>
+        <span className={`badge ${l.type}`}>{typeLabel(l.type)}</span>
         {l.is_mls ? <span className="badge mls">MLS listing</span> : null}
         {mlsStatusBadge(l.mlsStatus) ? <span className="badge status" title={l.mlsStatus ?? ''}>{mlsStatusBadge(l.mlsStatus)}</span> : null}
-        <div className="price">{l.type === 'rent' ? `$${l.price.toLocaleString()}/mo` : `$${l.price.toLocaleString()}`}</div>
+        <div className="price">{priceText(l)}</div>
         <h3>{l.address}</h3>
         <div className="meta">
-          {l.city}, {l.state} {l.zip || ''} · {l.beds} bd · {l.baths} ba
+          {l.city}, {l.state} {l.zip || ''} · {l.beds} bd · {l.baths} ba{l.type === 'short-term' && l.maxGuests ? ` · ${l.maxGuests} guests` : ''}
         </div>
       </div>
     </Link>

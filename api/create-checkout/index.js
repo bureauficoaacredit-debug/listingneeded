@@ -1,4 +1,4 @@
-const FEE_CENTS = { rent: 9900, sale: 80000 }
+const FEE_CENTS = { rent: 9900, sale: 80000, 'short-term': 9900 } // v73: short-term stays = same $99 as rent
 
 function siteOrigin(req) {
   const proto = req.headers['x-forwarded-proto'] || 'https'
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
     const listingId = String(body.listingId || '').trim()
-    const type = body.type === 'sale' ? 'sale' : 'rent'
+    const type = body.type === 'sale' ? 'sale' : body.type === 'short-term' ? 'short-term' : 'rent'
     const email = String(body.email || '').trim()
     const address = String(body.address || '').trim()
 
@@ -32,7 +32,7 @@ export default async function handler(req, res) {
 
     const amount = FEE_CENTS[type]
     const origin = siteOrigin(req)
-    const label = type === 'sale' ? 'Sale listing fee' : 'Rent listing fee'
+    const label = type === 'sale' ? 'Sale listing fee' : type === 'short-term' ? 'Short-term stay listing fee' : 'Rent listing fee'
     const productName = `Listing Needed — ${label}${address ? ` (${address})` : ''}`
 
     const params = new URLSearchParams()
