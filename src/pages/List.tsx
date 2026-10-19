@@ -279,7 +279,7 @@ export default function List() {
           <select name="type" value={listingType} onChange={(e) => setListingType(e.target.value as ListingType)} required>
             <option value="rent">{isFree ? 'For rent' : 'For rent — $99'}</option>
             <option value="sale">{isFree ? 'For sale' : 'For sale — $800'}</option>
-            {isFree ? null : <option value="short-term">Short-term stay — $99</option>}
+            <option value="short-term">{isFree ? 'Short-term stay' : 'Short-term stay — $99'}</option>
           </select>
         </label>
         <label>{listingType === 'short-term' ? 'Nightly price ($/night)' : 'Ask / rent price ($)'}
