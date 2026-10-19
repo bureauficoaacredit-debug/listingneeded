@@ -1579,3 +1579,5 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
   .filter-tab.st { grid-column: 1 / -1; border-right: none; border-top: 1px solid var(--line); }
   .filter-tab:nth-child(3) { border-right: none; }
 }
+.st-check { flex-wrap: wrap; }
+.st-check .meta { flex-basis: 100%; padding-left: 1.6rem; margin-top: -.2rem; }
