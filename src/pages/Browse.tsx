@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent, type MouseEvent } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { type Listing, type ListingType } from '../lib/types'
 import { cachedLiveListings, loadLiveListings } from '../lib/store'
 import AvgRentPanel from '../components/AvgRentPanel'
 import ListingCard from '../components/ListingCard'
-import { airbnbUrl, exploreHref, openOutside, rentCafeUrl, type OutboundLink } from '../lib/outbound'
 
 type Filter = 'all' | ListingType
 
@@ -172,43 +171,10 @@ function filterSummary(parts: {
   return bits.length ? bits.join(' · ') : 'All listings'
 }
 
-// v65: outbound links to RentCafe's rental search + a call line (links only: no RentCafe data is loaded or copied)
-// v71: + "Short-term stays on Airbnb" for the searched town; clicking either opens the site in a NEW tab (opened
-// synchronously in the click so pop-up blockers allow it) while this tab goes to /#/explore with our listings.
-function OutboundLinks({ zip, town, top }: { zip: string; town: string; top?: boolean }) {
-  const navigate = useNavigate()
-  const loc = useLocation()
-  const links: OutboundLink[] = zip
-    ? [
-        { to: 'rentcafe', label: `More ${town ? `${town} ` : ''}${zip} rentals on RentCafe`, href: rentCafeUrl(zip, town), town, state: 'CT', zip },
-        ...(town ? [{ to: 'airbnb' as const, label: `Short-term stays in ${town} on Airbnb`, href: airbnbUrl(town), town, state: 'CT', zip }] : []),
-      ]
-    : town
-      ? [{ to: 'airbnb', label: `Short-term stays in ${town} on Airbnb`, href: airbnbUrl(town), town, state: 'CT', zip: '' }]
-      : []
-  const defaults: OutboundLink[] = [
-    { to: 'rentcafe', label: 'More Fairfield rentals on RentCafe', href: rentCafeUrl('06825', 'Fairfield'), town: 'Fairfield', state: 'CT', zip: '06825' },
-    { to: 'rentcafe', label: 'More Stamford rentals on RentCafe', href: rentCafeUrl('', 'Stamford'), town: 'Stamford', state: 'CT', zip: '' },
-    { to: 'airbnb', label: 'Short-term stays in Fairfield, CT on Airbnb', href: airbnbUrl('Fairfield'), town: 'Fairfield', state: 'CT', zip: '' },
-    { to: 'airbnb', label: 'Short-term stays in Stamford, CT on Airbnb', href: airbnbUrl('Stamford'), town: 'Stamford', state: 'CT', zip: '' },
-  ]
-  // v65 behavior: a ZIP gives the ZIP link; otherwise the two default RentCafe links. A named town (no ZIP) gets its own Airbnb link.
-  const shown = zip ? links : [...defaults.filter((d) => d.to === 'rentcafe'), ...(town ? links : defaults.filter((d) => d.to === 'airbnb'))]
-  function click(e: MouseEvent<HTMLAnchorElement>, l: OutboundLink) {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return // let the browser handle new-tab clicks
-    e.preventDefault()
-    openOutside(l.href)
-    navigate(exploreHref(l, `${loc.pathname}${loc.search}`))
-  }
+// v72: the v65 RentCafe / v71 Airbnb links were removed (visitors stay on Listing Needed); the call line stays in that spot
+function RentalCallLine({ top }: { top?: boolean }) {
   return (
     <div className={`rentcafe-block${top ? ' top' : ''}`}>
-      <p className="rentcafe-link">
-        {shown.map((l) => (
-          <a key={l.href} className={`out-${l.to}`} href={l.href} target="_blank" rel="noopener noreferrer" onClick={(e) => click(e, l)}>
-            {l.label} <span aria-hidden="true">↗</span>
-          </a>
-        ))}
-      </p>
       <p className="rentcafe-call">
         Questions about a rental? Call <a href="tel:2038183242">203-818-3242</a>
       </p>
@@ -337,39 +303,6 @@ export default function Browse() {
     return rows
   }, [listings, filter, ptype, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
 
-  // v65: a full 5-digit CT ZIP in the filter (or the city/keyword box) gives one ZIP-specific RentCafe link (town = most
-  // common city among our own listings with that ZIP); no ZIP = the two default links (Fairfield, Stamford)
-  // v71: a typed CT town we have no listings for (e.g. New Milford) still gets its Airbnb link: resolve it with the CT
-  // town list, which loads in its own small chunk only when a town/keyword is typed
-  const [acsTown, setAcsTown] = useState('')
-  useEffect(() => {
-    const q = [cityQ, keywordQ].map((x) => x.trim()).find(Boolean) || ''
-    if (!q || /\d/.test(q)) { setAcsTown(''); return }
-    let live = true
-    import('../lib/ctAcs').then((m) => { if (live) setAcsTown(m.canonicalTown(cityQ.trim() || keywordQ) ?? '') }, () => {})
-    return () => { live = false }
-  }, [cityQ, keywordQ])
-  const rentCafe = useMemo(() => {
-    const zip = [zipQ, keywordQ, cityQ].map((q) => q.trim()).find((q) => /^06\d{3}$/.test(q)) || ''
-    if (!zip) {
-      // v71: no ZIP: a typed town (City box first, then keyword) that matches one of our listing cities
-      for (const q of [cityQ, keywordQ]) {
-        const w = q.toLowerCase().replace(/[.,;:#/()]+/g, ' ').split(/\s+/).filter((x) => x && !['ct', 'conn', 'connecticut'].includes(x)).join(' ')
-        if (!w) continue
-        const hit = listings.find((l) => (l.city || '').trim().toLowerCase() === w)
-        if (hit) return { zip, town: w.replace(/\b\w/g, (ch) => ch.toUpperCase()) }
-      }
-      return { zip, town: acsTown }
-    }
-    const counts = new Map<string, number>()
-    for (const l of listings) {
-      if ((l.zip || '').slice(0, 5) !== zip || !l.city) continue
-      const c = l.city.trim().toLowerCase().replace(/\b\w/g, (ch) => ch.toUpperCase())
-      counts.set(c, (counts.get(c) ?? 0) + 1)
-    }
-    const town = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || ''
-    return { zip, town }
-  }, [zipQ, keywordQ, cityQ, listings, acsTown])
 
   // v59: render the results in pages of 48 cards (more load as you scroll), not all ~2,250 at once
   const [shownCount, setShownCount] = useState(BROWSE_PAGE)
@@ -940,7 +873,7 @@ export default function Browse() {
 
       <div ref={resultsRef} className="browse-results">
         <AvgRentPanel listings={listings} zipQ={zipQ} keywordQ={keywordQ} cityQ={cityQ} />
-        {filter === 'rent' ? <OutboundLinks zip={rentCafe.zip} town={rentCafe.town} top /> : null}
+        {filter === 'rent' ? <RentalCallLine top /> : null}
         {filtered.length === 0 ? (
           <div className="card">
             <div className="body">
@@ -978,7 +911,7 @@ export default function Browse() {
             </button>
           </div>
         ) : null}
-        <OutboundLinks zip={rentCafe.zip} town={rentCafe.town} />
+        <RentalCallLine />
       </div>
     </div>
   )

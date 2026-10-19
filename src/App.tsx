@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useSearchParams } from 'react-router-dom'
 import Layout from './components/Layout'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
@@ -32,8 +32,6 @@ const AverageRent = lazy(lazyPageImport(() => import('./pages/AverageRent')))
 const RentCalculator = lazy(lazyPageImport(() => import('./pages/calculators/RentCalculator')))
 const CostOfLiving = lazy(lazyPageImport(() => import('./pages/calculators/CostOfLiving')))
 const RentVsBuy = lazy(lazyPageImport(() => import('./pages/calculators/RentVsBuy')))
-// v71: landing page after opening Airbnb / RentCafe in a new tab
-const Explore = lazy(lazyPageImport(() => import('./pages/Explore')))
 const QrPrint = lazy(lazyPageImport(() => import('./pages/QrPrint')))
 
 const lazyPage = (el: React.ReactNode) => (
@@ -48,6 +46,21 @@ function ListedBanner() {
       {search.includes('free=1') ? 'Thanks! Your free listing is live' : 'Payment received. Your listing is live'} — people will contact you directly.
     </div>
   )
+}
+
+// v72: the v71 /explore page is gone; old links go to the matching Search (their original search if known, else the town)
+function ExploreRedirect() {
+  const [sp] = useSearchParams()
+  const back = sp.get('back') ?? ''
+  if (back.startsWith('/browse')) return <Navigate to={back} replace />
+  const p = new URLSearchParams()
+  if (sp.get('to') === 'rentcafe' || sp.get('to') === 'airbnb') p.set('type', 'rent')
+  const zip = sp.get('zip') ?? ''
+  const town = sp.get('town') ?? ''
+  if (/^\d{5}$/.test(zip)) p.set('zip', zip)
+  else if (town) p.set('city', town)
+  const q = p.toString()
+  return <Navigate to={`/browse${q ? `?${q}` : ''}`} replace />
 }
 
 export default function App() {
@@ -66,7 +79,7 @@ export default function App() {
         <Route path="blog/landlord-reviews" element={lazyPage(<LandlordReviews />)} />
         <Route path="blog/:slug" element={lazyPage(<BlogPost />)} />
         <Route path="qr/:kind" element={lazyPage(<QrPrint />)} />
-        <Route path="explore" element={lazyPage(<Explore />)} />
+        <Route path="explore" element={<ExploreRedirect />} />
         <Route path="average-rent" element={lazyPage(<AverageRent />)} />
         <Route path="calculators/rent" element={lazyPage(<RentCalculator />)} />
         <Route path="calculators/cost-of-living" element={lazyPage(<CostOfLiving />)} />

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { mlsStatusBadge, type Listing } from '../lib/types'
 
-/** Search result card (shared by Search and v71 Explore). */
+/** Search result card (shared component). */
 export default function ListingCard({ l }: { l: Listing }) {
   return (
     <Link to={`/listing/${l.id}`} className="card" style={{ color: 'inherit' }}>
