@@ -40,14 +40,38 @@ function matchesKeyword(l: Listing, q: string) {
   // v66: "Fairfield, CT", "fairfield ct", "Fairfield CT 06824", "Fairfeild": match word by word (commas and the state
   // name are ignored; every remaining word must appear; a town name may have one small typo)
   const words = searchWords(q)
-  const core = words.filter((w) => !STATE_WORDS.has(w))
-  if (!core.length) return words.length > 0 && isCt(l.state)
+  const kwState = keywordState(words)
+  const hasNY = ` ${words.join(' ')} `.includes(' new york ')
+  const core = words.filter((w) => !STATE_WORDS.has(w) || ((w === 'new' || w === 'york') && !hasNY))
+  if (kwState && stateCode(l.state) && stateCode(l.state) !== kwState) return false
+  if (!core.length) return words.length > 0 && (kwState ? stateCode(l.state) === kwState : isCt(l.state))
   const flat = ` ${searchWords(hay).join(' ')} `
   return core.every((w) => flat.includes(w) || townTypo(l.city, w))
 }
 
 // v66: word-by-word search helpers
-const STATE_WORDS = new Set(['ct', 'conn', 'connecticut', 'usa', 'us'])
+const STATE_WORDS = new Set(['ct', 'conn', 'connecticut', 'ny', 'new', 'york', 'ma', 'mass', 'massachusetts', 'usa', 'us'])
+// v74: Search state dropdown (code + names, case-insensitive)
+const STATE_OPTIONS: [string, string, string[]][] = [
+  ['CT', 'Connecticut', ['ct', 'conn', 'connecticut']],
+  ['NY', 'New York', ['ny', 'new york']],
+  ['MA', 'Massachusetts', ['ma', 'mass', 'massachusetts']],
+]
+function stateCode(q: string | null | undefined) {
+  const n = norm(q)
+  return STATE_OPTIONS.find(([, , a]) => a.includes(n))?.[0] ?? ''
+}
+function matchesState(state: string | null | undefined, q: string) {
+  const code = stateCode(q)
+  if (!code) return norm(state).includes(norm(q))
+  return stateCode(state) === code
+}
+/** Words like "new york" -> state words; returns the state the keyword names, if any. */
+function keywordState(words: string[]) {
+  const j = ` ${words.join(' ')} `
+  for (const [c, , a] of STATE_OPTIONS) if (a.some((x) => j.includes(` ${x} `))) return c
+  return ''
+}
 function searchWords(s: string) {
   return s.toLowerCase().replace(/[.,;:#/()]+/g, ' ').split(/\s+/).filter(Boolean)
 }
@@ -215,7 +239,7 @@ export default function Browse() {
   const initialZip = searchParams.get('zip') ?? ''
   const initialCity = searchParams.get('city') ?? ''
   const initialStreet = searchParams.get('street') ?? ''
-  const initialState = searchParams.get('state') ?? ''
+  const initialState = stateCode(searchParams.get('state')) || (searchParams.get('state') ?? '')
   const initialMin = searchParams.get('min') ?? ''
   const initialMax = searchParams.get('max') ?? ''
   const initialPrice = normalizePriceRange(initialMin, initialMax)
@@ -296,7 +320,7 @@ export default function Browse() {
     if (zip) rows = rows.filter((l) => norm(l.zip).includes(zip))
     if (city) rows = rows.filter((l) => matchesCity(l.city, city))
     if (street) rows = rows.filter((l) => norm(l.address).includes(street))
-    if (state) rows = rows.filter((l) => norm(l.state).includes(state))
+    if (state) rows = rows.filter((l) => matchesState(l.state, state))
     if (minPrice != null) rows = rows.filter((l) => l.price >= minPrice)
     if (maxPrice != null) rows = rows.filter((l) => l.price <= maxPrice)
 
@@ -650,15 +674,17 @@ export default function Browse() {
                     </label>
                     <label>
                       State
-                      <input
-                        type="text"
-                        autoComplete="address-level1"
-                        placeholder="CT"
-                        maxLength={2}
-                        value={stateDraft}
-                        onChange={(e) => setStateDraft(e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, 2))}
-                        aria-label="State (2-letter abbreviation)"
-                      />
+                      <select
+                value={stateCode(stateDraft) || stateDraft}
+                onChange={(e) => setStateDraft(e.target.value)}
+                aria-label="State"
+              >
+                <option value="">Any state</option>
+                {STATE_OPTIONS.map(([c, n]) => (
+                  <option key={c} value={c}>{n}</option>
+                ))}
+                {stateDraft && !stateCode(stateDraft) ? <option value={stateDraft}>{stateDraft.toUpperCase()}</option> : null}
+              </select>
                     </label>
                     <label>
                       Min $
@@ -758,15 +784,17 @@ export default function Browse() {
             </label>
             <label>
               State
-              <input
-                type="text"
-                autoComplete="address-level1"
-                placeholder="CT"
-                maxLength={2}
-                value={stateDraft}
-                onChange={(e) => setStateDraft(e.target.value.replace(/[^a-zA-Z]/g, '').slice(0, 2))}
-                aria-label="State (2-letter abbreviation)"
-              />
+              <select
+                value={stateCode(stateDraft) || stateDraft}
+                onChange={(e) => setStateDraft(e.target.value)}
+                aria-label="State"
+              >
+                <option value="">Any state</option>
+                {STATE_OPTIONS.map(([c, n]) => (
+                  <option key={c} value={c}>{n}</option>
+                ))}
+                {stateDraft && !stateCode(stateDraft) ? <option value={stateDraft}>{stateDraft.toUpperCase()}</option> : null}
+              </select>
             </label>
             <label>
               Min $

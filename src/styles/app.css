@@ -726,7 +726,8 @@ a.hero-stat:hover { background: rgba(255,255,255,0.22); text-decoration: none; }
   letter-spacing: 0.04em;
   color: var(--muted);
 }
-.search-filters label input {
+.search-filters label input,
+.search-filters label select {
   text-transform: none;
   letter-spacing: normal;
   font-family: inherit;
@@ -739,7 +740,8 @@ a.hero-stat:hover { background: rgba(255,255,255,0.22); text-decoration: none; }
   width: 100%;
   background: #fff;
 }
-.search-filters label input:focus {
+.search-filters label input:focus,
+.search-filters label select:focus {
   outline: none;
   border-color: var(--brand);
 }
