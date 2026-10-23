@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { Link, NavLink, Outlet } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { A2hsBar } from './AddToHomeScreen'
 import { prefetchLiveListings } from '../lib/store'
 import '../styles/app.css'
 import HeaderMenu from './HeaderMenu'
@@ -75,6 +76,7 @@ function PhoneIcon() {
 }
 
 export default function Layout() {
+  const isHome = useLocation().pathname === '/'
   // v62: start loading the Search feed the moment a finger/mouse touches any Search link (header, hero, For Rent/Sale)
   useEffect(() => {
     const onIntent = (e: Event) => {
@@ -127,6 +129,7 @@ export default function Layout() {
       </header>
       <main>
         <Outlet />
+        {isHome ? <A2hsBar /> : null}
       </main>
       <footer className="footer">
         <div className="footer-inner">

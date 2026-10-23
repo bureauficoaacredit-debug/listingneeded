@@ -1,0 +1,17 @@
+{
+  "name": "Listing Needed",
+  "short_name": "Listing Needed",
+  "description": "Homes for rent and sale, listed by owners. Call 203-818-3242.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4e1772",
+  "icons": [
+    { "src": "/logo/ln-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/logo/ln-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/logo/ln-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/logo/ln-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

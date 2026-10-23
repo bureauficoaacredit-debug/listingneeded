@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { averageRentHref, getLastTown, subscribeLastTown } from '../lib/lastTown'
 import { Link, useLocation } from 'react-router-dom'
+import { A2hsMenuItem } from './AddToHomeScreen'
 
 /**
  * v68: left hamburger menu. Desktop: dropdown with flyout submenus (hover or keyboard). Phone: slide-in panel with
@@ -121,6 +122,7 @@ export default function HeaderMenu() {
               </li>
             ),
           )}
+          <li><A2hsMenuItem /></li>
         </ul>
         <a className="hmenu-call" href="tel:2038183242">Call/text Marcel Najar · 203-818-3242</a>
       </nav>
