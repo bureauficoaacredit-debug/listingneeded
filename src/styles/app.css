@@ -1588,7 +1588,7 @@ button.list-option { width: 100%; font: inherit; font-weight: 600; cursor: point
 /* v75: Add to Home Screen */
 .a2hs-menu { width: 100%; text-align: left; background: none; border: 0; font: inherit; cursor: pointer; }
 .a2hs-bar { display: flex; align-items: center; gap: 10px; max-width: 720px; margin: 16px auto; padding: 10px 12px; background: var(--brand-soft); border: 1px solid #e2cdf0; border-radius: 12px; font-size: 14px; }
-.a2hs-bar span { flex: 1; font-weight: 600; color: var(--brand-dark); }
+.a2hs-bar span { flex: 1; font-size: 13px; line-height: 1.25; font-weight: 600; color: var(--brand-dark); }
 .a2hs-bar img { border-radius: 50%; }
 .a2hs-add { padding: 8px 12px; font-size: 13px; white-space: nowrap; }
 .a2hs-x { background: none; border: 0; font-size: 22px; line-height: 1; color: #666; cursor: pointer; padding: 4px; }

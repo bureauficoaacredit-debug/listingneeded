@@ -65,7 +65,7 @@ export function A2hsBar() {
       {offer && !isDismissed() ? (
         <div className="a2hs-bar">
           <img src="/logo/ln-icon-48.png" alt="" width="32" height="32" />
-          <span>Get Listing Needed on your phone</span>
+          <span>Get our app icon</span>
           <button type="button" className="btn primary a2hs-add" onClick={click}>Add to Home Screen</button>
           <button type="button" className="a2hs-x" aria-label="Dismiss" onClick={dismiss}>×</button>
         </div>
