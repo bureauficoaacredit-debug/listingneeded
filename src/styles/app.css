@@ -1635,3 +1635,7 @@ main:has(.mapsearch) { width: 100%; padding: 0; }
 
 /* v78: HUD home badge */
 .badge.hud { background: #e5eefb; color: #1d4e89; font-weight: 700; }
+
+/* v79: small footer Realtor.com profile button */
+.realtor-profile-btn { display:inline-block; padding:.2rem .6rem; border:1px solid var(--line, #d8cfe6); border-radius:999px; font-size:.75rem; font-weight:600; color:var(--muted) !important; text-decoration:none; }
+.realtor-profile-btn:hover { border-color: currentColor; }

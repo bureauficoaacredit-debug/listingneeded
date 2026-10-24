@@ -149,6 +149,17 @@ export default function Layout() {
               <a href="https://www.listingneeded.com">www.listingneeded.com</a> ·{' '}
               <a href="tel:2038183242">203-818-3242</a>
             </div>
+            {/* v79: approved exception to v72 no-outbound — Marcel's Realtor.com agent profile (footer only) */}
+            <div style={{ marginTop: '.4rem' }}>
+              <a
+                className="realtor-profile-btn"
+                href="https://www.realtor.com/realestateagents/56b0887589a68901006c5685"
+                target="_blank"
+                rel="noopener"
+              >
+                See me on Realtor.com
+              </a>
+            </div>
             <div className="meta" style={{ marginTop: '.5rem' }}>
               <Link to="/cma" style={{ color: 'var(--muted)', fontSize: '0.8rem', fontWeight: 500 }}>
                 What’s my home worth?
