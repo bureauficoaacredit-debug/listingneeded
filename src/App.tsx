@@ -32,6 +32,7 @@ const AverageRent = lazy(lazyPageImport(() => import('./pages/AverageRent')))
 const RentCalculator = lazy(lazyPageImport(() => import('./pages/calculators/RentCalculator')))
 const CostOfLiving = lazy(lazyPageImport(() => import('./pages/calculators/CostOfLiving')))
 const RentVsBuy = lazy(lazyPageImport(() => import('./pages/calculators/RentVsBuy')))
+const MapSearch = lazy(lazyPageImport(() => import('./pages/MapSearch')))
 const QrPrint = lazy(lazyPageImport(() => import('./pages/QrPrint')))
 
 const lazyPage = (el: React.ReactNode) => (
@@ -69,6 +70,7 @@ export default function App() {
       <Route element={<Layout />}>
         <Route index element={<Home />} />
         <Route path="browse" element={<Browse />} />
+        <Route path="map" element={lazyPage(<MapSearch />)} />
         <Route path="list" element={lazyPage(<List />)} />
         <Route path="listing/:id" element={lazyPage(<><ListedBanner /><ListingDetail /></>)} />
         <Route path="cma" element={lazyPage(<Cma />)} />

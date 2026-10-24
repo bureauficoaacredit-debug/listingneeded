@@ -38,6 +38,7 @@ const MENU: Group[] = [
       { label: 'Rent vs. Buy Calculator', to: '/calculators/rent-vs-buy' },
     ],
   },
+  { label: 'Map Search', to: '/map' },
   { label: "What's My Home Worth?", to: '/cma' },
   { label: 'List Your Home', to: '/list' },
 ]

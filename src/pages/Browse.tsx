@@ -543,7 +543,8 @@ export default function Browse() {
         ) : null}
         <p className="meta">
           Filter by ZIP, city, street, state, or price — or type a keyword. MLS rows with a blank ZIP still
-          match city / street / state.
+          match city / street / state.{' '}
+          <Link className="search-map-link" to="/map">🗺️ Map search</Link>
         </p>
       </div>
 

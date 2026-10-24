@@ -18,6 +18,7 @@
  */
 import { fetchLinkListings, normalizeAnyLink, rpc, toSyncHomes } from '../_lib/mlsSync.js'
 import { fetchTaxHoa } from '../_lib/mlsDetails.js'
+import { geocodeRows } from '../_lib/geocode.js'
 
 export const config = { api: { bodyParser: { sizeLimit: '1mb' } }, maxDuration: 60 }
 
@@ -186,6 +187,21 @@ export default async function handler(req, res) {
         details = { error: String(err instanceof Error ? err.message : err).slice(0, 200) }
       }
     }
+    // v76: map coordinates for new / changed homes (every source, any state), Census batch + ZIP fallback
+    let geocode = null
+    if (!dry && Date.now() - t0 < 50000) {
+      try {
+        const todo = await call('geocode_todo', { p_token: pTok, p_limit: 400 })
+        if (todo && todo.length) {
+          const left = Math.max(3000, 56000 - (Date.now() - t0))
+          const rows = await geocodeRows(todo, { timeoutMs: left })
+          const saved = await call('geocode_apply', { p_token: pTok, p_rows: rows })
+          geocode = { due: todo.length, address: rows.filter((r) => r.src === 'address').length, zip: rows.filter((r) => r.src === 'zip').length, saved }
+        } else geocode = { due: 0 }
+      } catch (err) {
+        geocode = { error: String(err instanceof Error ? err.message : err).slice(0, 200) }
+      }
+    }
     const allFailed = perLink.every((p) => !p.ok)
     return send(res, allFailed ? 502 : 200, {
       ok: !allFailed,
@@ -194,6 +210,7 @@ export default async function handler(req, res) {
       summary: `${tot.new} new, ${tot.updated} updated`,
       perLink,
       details,
+      geocode,
       ...(allFailed ? { error: perLink.map((p) => `${p.label}: ${p.error}`).join(' | ') } : {}),
       source,
       ms: Date.now() - t0,
