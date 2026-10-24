@@ -59,7 +59,7 @@ export default function List() {
 
   // Public-record autofill (beds / baths / sq ft / year built). Values stay editable; the user's own
   // edits are never overwritten by a later lookup.
-  const [addr, setAddr] = useState({ address: '', city: 'Fairfield', state: 'CT', zip: '' })
+  const [addr, setAddr] = useState(() => { const st = (searchParams.get('state') || '').toUpperCase(); return /^[A-Z]{2}$/.test(st) && st !== 'CT' ? { address: '', city: '', state: st, zip: '' } : { address: '', city: 'Fairfield', state: 'CT', zip: '' } })
   const [facts, setFacts] = useState({ beds: '2', baths: '1', sqft: '', yearBuilt: '' })
   const touched = useRef<Set<string>>(new Set())
   const [lookup, setLookup] = useState<{ state: 'idle' | 'loading' | 'ok' | 'none'; msg: string }>({ state: 'idle', msg: '' })

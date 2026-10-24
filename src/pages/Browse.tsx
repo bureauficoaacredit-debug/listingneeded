@@ -50,12 +50,13 @@ function matchesKeyword(l: Listing, q: string) {
 }
 
 // v66: word-by-word search helpers
-const STATE_WORDS = new Set(['ct', 'conn', 'connecticut', 'ny', 'new', 'york', 'ma', 'mass', 'massachusetts', 'usa', 'us'])
+const STATE_WORDS = new Set(['ct', 'conn', 'connecticut', 'ny', 'new', 'york', 'ma', 'mass', 'massachusetts', 'fl', 'fla', 'florida', 'usa', 'us'])
 // v74: Search state dropdown (code + names, case-insensitive)
 const STATE_OPTIONS: [string, string, string[]][] = [
   ['CT', 'Connecticut', ['ct', 'conn', 'connecticut']],
   ['NY', 'New York', ['ny', 'new york']],
   ['MA', 'Massachusetts', ['ma', 'mass', 'massachusetts']],
+  ['FL', 'Florida', ['fl', 'fla', 'florida']],
 ]
 function stateCode(q: string | null | undefined) {
   const n = norm(q)
@@ -211,6 +212,7 @@ export default function Browse() {
   const filter = parseFilter(searchParams.get('type'))
   // v68: property type from the header menu (Apartments / Condos / Houses for rent)
   const ptypeRaw = searchParams.get('ptype')
+  const shortOnly = searchParams.get('ss') === '1'
   const ptype = ptypeRaw === 'apartment' || ptypeRaw === 'condo' || ptypeRaw === 'house' ? ptypeRaw : null
   // v62: show cached results instantly (this tab, <15 min), then refresh quietly in the background
   const [listings, setListings] = useState<Listing[]>(() => cachedLiveListings()?.rows ?? [])
@@ -308,6 +310,7 @@ export default function Browse() {
     let rows = listings
     if (filter !== 'all') rows = rows.filter((l) => l.type === filter)
     if (ptype) rows = rows.filter((l) => l.ptype === ptype)
+    if (shortOnly) rows = rows.filter((l) => l.shortSale)
 
     const keyword = norm(keywordQ)
     const zip = norm(zipQ)
@@ -325,7 +328,7 @@ export default function Browse() {
     if (maxPrice != null) rows = rows.filter((l) => l.price <= maxPrice)
 
     return rows
-  }, [listings, filter, ptype, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
+  }, [listings, filter, ptype, shortOnly, keywordQ, zipQ, cityQ, streetQ, stateQ, minPrice, maxPrice])
 
 
   // v59: render the results in pages of 48 cards (more load as you scroll), not all ~2,250 at once
@@ -545,6 +548,19 @@ export default function Browse() {
           Filter by ZIP, city, street, state, or price — or type a keyword. MLS rows with a blank ZIP still
           match city / street / state.{' '}
           <Link className="search-map-link" to="/map">🗺️ Map search</Link>
+          <label className="search-ss-toggle">
+            <input
+              type="checkbox"
+              checked={shortOnly}
+              onChange={(e) => {
+                const p = new URLSearchParams(searchParams)
+                if (e.target.checked) p.set('ss', '1')
+                else p.delete('ss')
+                setSearchParams(p, { replace: true })
+              }}
+            />
+            Short sales only
+          </label>
         </p>
       </div>
 
@@ -912,6 +928,15 @@ export default function Browse() {
       <div ref={resultsRef} className="browse-results">
         <AvgRentPanel listings={listings} zipQ={zipQ} keywordQ={keywordQ} cityQ={cityQ} />
         {filter === 'rent' ? <RentalCallLine top /> : null}
+        {stateCode(stateQ) === 'FL' || stateCode(stateDraft) === 'FL' ? (
+          <div className="card state-promo">
+            <div className="body st-empty">
+              <strong>Florida landlords and agents: list your home here for promotion.</strong>
+              <span>{filtered.length === 0 ? 'No Florida homes are listed yet. ' : ''}Add your Florida rental or home for sale and people searching here can contact you directly.</span>
+              <Link className="btn" to="/list?state=FL">List a Florida home</Link>
+            </div>
+          </div>
+        ) : null}
         {filtered.length === 0 ? (
           <div className="card">
             <div className="body">

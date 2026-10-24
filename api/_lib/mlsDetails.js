@@ -62,7 +62,10 @@ export function taxHoaFromDetails(payload) {
     const hit = FREQ.find(([re]) => re.test(f.HOAFEEFREQUENCY))
     freq = hit ? hit[1] : String(f.HOAFEEFREQUENCY).toLowerCase().slice(0, 20)
   }
-  return { taxes_annual: taxes, tax_year: taxes != null ? taxYear : null, hoa_fee: hoa, hoa_frequency: freq }
+  // v77: SMART MLS "Potential Short Sale" (Yes / No / Undeclared). null = blank or Undeclared (description keywords still count).
+  const ss = String(f.POTENTIALSHORTSALE || '').trim()
+  const short_sale = /^y/i.test(ss) ? true : /^n/i.test(ss) ? false : null
+  return { taxes_annual: taxes, tax_year: taxes != null ? taxYear : null, hoa_fee: hoa, hoa_frequency: freq, short_sale }
 }
 
 /** Details payload of one listing (raw.Id = the portal GUID). ctx: { token } (portal) or { uuid } (shared link). */

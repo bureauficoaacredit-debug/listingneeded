@@ -1626,3 +1626,9 @@ main:has(.mapsearch) { width: 100%; padding: 0; }
 .mapsearch-x { position: absolute; top: 4px; right: 6px; border: 0; background: none; font-size: 22px; color: #666; cursor: pointer; }
 .search-map-link { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--brand); text-decoration: none; }
 @media (max-width: 640px) { .mapsearch-bar input { width: 74px; } .mapsearch-types button { padding: 7px 8px; font-size: 12px; } }
+
+/* v77: short sale badge + filter, Florida note */
+.badge.short-sale { background: #fdeaea; color: #a61b1b; font-weight: 700; }
+.search-ss-toggle { display: inline-flex; align-items: center; gap: 4px; margin-left: .6rem; font-size: 13px; font-weight: 600; color: var(--brand-dark); cursor: pointer; }
+.search-ss-toggle input { width: auto; margin: 0; accent-color: var(--brand); }
+.state-promo { margin-bottom: 1rem; }

@@ -15,13 +15,13 @@ import { useSeo } from '../lib/seo'
  */
 type Pt = {
   id: string; type: 'rent' | 'sale' | 'short-term'; price: number; beds: number | null; baths: number | null
-  lat: number; lng: number; address: string; city: string; state: string; cover_photo: string | null; geo_source: string | null
+  lat: number; lng: number; address: string; city: string; state: string; cover_photo: string | null; geo_source: string | null; short_sale: boolean | null
 }
 const CT_BOUNDS: L.LatLngBoundsExpression = [[40.98, -73.73], [42.05, -71.79]]
 const TYPES = [['all', 'All'], ['sale', 'For Sale'], ['rent', 'For Rent'], ['short-term', 'Short-term']] as const
 
 async function loadPoints(): Promise<Pt[]> {
-  const sel = 'id,type,price,beds,baths,lat,lng,address,city,state,cover_photo,geo_source'
+  const sel = 'id,type,price,beds,baths,lat,lng,address,city,state,cover_photo,geo_source,short_sale'
   const base = `/rest/v1/listings?live=eq.true&paid=eq.true&deleted_at=is.null&lat=not.is.null` +
     `&or=(active_until.is.null,active_until.gte.${todayYmd()})&order=id.asc&select=${sel}&limit=1000`
   const out: Pt[] = []
@@ -50,6 +50,7 @@ export default function MapSearch() {
   const [minS, setMinS] = useState('')
   const [maxS, setMaxS] = useState('')
   const [sel, setSel] = useState<Pt | null>(null)
+  const [ssOnly, setSsOnly] = useState(false)
 
   useEffect(() => { loadPoints().then(setPts, (e) => setErr(String(e.message || e))) }, [])
 
@@ -70,8 +71,8 @@ export default function MapSearch() {
 
   const shown = useMemo(() => {
     const min = toNum(minS), max = toNum(maxS)
-    return (pts || []).filter((p) => (type === 'all' || p.type === type) && (min == null || p.price >= min) && (max == null || p.price <= max))
-  }, [pts, type, minS, maxS])
+    return (pts || []).filter((p) => (type === 'all' || p.type === type) && (min == null || p.price >= min) && (max == null || p.price <= max) && (!ssOnly || !!p.short_sale))
+  }, [pts, type, minS, maxS, ssOnly])
 
   useEffect(() => {
     const g = layer.current
@@ -95,6 +96,7 @@ export default function MapSearch() {
         </div>
         <input inputMode="numeric" placeholder="Min $" aria-label="Minimum price" value={minS} onChange={(e) => setMinS(e.target.value)} />
         <input inputMode="numeric" placeholder="Max $" aria-label="Maximum price" value={maxS} onChange={(e) => setMaxS(e.target.value)} />
+        <label className="search-ss-toggle"><input type="checkbox" checked={ssOnly} onChange={(e) => setSsOnly(e.target.checked)} /> Short sales</label>
         <span className="mapsearch-count">{pts ? `${shown.length.toLocaleString()} homes` : err || 'Loading…'}</span>
         <Link className="mapsearch-list" to="/browse">List view</Link>
       </div>
@@ -105,7 +107,7 @@ export default function MapSearch() {
           <Link to={`/listing/${encodeURIComponent(sel.id)}`} className="mapsearch-card-link">
             {sel.cover_photo ? <img src={sel.cover_photo} alt="" loading="lazy" /> : <div className="mapsearch-nophoto">No photo</div>}
             <div>
-              <div className="mapsearch-price">{priceLabel(sel)}</div>
+              <div className="mapsearch-price">{priceLabel(sel)}{sel.short_sale ? <span className="badge short-sale" style={{ marginLeft: 8, verticalAlign: 'middle' }}>Short sale</span> : null}</div>
               <div className="mapsearch-meta">{[sel.beds != null ? `${sel.beds} bd` : '', sel.baths != null ? `${sel.baths} ba` : '', sel.type === 'sale' ? 'For sale' : sel.type === 'rent' ? 'For rent' : 'Short-term'].filter(Boolean).join(' · ')}</div>
               <div className="mapsearch-addr">{sel.address}, {sel.city}, {sel.state}</div>
               {sel.geo_source === 'zip' ? <div className="mapsearch-approx">Pin shows the ZIP area</div> : null}

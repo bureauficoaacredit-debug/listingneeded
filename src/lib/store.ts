@@ -37,6 +37,8 @@ type ListingRow = {
   max_guests?: number | null
   also_on_other_sites?: boolean | null
   external_listing_url?: string | null
+  short_sale?: boolean | null
+  short_sale_admin?: boolean | null
 }
 
 function rowToListing(row: ListingRow): Listing {
@@ -74,6 +76,8 @@ function rowToListing(row: ListingRow): Listing {
     minNights: row.min_nights != null ? Number(row.min_nights) : null,
     maxGuests: row.max_guests != null ? Number(row.max_guests) : null,
     alsoOnOtherSites: row.also_on_other_sites ?? null,
+    shortSale: !!row.short_sale,
+    shortSaleAdmin: row.short_sale_admin ?? null,
     externalListingUrl: row.external_listing_url ?? null,
   }
 }
@@ -177,7 +181,7 @@ export function addDaysYmd(ymd: string, days: number): string {
 }
 
 const SEARCH_COLUMNS =
-  'id,type,address,city,state,zip,beds,baths,price,pets,created_at,paid,live,is_mls,active_until,sqft,year_built,deleted_at,mls_status,source,cover_photo,mls_ref,ptype,min_nights,max_guests'
+  'id,type,address,city,state,zip,beds,baths,price,pets,created_at,paid,live,is_mls,active_until,sqft,year_built,deleted_at,mls_status,source,cover_photo,mls_ref,ptype,min_nights,max_guests,short_sale'
 
 /** Public Search feed: paid + live, not trashed, and active_until not past (filtered in the query AND client-side). */
 export async function liveListings(): Promise<Listing[]> {
@@ -496,6 +500,7 @@ export type ListingPatch = Partial<{
   minNights: number | null
   maxGuests: number | null
   alsoOnOtherSites: boolean | null
+  shortSaleAdmin: boolean | null
   externalListingUrl: string | null
 }>
 
@@ -527,6 +532,7 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
   if (patch.hoaFrequency !== undefined) body.hoa_frequency = patch.hoaFrequency
   if (patch.minNights !== undefined) body.min_nights = patch.minNights
   if (patch.maxGuests !== undefined) body.max_guests = patch.maxGuests
+  if (patch.shortSaleAdmin !== undefined) body.short_sale_admin = patch.shortSaleAdmin
   if (patch.alsoOnOtherSites !== undefined) body.also_on_other_sites = patch.alsoOnOtherSites
   if (patch.externalListingUrl !== undefined) body.external_listing_url = patch.externalListingUrl
 

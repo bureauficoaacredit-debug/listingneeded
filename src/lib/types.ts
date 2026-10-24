@@ -46,6 +46,10 @@ export type Listing = {
   minNights?: number | null
   maxGuests?: number | null
   alsoOnOtherSites?: boolean | null
+  /** v77: shown as a Short sale badge (MLS field / description / admin choice) */
+  shortSale?: boolean
+  /** v77: admin override (null = automatic) */
+  shortSaleAdmin?: boolean | null
   /** v73.1: optional host-provided Airbnb / VRBO listing link (short-term only; the one allowed outbound link) */
   externalListingUrl?: string | null
 }

@@ -33,6 +33,7 @@ export function ListingEditModal({
     minNights: String(listing.minNights ?? ''),
     maxGuests: String(listing.maxGuests ?? ''),
     alsoOnOtherSites: !!listing.alsoOnOtherSites,
+    shortSale: !!listing.shortSale,
     externalListingUrl: listing.externalListingUrl ?? '',
     description: listing.description ?? '',
     ownerName: listing.ownerName ?? '',
@@ -77,6 +78,8 @@ export function ListingEditModal({
         minNights: f.type === 'short-term' && Number(f.minNights) >= 1 ? Math.min(365, Math.round(Number(f.minNights))) : null,
         maxGuests: f.type === 'short-term' && Number(f.maxGuests) >= 1 ? Math.min(50, Math.round(Number(f.maxGuests))) : null,
         alsoOnOtherSites: f.type === 'short-term' ? f.alsoOnOtherSites : null,
+        // v77: a tick that differs from the automatic flag (or an earlier admin choice) is saved as the admin's choice
+        shortSaleAdmin: f.shortSale !== !!listing.shortSale || listing.shortSaleAdmin != null ? f.shortSale : null,
         externalListingUrl: f.type === 'short-term' && f.externalListingUrl.trim() ? f.externalListingUrl.trim() : null,
         description: f.description,
         ownerName: f.ownerName.trim(),
@@ -171,6 +174,10 @@ export function ListingEditModal({
               <option value="yes">yes</option>
               <option value="negotiable">negotiable</option>
             </select>
+          </label>
+          <label style={{ flexDirection: 'row', alignItems: 'center', gap: '.4rem' }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={f.shortSale} onChange={(e) => setF((p) => ({ ...p, shortSale: e.target.checked }))} />
+            Short sale{listing.shortSaleAdmin != null ? ' (set by admin)' : ' (auto)'}
           </label>
         </div>
         {f.type === 'short-term' ? (
