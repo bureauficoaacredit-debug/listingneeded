@@ -142,7 +142,8 @@ export default function ListingDetail() {
           <div>
             <span className={`badge ${listing.type}`}>{typeLabel(listing.type)}</span>
             {listing.is_mls ? <span className="badge mls">MLS listing</span> : null}
-            {listing.shortSale ? <span className="badge short-sale" title="Sale needs the lender's approval">Short sale</span> : null}
+            {listing.source === 'hud' ? <span className="badge hud" title="Home owned by HUD (U.S. Dept. of Housing and Urban Development)">HUD home</span> : null}
+        {listing.shortSale ? <span className="badge short-sale" title="Sale needs the lender's approval">Short sale</span> : null}
             {mlsStatusBadge(listing.mlsStatus) ? <span className="badge status" title={listing.mlsStatus ?? ''}>{mlsStatusBadge(listing.mlsStatus)}</span> : null}
           </div>
           <ShareButton listing={listing} />

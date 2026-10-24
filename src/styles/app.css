@@ -1632,3 +1632,6 @@ main:has(.mapsearch) { width: 100%; padding: 0; }
 .search-ss-toggle { display: inline-flex; align-items: center; gap: 4px; margin-left: .6rem; font-size: 13px; font-weight: 600; color: var(--brand-dark); cursor: pointer; }
 .search-ss-toggle input { width: auto; margin: 0; accent-color: var(--brand); }
 .state-promo { margin-bottom: 1rem; }
+
+/* v78: HUD home badge */
+.badge.hud { background: #e5eefb; color: #1d4e89; font-weight: 700; }
